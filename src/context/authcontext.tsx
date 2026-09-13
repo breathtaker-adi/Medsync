@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 
 type Profile = {
   id: string;
-  role: 'patient' | 'caregiver' | null;
+  role: 'patient' | 'caregiver' | 'doctor' | null;
   full_name: string | null;
   alerts_enabled: boolean | null;
   push_token?: string | null;
