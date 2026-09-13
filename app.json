@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "MedSync",
+    "slug": "medsync",
+    "version": "1.0.0",
+    "scheme": "medsync",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D7377"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.medsync.app"
+    },
+    "android": {
+      "googleServicesFile": "./google-services.json",
+      "package": "com.medsync.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0D7377"
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sharing"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "08976e05-387f-4b74-a4bb-f2a1fdc5540b"
+      }
+    },
+    "owner": "breathtakeradis-team"
+  }
+}
