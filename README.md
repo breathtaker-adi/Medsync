@@ -1,56 +1,256 @@
-# Welcome to your Expo app 👋
+# MedSync — Intelligent Medication Adherence & Caregiver Oversight
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-## Get started
 
-1. Install dependencies
+MedSync is a mobile healthcare platform built with React Native and Expo SDK 57 (React Native 0.86, React 19) designed to bridge the communication gap between patients managing complex medication regimens and their caregivers or physicians. By integrating multi-modal AI vision processing (OpenAI GPT-4o), real-time PostgreSQL synchronization via Supabase, native background alarms, and multi-sensory accessibility tools, MedSync converts physical prescriptions into verified daily adherence routines.
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## Key Features
 
-   ```bash
-   npx expo start
-   ```
+### Patient Adherence & Care Command Center
 
-In the output, you'll find options to open the app in a
+* **Dynamic Daily Schedule:** Displays daily medications sorted chronologically using a 12/24-hour time parser with automated background alarm scheduling.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+* **One-Tap Quick Actions:** Enables immediate intake confirmation via "I Took It", 20-minute snoozing, and dose skipping directly from the app or background notification banners.
 
-## Get a fresh project
 
-When you're ready, run:
+* **Overdue Alert Logic:** Automatically flags medications as overdue if intake is delayed by more than 30 minutes past the scheduled time.
 
-```bash
-npm run reset-project
+
+* **30-Day Adherence Calendar & Streaks:** Tracks daily adherence history, logs intake states (`taken`, `skipped`, `missed`), and calculates consecutive daily adherence streaks.
+
+
+
+### AI-Powered Prescription Scanning & Clinical Review
+
+* **Prescription Ingestion:** Captures physical prescription slips via device camera or gallery, encoding images to binary buffers for secure upload to Supabase Storage.
+
+
+* **OpenAI GPT-4o Vision OCR:** Processes captured prescription images through OpenAI's multi-modal API to automatically extract drug names, dosage instructions, and prescribed durations into structured JSON.
+
+
+* **Caregiver & Physician Verification Dashboard:** Provides clinical supervisors with an interactive review queue to inspect uploaded slips, correct extracted details, append clinical notes, and approve or reject schedules.
+
+
+* **Automated Schedule Injection:** Approving a reviewed prescription automatically converts it into an active medication schedule on the patient's device and dispatches a push notification.
+
+
+
+### Multi-Sensory Accessibility Engine
+
+* **High-Contrast & Large-Print Modes:** Supports a global high-contrast theme with scaled typography designed for seniors and low-vision users.
+
+
+* **Read Aloud Text-to-Speech:** Integrated via `expo-speech` to vocalize drug names, dosages, and daily scheduled times on demand.
+
+
+* **Tactile Haptic Feedback:** Driven by `expo-haptics` to deliver sensory vibration triggers across all key UI interactions.
+
+
+
+### Supervisor Management & Clinical Exports
+
+* **Patient-Caregiver Pairing:** Connects patients to caregivers using unique 6-character alphanumeric claim codes.
+
+
+* **Caregiver Patient Roster:** Displays assigned patients alongside 30-day compliance percentages and status badges.
+
+
+* **PDF Health Report Generation:** Compiles 30-day medication logs into styled HTML/PDF clinical reports using `expo-print` and opens native share sheets (`expo-sharing`) for doctor consultations.
+
+
+* **Push Notification Routing:** Delivers cross-device alerts via Expo Push Service and Firebase Cloud Messaging (FCM v1) when prescriptions are uploaded, approved, or overdue.
+
+
+
+---
+
+## End-to-End System Architecture
+
+The following diagram illustrates the closed-loop feedback lifecycle between patients, OpenAI vision processing, Supabase backend databases, and caregiver oversight:
+
+```
+[Patient Device] ──(Captures Camera/Gallery)──> [Uploads Screen]
+                                                       │
+                                                       ▼
+                                             [OpenAI GPT-4o Vision]
+                                                       │ (Extracts Drug, Dose, Duration)
+                                                       ▼
+[Doctor / Caregiver] <──(Push Notification)── [Supabase: pending_reviews]
+         │
+         ├── Inspects Original Image & AI Output
+         ├── Edits & Corrects via Review Modal
+         └── Taps "Approve"
+                   │
+                   ▼
+         [Supabase: medications]
+                   │
+                   ▼ (Syncs & Schedules)
+[Patient Device] <──(Push Notification: "Prescription Approved")
+         │
+         ├── Schedules Native Alarms via expo-notifications
+         │
+         └── [Alarm Triggers at Scheduled Time]
+                   │
+                   ├── Option A: "I Took It" ──> Logs to medication_logs & Decrements Pill Count
+                   ├── Option B: "Snooze 20m" ──> Reschedules Local Notification
+                   └── Option C: Ignored / Overdue ──> Escalates Alert to Caregiver Dashboard
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## Tech Stack & Dependencies
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Category | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Mobile Framework** | Expo SDK 57 / React Native 0.86 / React 19 | Cross-platform runtime and native component architecture. |
+| **Navigation** | Expo Router v57 | File-system routing with native tabs, stacks, and dynamic route protection. |
+| **Backend & Database** | Supabase (PostgreSQL 15) | User authentication, persistent relational storage, Row Level Security, and S3 bucket storage. |
+| **AI Vision** | OpenAI GPT-4o API | Automated multi-modal optical character recognition (OCR) and prescription detail extraction. |
+| **Notifications** | `expo-notifications` & FCM v1 | Local background alarms, background action listeners, and push notification routing. |
+| **Accessibility** | `expo-speech` & `expo-haptics` | Text-to-speech audio synthesis and tactile haptic vibration responses. |
+| **Document Export** | `expo-print` & `expo-sharing` | Headless HTML rendering to PDF and platform native file sharing. |
+| **Local Cache** | `@react-native-async-storage/async-storage` | Unencrypted local state backing for session tokens and accessibility preferences. |
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## Database Schema & Row Level Security
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+MedSync's database architecture runs on Supabase PostgreSQL with strict Row Level Security (RLS) policies:
 
-## Join the community
 
-Join our community of developers creating universal apps.
+```
+```
+```
+   ┌────────────────────────┐
+   │      auth.users        │
+   └───────────┬────────────┘
+               │ 1:1
+               ▼
+   ┌────────────────────────┐
+   │        profiles        │
+   │────────────────────────│
+   │ id (UUID, PK)          │◀──────┐
+   │ role (text)            │       │
+   │ full_name (text)       │       │
+   │ alerts_enabled (bool)  │       │
+   │ push_token (text)      │       │
+   └──────┬───────────┬─────┘       │
+          │ 1:N       │ 1:N         │
+          ▼           ▼             │
+┌──────────────┐   ┌───────────────┐ │
+│ medications  │   │pending_reviews│ │
+│──────────────│   │───────────────│ │
+│ id (bigint)  │   │ id (bigint)   │ │
+│ medicine_name│   │ patient_name  │ │
+│ dosage       │   │ medication    │ │
+│ time         │   │ dosage        │ │
+│ patient_id   │   │ duration      │ │
+│ status       │   │ status        │ │
+└──────┬───────┘   │ patient_id    │ │
+       │ 1:N       └───────────────┘ │
+       ▼                             │
+┌──────────────────┐                 │
+│ medication_logs  │                 │
+│──────────────────│                 │
+│ id (bigint, PK)  │                 │
+│ medication_id(FK)│                 │
+│ patient_id (UUID)│                 │
+│ status           │                 │
+└──────────────────┘                 │
+│
+┌────────────────────────────┴─────┐
+│        patient_caregivers        │
+│──────────────────────────────────│
+│ id (bigint, PK)                  │
+│ patient_id (UUID, FK -> profiles)│
+│ caregiver_id(UUID,FK -> profiles)│
+│ pairing_code (text, UNIQUE)      │
+└──────────────────────────────────┘
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+
+### Key SQL Security Views & RLS Policies
+* **Patient Data Isolation:** Restricts `medication_logs` and `medications` modifications exclusively to authenticated owners (`auth.uid() = patient_id`).
+* **Caregiver Supervision Access:** Grants read access to patient profiles and logs for caregivers linked via valid entries in `patient_caregivers`.
+* **`doctor_push_tokens` View:** Resolves target push tokens for linked caregivers when a patient uploads a prescription.
+* **`patient_push_tokens` View:** Resolves push tokens for target patients when a doctor approves a prescription in `review-details.tsx`.
+
+---
+
+## Getting Started
+
+### Prerequisites
+* **Node.js:** v18.0.0 or higher
+* **Package Manager:** npm (v9+) or yarn
+* **Expo Go / Development Build:** Downloaded on iOS or Android testing device
+* **Supabase Project:** Instance running PostgreSQL with Storage enabled
+* **OpenAI API Key:** Access to `gpt-4o` multi-modal completions
+
+
+## Repository Structure
+
+```
+medsync-app/
+├── assets/                          # App icons, splash screens, and PublicSans fonts
+├── src/
+│   ├── app/                         # Expo Router screen routes & layouts
+│   │   ├── (tabs)/                  # Main bottom tab navigator group
+│   │   │   ├── _layout.tsx          # Tab navigation configuration & styling
+│   │   │   ├── caregiver-dashboard.tsx # Clinical oversight queue & patient roster
+│   │   │   ├── index.tsx            # Role-aware redirect routing
+│   │   │   ├── patient-dashboard.tsx # Daily dosage schedule, alarms & intake actions
+│   │   │   └── uploads.tsx          # Prescription capture, S3 upload & AI vision OCR
+│   │   ├── _layout.tsx              # Root app layout, font loading & auth routing gate
+│   │   ├── login.tsx                # Email authentication (Sign In / Sign Up)
+│   │   ├── medication-details.tsx   # Detailed medicine view, skip dose & ordering
+│   │   ├── medication-history.tsx   # Adherence logs breakdown & 30-day streak tracker
+│   │   ├── patient-details.tsx      # Patient history, medical profile & allergies
+│   │   ├── profile-setup.tsx        # Onboarding screen for profile setup & role assignment
+│   │   ├── review-details.tsx       # Doctor verification modal for pending prescriptions
+│   │   └── settings.tsx             # Accessibility preferences, pairing codes & PDF export
+│   ├── context/
+│   │   ├── AccessibilityContext.tsx # High-contrast mode, speech synthesis & haptics state
+│   │   └── authcontext.tsx          # Supabase auth session & push token management
+│   ├── lib/
+│   │   └── supabase.ts              # Supabase client initialization & AsyncStorage adapter
+│   ├── theme/
+│   │   └── index.ts                 # Material 3 design tokens, palette & typography
+│   └── types/
+│       ├── medication.ts            # Type declarations for medications & daily logs
+│       └── review.ts                # Type declarations for pending prescription reviews
+├── app.json                         # Expo application configuration manifest
+├── eas.json                         # EAS build profiles for APK/AAB compilation
+├── google-services.json             # Firebase Android push notification configuration
+└── package.json                     # NPM dependencies and build scripts
+```
+
+---
+
+## Build & Native Configuration
+
+### Firebase Push Notifications (Android)
+Android native notifications utilize Firebase Cloud Messaging (FCM v1):
+1. Ensure `google-services.json` is located in the root directory.
+2. Confirm `app.json` includes the pointer under `android.googleServicesFile`: `"./google-services.json"`.
+
+### EAS Cloud Builds
+The project includes pre-configured profiles in `eas.json` for compilation via Expo Application Services:
+* **Preview Build (Internal APK):**
+  ```bash
+  eas build --platform android --profile preview
+  ```
+* **Production Build (Google Play AAB):**
+  ```bash
+  eas build --platform android --profile production
+  ```
+
+---
+
+## Known Issues & Ongoing Improvements
+
+1. **TypeScript Check in `src/app/_layout.tsx`:** Line 52 contains a type guard where `profile.role` (`'patient' | 'caregiver' | null`) is passed to an array `.includes()` check without explicit null validation.
+2. **`patient_id` Association in Review Approval:** In `src/app/review-details.tsx`, approving a prescription inserts a medication record, which requires explicit `patient_id` parameter passing to appear on the patient's schedule immediately.
+3. **Environment Variable Fallbacks:** `src/lib/supabase.ts` uses fallback configuration strings; production deployments should strictly enforce reading from `process.env.EXPO_PUBLIC_SUPABASE_URL`.
