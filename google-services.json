@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "672938633977",
+    "project_id": "medsync-cbb52",
+    "storage_bucket": "medsync-cbb52.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:672938633977:android:e4451deb6e1ccd78e5d028",
+        "android_client_info": {
+          "package_name": "com.medsync.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQnclvq0Y3_xH3vLXIVQO2yC7xLgWsS8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
