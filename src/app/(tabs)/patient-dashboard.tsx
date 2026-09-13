@@ -152,11 +152,12 @@ export default function PatientDashboard() {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // Fetch master medication list
+    // Fetch master medication list (ONLY ACTIVE ONES)
     const { data: medsData, error: medsError } = await supabase
       .from('medications')
       .select('*')
-      .eq('patient_id', session.user.id);
+      .eq('patient_id', session.user.id)
+      .eq('is_active', true);
 
     if (medsError) {
       console.error('Error fetching medications:', medsError);
@@ -303,7 +304,7 @@ export default function PatientDashboard() {
             body: `Only ${newPillCount} doses of ${takenMed.medicine_name} left. Tap to reorder.`,
             sound: true,
           },
-          trigger: null,
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date() },
         });
       }
     }

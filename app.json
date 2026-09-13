@@ -7,14 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0D7377"
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.medsync.app"
@@ -22,6 +14,9 @@
     "android": {
       "googleServicesFile": "./google-services.json",
       "package": "com.medsync.app",
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0D7377"
@@ -32,7 +27,21 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0D7377"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0D7377"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

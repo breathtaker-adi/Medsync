@@ -1,7 +1,7 @@
 // src/app/role-selection.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { router, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Theme } from '../theme';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';

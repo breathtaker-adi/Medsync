@@ -9,11 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
 
 export default function PatientDetails() {
   const router = useRouter();
+  const { session } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [profile, setProfile] = useState<any>(null);
@@ -22,7 +24,20 @@ export default function PatientDetails() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!id) return;
+      if (!id || !session?.user?.id) return;
+
+      // Security check: verify the current user is linked to this patient
+      const { data: link } = await supabase
+        .from('patient_caregivers')
+        .select('id')
+        .eq('caregiver_id', session.user.id)
+        .eq('patient_id', id)
+        .maybeSingle();
+
+      if (!link) {
+        setLoading(false);
+        return; // Not authorized to view this patient
+      }
 
       // 1. Fetch Patient Profile
       const { data: profileData } = await supabase
@@ -44,7 +59,7 @@ export default function PatientDetails() {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, session]);
 
   if (loading) {
     return (

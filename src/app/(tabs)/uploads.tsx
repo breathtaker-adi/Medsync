@@ -16,43 +16,20 @@ export default function UploadsScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'pending' | 'approved'>('idle');
 
-  // The AI Scanner Function
+  // The AI Scanner Function — routes through Supabase Edge Function
+  // so the OpenAI API key is never exposed in the client bundle.
   const scanPrescriptionWithAI = async (base64: string) => {
     try {
-      const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an expert pharmacist AI. Read the prescription image. Extract the Medicine Name, Dosage Instructions, and Duration. Respond ONLY in JSON format like: {"medicine_name": "...", "dosage": "...", "duration": "..."}',
-            },
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: 'Read this prescription and extract the data.' },
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
-              ],
-            },
-          ],
-          response_format: { type: 'json_object' },
-        }),
+      const { data, error } = await supabase.functions.invoke('scan-prescription', {
+        body: { base64Image: base64 },
       });
 
-      const data = await response.json();
-      const aiSummary = JSON.parse(data.choices[0].message.content);
+      if (error) throw error;
 
       return {
-        medicine_name: aiSummary.medicine_name || 'Unknown Medicine',
-        dosage: aiSummary.dosage || 'See prescription',
-        duration: aiSummary.duration || 'Not specified',
+        medicine_name: data.medicine_name || 'Unknown Medicine',
+        dosage: data.dosage || 'See prescription',
+        duration: data.duration || 'Not specified',
       };
     } catch (error) {
       console.error('AI Scan Error:', error);
