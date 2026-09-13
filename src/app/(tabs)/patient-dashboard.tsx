@@ -7,11 +7,13 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -54,6 +56,13 @@ export default function PatientDashboard() {
   const [undoToastVisible, setUndoToastVisible] = useState(false);
   const [undoMedId, setUndoMedId] = useState<number | null>(null);
   const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  // State for Add Medication Modal
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [newMedName, setNewMedName] = useState('');
+  const [newMedDosage, setNewMedDosage] = useState('');
+  const [newMedTime, setNewMedTime] = useState('');
+  const [newMedWarning, setNewMedWarning] = useState('');
 
   // Helper function to convert ANY time string into sortable minutes
   const parseTimeToMinutes = (timeString: string) => {
@@ -199,6 +208,40 @@ export default function PatientDashboard() {
       fetchMedications();
     }, [session?.user?.id])
   );
+
+  const handleAddMedication = async () => {
+    if (!newMedName || !newMedDosage || !newMedTime) {
+      Alert.alert('Missing Info', 'Please fill out all fields.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('medications').insert({
+        patient_id: session?.user?.id,
+        medicine_name: newMedName,
+        dosage: newMedDosage,
+        time: newMedTime,
+        status: 'pending',
+        pills_remaining: 30, // Default starting count
+        food_warning: newMedWarning || null,
+      });
+
+      if (error) throw error;
+
+      // Reset fields and close modal
+      setNewMedName('');
+      setNewMedDosage('');
+      setNewMedTime('');
+      setNewMedWarning('');
+      setAddModalVisible(false);
+
+      // Refresh the dashboard
+      fetchMedications();
+      Alert.alert('Success', 'Medication added to your schedule!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
 
   const handleTaken = (med: Medication) => {
     triggerHaptic();
@@ -593,6 +636,80 @@ export default function PatientDashboard() {
         )}
       </ScrollView>
 
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setAddModalVisible(true)}
+      >
+        <Ionicons name="add" size={32} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* Add Medication Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={addModalVisible}
+        onRequestClose={() => setAddModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Medication</Text>
+
+            <Text style={styles.inputLabel}>Medicine Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Metformin"
+              placeholderTextColor={Theme.colors.outline}
+              value={newMedName}
+              onChangeText={setNewMedName}
+            />
+
+            <Text style={styles.inputLabel}>Dosage</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., 500mg (1 tablet)"
+              placeholderTextColor={Theme.colors.outline}
+              value={newMedDosage}
+              onChangeText={setNewMedDosage}
+            />
+
+            <Text style={styles.inputLabel}>Time</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., 08:00 AM"
+              placeholderTextColor={Theme.colors.outline}
+              value={newMedTime}
+              onChangeText={setNewMedTime}
+            />
+
+            <Text style={styles.inputLabel}>Instructions (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., Take after food"
+              placeholderTextColor={Theme.colors.outline}
+              value={newMedWarning}
+              onChangeText={setNewMedWarning}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setAddModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.linkButton]}
+                onPress={handleAddMedication}
+              >
+                <Text style={styles.linkButtonText}>Save Med</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Undo Toast Pop-up */}
       {undoToastVisible && (
         <View style={styles.undoToast}>
@@ -858,5 +975,85 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 16,
     color: Theme.colors.secondary,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 22,
+    color: Theme.colors.onSurface,
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: Theme.colors.onSurfaceVariant,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  input: {
+    width: '100%',
+    borderWidth: 2,
+    borderColor: Theme.colors.outline,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    fontFamily: 'PublicSans-Regular',
+    marginBottom: 16,
+    color: Theme.colors.onSurface,
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: Theme.colors.surfaceContainer,
+  },
+  cancelButtonText: {
+    fontFamily: 'PublicSans-Bold',
+    color: Theme.colors.onSurfaceVariant,
+  },
+  linkButton: {
+    backgroundColor: Theme.colors.primary,
+  },
+  linkButtonText: {
+    fontFamily: 'PublicSans-Bold',
+    color: Theme.colors.onPrimary,
   },
 });
