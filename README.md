@@ -116,70 +116,8 @@ The following diagram illustrates the closed-loop feedback lifecycle between pat
 
 ---
 
-## Database Schema & Row Level Security
-
-MedSync's database architecture runs on Supabase PostgreSQL with strict Row Level Security (RLS) policies:
-
-
 ```
 ```
-```
-   ┌────────────────────────┐
-   │      auth.users        │
-   └───────────┬────────────┘
-               │ 1:1
-               ▼
-   ┌────────────────────────┐
-   │        profiles        │
-   │────────────────────────│
-   │ id (UUID, PK)          │◀──────┐
-   │ role (text)            │       │
-   │ full_name (text)       │       │
-   │ alerts_enabled (bool)  │       │
-   │ push_token (text)      │       │
-   └──────┬───────────┬─────┘       │
-          │ 1:N       │ 1:N         │
-          ▼           ▼             │
-┌──────────────┐   ┌───────────────┐ │
-│ medications  │   │pending_reviews│ │
-│──────────────│   │───────────────│ │
-│ id (bigint)  │   │ id (bigint)   │ │
-│ medicine_name│   │ patient_name  │ │
-│ dosage       │   │ medication    │ │
-│ time         │   │ dosage        │ │
-│ patient_id   │   │ duration      │ │
-│ status       │   │ status        │ │
-└──────┬───────┘   │ patient_id    │ │
-       │ 1:N       └───────────────┘ │
-       ▼                             │
-┌──────────────────┐                 │
-│ medication_logs  │                 │
-│──────────────────│                 │
-│ id (bigint, PK)  │                 │
-│ medication_id(FK)│                 │
-│ patient_id (UUID)│                 │
-│ status           │                 │
-└──────────────────┘                 │
-│
-┌────────────────────────────┴─────┐
-│        patient_caregivers        │
-│──────────────────────────────────│
-│ id (bigint, PK)                  │
-│ patient_id (UUID, FK -> profiles)│
-│ caregiver_id(UUID,FK -> profiles)│
-│ pairing_code (text, UNIQUE)      │
-└──────────────────────────────────┘
-
-```
-
-### Key SQL Security Views & RLS Policies
-* **Patient Data Isolation:** Restricts `medication_logs` and `medications` modifications exclusively to authenticated owners (`auth.uid() = patient_id`).
-* **Caregiver Supervision Access:** Grants read access to patient profiles and logs for caregivers linked via valid entries in `patient_caregivers`.
-* **`doctor_push_tokens` View:** Resolves target push tokens for linked caregivers when a patient uploads a prescription.
-* **`patient_push_tokens` View:** Resolves push tokens for target patients when a doctor approves a prescription in `review-details.tsx`.
-
----
-
 ## Getting Started
 
 ### Prerequisites
