@@ -42,10 +42,6 @@ example
 /ios
 /android
 
-# Firebase Credentials (CRITICAL - DO NOT PUSH)
-google-services.json
-GoogleService-Info.plist
-
 # Environment Variables (CRITICAL - DO NOT PUSH)
 .env
 .env.local
