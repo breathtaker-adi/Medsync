@@ -151,11 +151,27 @@ export default function CaregiverDashboard() {
         setProfile(userProfile);
       }
 
-      // 1. Fetch Pending Reviews
-      const { data: reviewData, error: reviewError } = await supabase
-        .from('pending_reviews')
-        .select('*')
-        .eq('status', 'pending');
+      // 1. Fetch Pending Reviews (SCOPED to caregiver's linked patients)
+      // First, get the patient IDs this caregiver is linked to
+      const { data: linkedPatients } = await supabase
+        .from('patient_caregivers')
+        .select('patient_id')
+        .eq('caregiver_id', session.user.id);
+
+      const linkedPatientIds = (linkedPatients || []).map((lp: any) => lp.patient_id);
+
+      let reviewData: any[] = [];
+      let reviewError: any = null;
+
+      if (linkedPatientIds.length > 0) {
+        const result = await supabase
+          .from('pending_reviews')
+          .select('*')
+          .eq('status', 'pending')
+          .in('patient_id', linkedPatientIds);
+        reviewData = result.data || [];
+        reviewError = result.error;
+      }
 
       // 2. Fetch Patient Roster & join override preferences
       const { data: patientData, error: patientError } = await supabase

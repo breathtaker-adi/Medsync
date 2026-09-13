@@ -95,7 +95,25 @@ export default function ReviewDetailsScreen() {
     const medName = editedMedicine || review.medication;
     const dosageInfo = editedDosage || review.dosage;
 
-    // 1. Insert into medications table with the patient's ID
+    // 1. Update the review status to approved FIRST (safe to retry if step 2 fails)
+    const { error: reviewError } = await supabase
+      .from('pending_reviews')
+      .update({
+        status: 'approved',
+        medication: editedMedicine,
+        dosage: editedDosage,
+        duration: editedDuration,
+        doctor_notes: doctorNote,
+      })
+      .eq('id', review.id);
+
+    if (reviewError) {
+      Alert.alert('Error', 'Failed to update review status.');
+      console.error(reviewError);
+      return;
+    }
+
+    // 2. Insert into medications table with the patient's ID
     const { error: medError } = await supabase.from('medications').insert({
       medicine_name: medName,
       dosage: dosageInfo,
@@ -105,7 +123,12 @@ export default function ReviewDetailsScreen() {
     });
 
     if (medError) {
-      Alert.alert('Error', 'Failed to create medication schedule.');
+      // Rollback: revert review status back to pending
+      await supabase
+        .from('pending_reviews')
+        .update({ status: 'pending' })
+        .eq('id', review.id);
+      Alert.alert('Error', 'Failed to create medication schedule. Review has been reverted to pending.');
       console.error(medError);
       return;
     }
@@ -146,34 +169,22 @@ export default function ReviewDetailsScreen() {
     }
     // --- END PUSH NOTIFICATION ---
 
-    // 2. Update the review status to approved with any doctor modifications
-    const { error: reviewError } = await supabase
-      .from('pending_reviews')
-      .update({
-        status: 'approved',
-        medication: editedMedicine,
-        dosage: editedDosage,
-        duration: editedDuration,
-        doctor_notes: doctorNote,
-      })
-      .eq('id', review.id);
-
-    if (reviewError) {
-      Alert.alert('Warning', 'Medication created, but failed to update review status.');
-      console.error(reviewError);
-      return;
-    }
-
     Alert.alert('Success', 'Prescription approved and sent to patient!');
     router.back();
   };
 
   const handleReject = async () => {
     if (!review) return;
-    await supabase
+    const { error } = await supabase
       .from('pending_reviews')
       .update({ status: 'rejected', doctor_notes: doctorNote })
       .eq('id', review.id);
+
+    if (error) {
+      Alert.alert('Error', 'Failed to reject prescription. Please try again.');
+      console.error('Reject error:', error);
+      return;
+    }
 
     Alert.alert('Rejected', 'Prescription has been rejected.');
     router.back();
