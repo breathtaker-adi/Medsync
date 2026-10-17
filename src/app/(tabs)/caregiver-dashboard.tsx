@@ -1,395 +1,704 @@
 // src/app/(tabs)/caregiver-dashboard.tsx
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { PulseView } from '../../components/PulseView';
+import { SeniorButton } from '../../components/SeniorButton';
+import { useAccessibility } from '../../context/AccessibilityContext';
 import { useAuth } from '../../context/authcontext';
-import { supabase } from '../../lib/supabase';
+import { useCaregiverRoster } from '../../hooks/useCaregiverRoster';
+import { notificationService } from '../../services/notificationService';
 import { Theme } from '../../theme';
+import { MissedAlertItem, PatientItem } from '../../types/patient';
+import { PendingReview } from '../../types/review';
 
-export interface ProfileItem {
-  is_verified_doctor?: boolean;
-}
-
-export interface PendingReviewItem {
-  id: number;
-  patient_name: string;
-  medication: string;
-  dosage?: string | null;
-  duration?: string | null;
-  time_ago?: string;
-  image_url?: string;
-  status: string;
-  doctor_notes?: string | null;
-  patient_id?: string | null;
-}
-
-export interface PatientItem {
-  id: number | string;
-  patient_name: string;
-  patient_id: string;
-  condition: string;
-  adherence: number;
-  doctor_id?: string;
-  override_alerts?: boolean;
-}
-
-export interface MissedAlertItem {
-  patient_id: string;
-  patient_name: string;
-  missed_count: number;
-}
+export type PendingReviewItem = PendingReview;
+export type { PatientItem, MissedAlertItem };
 
 export default function CaregiverDashboard() {
   const router = useRouter();
-  const { session } = useAuth();
-  const [profile, setProfile] = useState<ProfileItem | null>(null);
-  const [patients, setPatients] = useState<PatientItem[]>([]);
-  const [reviews, setReviews] = useState<PendingReviewItem[]>([]);
-  const [missedAlerts, setMissedAlerts] = useState<MissedAlertItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { session, profile } = useAuth();
+  const { isAccessibilityMode, isAudioEnabled, triggerHaptic } = useAccessibility();
+
+  const {
+    patients,
+    reviews,
+    missedAlerts,
+    loading,
+    refreshing,
+    linking,
+    onRefresh,
+    linkPatientWithCode,
+    toggleAlertOverride,
+    refetch,
+  } = useCaregiverRoster(session?.user?.id);
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'alerts'>('all');
 
   // Linking Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [pairingInput, setPairingInput] = useState('');
-  const [linking, setLinking] = useState(false);
 
-  const checkMissedDoses = async () => {
-    if (!session?.user?.id) return;
-
-    // 1. Fetch caregiver profile alert preferences
-    const { data: caregiverProfile } = await supabase
-      .from('profiles')
-      .select('alerts_enabled')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const globalAlertsOn = caregiverProfile?.alerts_enabled ?? true;
-
-    // 2. Get linked patients (filter by override if global alerts are off)
-    let query = supabase
-      .from('patient_caregivers')
-      .select('patient_id, override_alerts')
-      .eq('caregiver_id', session.user.id);
-
-    if (!globalAlertsOn) {
-      query = query.eq('override_alerts', true);
-    }
-
-    const { data: links } = await query;
-
-    if (!links || links.length === 0) {
-      setMissedAlerts([]);
-      return;
-    }
-
-    const patientIds = links.map((link) => link.patient_id);
-    const today = new Date().toISOString().split('T')[0];
-
-    // 3. Get names for these patients
-    const { data: patientProfiles } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', patientIds);
-
-    // 4. Find logs prior to today that are pending or missed
-    const { data: missedLogs } = await supabase
-      .from('medication_logs')
-      .select('patient_id, log_date')
-      .in('patient_id', patientIds)
-      .lt('log_date', today)
-      .in('status', ['pending', 'missed']);
-
-    // 5. Flag patients with 2 or more missed logs
-    if (missedLogs && patientProfiles) {
-      const alertList: MissedAlertItem[] = [];
-
-      patientIds.forEach((pId) => {
-        const patientMisses = missedLogs.filter((log) => log.patient_id === pId);
-        const patientInfo = patientProfiles.find((p) => p.id === pId);
-
-        if (patientMisses.length >= 2 && patientInfo) {
-          alertList.push({
-            patient_id: pId,
-            patient_name: patientInfo.full_name,
-            missed_count: patientMisses.length,
-          });
-        }
-      });
-
-      setMissedAlerts(alertList);
-    }
-  };
-
-  const fetchData = async () => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Fetch Doctor/Caregiver Profile Verification Status
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('is_verified_doctor')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      if (userProfile) {
-        setProfile(userProfile);
-      }
-
-      // 1. Fetch Pending Reviews (SCOPED to caregiver's linked patients)
-      // First, get the patient IDs this caregiver is linked to
-      const { data: linkedPatients } = await supabase
-        .from('patient_caregivers')
-        .select('patient_id')
-        .eq('caregiver_id', session.user.id);
-
-      const linkedPatientIds = (linkedPatients || []).map((lp: any) => lp.patient_id);
-
-      let reviewData: any[] = [];
-      let reviewError: any = null;
-
-      if (linkedPatientIds.length > 0) {
-        const result = await supabase
-          .from('pending_reviews')
-          .select('*')
-          .eq('status', 'pending')
-          .in('patient_id', linkedPatientIds);
-        reviewData = result.data || [];
-        reviewError = result.error;
-      }
-
-      // 2. Fetch Patient Roster & join override preferences
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('doctor_id', session.user.id);
-
-      const { data: links } = await supabase
-        .from('patient_caregivers')
-        .select('patient_id, override_alerts')
-        .eq('caregiver_id', session.user.id);
-
-      if (reviewError) {
-        console.error('Error fetching pending reviews:', reviewError);
-      } else {
-        setReviews(reviewData || []);
-      }
-
-      if (patientError) {
-        console.error('Error fetching patient roster:', patientError);
-      } else {
-        const mergedPatients = (patientData || []).map((patient) => {
-          const link = links?.find(
-            (l) => l.patient_id === patient.patient_id || l.patient_id === String(patient.id)
-          );
-          return {
-            ...patient,
-            override_alerts: link ? link.override_alerts : false,
-          };
-        });
-        setPatients(mergedPatients);
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching caregiver data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([fetchData(), checkMissedDoses()]);
-    setRefreshing(false);
-  };
+  // Audio briefing speaking state
+  const [isSpeakingBrief, setIsSpeakingBrief] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-      checkMissedDoses();
-    }, [session?.user?.id])
+      refetch();
+    }, [refetch])
   );
 
   const handleLinkPatient = async () => {
     const formattedCode = pairingInput.trim().toUpperCase();
 
     if (!session?.user?.id || formattedCode.length < 6) {
-      Alert.alert('Invalid Code', 'Please enter a valid 6-character code.');
-      return;
-    }
-    setLinking(true);
-
-    const { data, error } = await supabase
-      .from('patient_caregivers')
-      .select('patient_id, caregiver_id')
-      .eq('pairing_code', formattedCode)
-      .single();
-
-    if (error || !data) {
-      Alert.alert('Error', 'Invalid pairing code or patient not found.');
-      setLinking(false);
+      Alert.alert('Invalid Code', 'Please enter a valid 6 to 8 character pairing code.');
       return;
     }
 
-    if (data.caregiver_id) {
-      Alert.alert('Already Linked', 'This patient is already linked to a caregiver.');
-      setLinking(false);
-      return;
-    }
-
-    const { error: updateError } = await supabase
-      .from('patient_caregivers')
-      .update({ caregiver_id: session.user.id })
-      .eq('pairing_code', formattedCode);
-
-    if (!updateError) {
-      Alert.alert('Success', 'Patient linked successfully!');
+    const success = await linkPatientWithCode(formattedCode);
+    if (success) {
+      triggerHaptic();
+      Alert.alert('Success', 'Patient linked to your clinical practice roster!');
       setModalVisible(false);
       setPairingInput('');
-      await Promise.all([fetchData(), checkMissedDoses()]);
-    } else {
-      Alert.alert('Error', 'Failed to link patient.');
     }
-    setLinking(false);
   };
 
   const handleToggleOverride = async (patient: PatientItem, value: boolean) => {
+    triggerHaptic();
     const patientIdentifier = patient.patient_id || String(patient.id);
+    await toggleAlertOverride(patientIdentifier, value);
+  };
 
-    // Optimistic UI update
-    setPatients((prev) =>
-      prev.map((p) => (p.id === patient.id ? { ...p, override_alerts: value } : p))
-    );
+  // Hands-free Clinical Briefing Audio
+  const handlePlayClinicalBrief = () => {
+    triggerHaptic();
+    if (isSpeakingBrief) {
+      notificationService.stopSpeaking();
+      setIsSpeakingBrief(false);
+      return;
+    }
 
-    const { error } = await supabase
-      .from('patient_caregivers')
-      .update({ override_alerts: value })
-      .eq('patient_id', patientIdentifier)
-      .eq('caregiver_id', session?.user?.id);
+    const doctorName = profile?.full_name ? `Dr. ${profile.full_name.split(' ').pop()}` : 'Doctor';
+    const patientCount = patients.length;
+    const reviewCount = reviews.length;
+    const alertCount = missedAlerts.length;
 
-    if (error) {
-      console.error('Error updating override alerts:', error);
-      Alert.alert('Error', 'Could not update alert preference for this patient.');
-      setPatients((prev) =>
-        prev.map((p) => (p.id === patient.id ? { ...p, override_alerts: !value } : p))
-      );
+    const briefText = `${doctorName}, here is your clinical practice summary. You have ${patientCount} monitored ${
+      patientCount === 1 ? 'patient' : 'patients'
+    }. ${
+      reviewCount > 0
+        ? `There are ${reviewCount} pending prescription ${reviewCount === 1 ? 'review' : 'reviews'} awaiting your verification.`
+        : 'All prescription reviews are up to date.'
+    } ${
+      alertCount > 0
+        ? `Attention: ${alertCount} missed dose ${alertCount === 1 ? 'alert requires' : 'alerts require'} clinical intervention.`
+        : 'No critical adherence alerts at this time.'
+    }`;
+
+    const spoken = notificationService.speakText(briefText, true);
+    if (spoken) {
+      setIsSpeakingBrief(true);
+      // Auto reset speaking state after estimated duration
+      setTimeout(() => setIsSpeakingBrief(false), 9000);
     } else {
-      checkMissedDoses();
+      Alert.alert('Audio Notice', 'Unable to play speech synthesis at this time.');
     }
   };
+
+  // Filtered Patient List
+  const filteredPatients = useMemo(() => {
+    let result = [...patients];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((p) => {
+        const pName = (p.patient_name || p.full_name || '').toLowerCase();
+        const pCond = (p.condition || '').toLowerCase();
+        return pName.includes(q) || pCond.includes(q);
+      });
+    }
+
+    if (activeFilter === 'alerts') {
+      const alertIds = new Set(missedAlerts.map((a) => a.patient_id));
+      result = result.filter((p) => alertIds.has(p.patient_id || String(p.id)));
+    }
+
+    return result;
+  }, [patients, searchQuery, activeFilter, missedAlerts]);
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <Text style={[styles.loadingText, isAccessibilityMode && styles.largeText]}>
+          Syncing Clinical Roster...
+        </Text>
       </View>
     );
   }
 
+  const doctorDisplayName = profile?.full_name
+    ? profile.full_name.startsWith('Dr.')
+      ? profile.full_name
+      : `Dr. ${profile.full_name}`
+    : 'Clinical Dashboard';
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ padding: 20, paddingTop: 60 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[Theme.colors.primary]}
-          tintColor={Theme.colors.primary}
-        />
-      }
-    >
-      <View style={styles.headerRow}>
-        <Text style={styles.headerText}>Caregiver Dashboard</Text>
-        {profile?.is_verified_doctor && (
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="shield-checkmark" size={16} color="#FFFFFF" />
-            <Text style={styles.verifiedText}>Verified MD</Text>
-          </View>
-        )}
-      </View>
-
-      <Text style={styles.subHeaderText}>Review prescriptions and monitor patients</Text>
-
-      {/* Link New Patient Button */}
-      <TouchableOpacity
-        style={styles.linkPatientButton}
-        onPress={() => setModalVisible(true)}
+    <View style={styles.wrapper}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ padding: 14, paddingTop: Platform.OS === 'android' ? 36 : 48, paddingBottom: 72 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Theme.colors.primary]}
+            tintColor={Theme.colors.primary}
+          />
+        }
       >
-        <Ionicons name="add-circle" size={24} color={Theme.colors.onPrimary} />
-        <Text style={styles.linkPatientText}>Link New Patient</Text>
-      </TouchableOpacity>
+        {/* Executive Physician Header */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarPlate}>
+              <Text style={styles.avatarInitials}>
+                {profile?.full_name
+                  ? profile.full_name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : 'MD'}
+              </Text>
+              <View style={styles.onlineBadgeDot} />
+            </View>
 
-      {/* Missed Dose Alerts Banner */}
-      {missedAlerts.length > 0 && (
-        <View style={styles.alertsContainer}>
-          {missedAlerts.map((alert, index) => (
-            <View key={index} style={styles.alertBanner}>
-              <Ionicons name="warning" size={24} color="#FFFFFF" />
-              <View style={styles.alertTextContainer}>
-                <Text style={styles.alertTitle}>Missed Doses!</Text>
-                <Text style={styles.alertMessage}>
-                  {alert.patient_name} has missed {alert.missed_count} doses. Please check in on them.
+            <View style={styles.headerTitleGroup}>
+              <View style={styles.nameBadgeRow}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.headerText, isAccessibilityMode && styles.largeHeaderText]}
+                >
+                  {doctorDisplayName}
                 </Text>
+                {profile?.is_verified_doctor && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="shield-checkmark" size={13} color="#FFFFFF" />
+                    <Text style={styles.verifiedText}>Verified</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.statusPillRow}>
+                <View style={styles.pulseDot} />
+                <Text style={styles.statusPillText}>Live Telehealth Surveillance</Text>
               </View>
             </View>
-          ))}
+          </View>
+
+          {/* Action Header Icons */}
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              onPress={handlePlayClinicalBrief}
+              style={[
+                styles.headerIconBtn,
+                isSpeakingBrief && styles.headerIconBtnActive,
+                isAccessibilityMode && styles.largeIconBtn,
+              ]}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Listen to hands-free clinical briefing"
+            >
+              <Ionicons
+                name={isSpeakingBrief ? 'volume-high' : 'volume-medium-outline'}
+                size={isAccessibilityMode ? 26 : 22}
+                color={isSpeakingBrief ? '#FFFFFF' : Theme.colors.primary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic();
+                router.push('/doctor-settings');
+              }}
+              style={[styles.headerIconBtn, isAccessibilityMode && styles.largeIconBtn]}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Doctor Clinical Settings"
+            >
+              <Ionicons
+                name="settings-outline"
+                size={isAccessibilityMode ? 26 : 22}
+                color={Theme.colors.onSurface}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
 
-      {/* Pending Reviews Section */}
-      <View style={styles.sectionHeader}>
-        <Ionicons name="alert-circle" size={24} color={Theme.colors.secondaryContainer} />
-        <Text style={styles.sectionTitle}>Pending Reviews</Text>
-      </View>
-
-      {reviews.length === 0 ? (
-        <Text style={styles.emptyText}>No pending prescriptions.</Text>
-      ) : (
-        reviews.map((review) => (
-          <TouchableOpacity
-            key={review.id}
-            style={styles.reviewCard}
-            onPress={() => router.push(`/review-details?id=${review.id}`)}
+        {/* Clinical Triage KPI Cards Grid */}
+        <View style={styles.kpiGrid}>
+          {/* Active Patients KPI */}
+          <View
+            style={[
+              styles.kpiCard,
+              isAccessibilityMode && styles.highContrastCard,
+            ]}
           >
-            <View style={styles.reviewInfo}>
-              <Text style={styles.patientName}>{review.patient_name}</Text>
-              <Text style={styles.reviewMed}>
-                {review.medication} - Dosage verification needed
-              </Text>
+            <View style={[styles.kpiIconWrapper, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="people" size={20} color="#0284C7" />
             </View>
-            <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSecondaryContainer} />
+            <Text style={[styles.kpiNumber, isAccessibilityMode && styles.largeKpiNumber]}>
+              {patients.length}
+            </Text>
+            <Text style={styles.kpiLabel}>Patients Monitored</Text>
+          </View>
+
+          {/* Pending Reviews KPI */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              triggerHaptic();
+              setActiveFilter(activeFilter === 'pending' ? 'all' : 'pending');
+            }}
+            style={[
+              styles.kpiCard,
+              reviews.length > 0 && styles.kpiCardUrgent,
+              isAccessibilityMode && styles.highContrastCard,
+            ]}
+          >
+            <View
+              style={[
+                styles.kpiIconWrapper,
+                { backgroundColor: reviews.length > 0 ? '#FEF3C7' : '#F1F5F9' },
+              ]}
+            >
+              <Ionicons
+                name="document-text"
+                size={20}
+                color={reviews.length > 0 ? '#D97706' : '#64748B'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.kpiNumber,
+                reviews.length > 0 && { color: '#B45309' },
+                isAccessibilityMode && styles.largeKpiNumber,
+              ]}
+            >
+              {reviews.length}
+            </Text>
+            <Text style={styles.kpiLabel}>
+              {reviews.length === 1 ? 'Pending Review' : 'Pending Reviews'}
+            </Text>
           </TouchableOpacity>
-        ))
-      )}
 
-      <View style={styles.spacer} />
+          {/* Missed Doses KPI */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              triggerHaptic();
+              setActiveFilter(activeFilter === 'alerts' ? 'all' : 'alerts');
+            }}
+            style={[
+              styles.kpiCard,
+              missedAlerts.length > 0 && styles.kpiCardAlert,
+              isAccessibilityMode && styles.highContrastCard,
+            ]}
+          >
+            <View
+              style={[
+                styles.kpiIconWrapper,
+                { backgroundColor: missedAlerts.length > 0 ? '#FEE2E2' : '#F1F5F9' },
+              ]}
+            >
+              <Ionicons
+                name="warning"
+                size={20}
+                color={missedAlerts.length > 0 ? '#DC2626' : '#64748B'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.kpiNumber,
+                missedAlerts.length > 0 && { color: '#DC2626' },
+                isAccessibilityMode && styles.largeKpiNumber,
+              ]}
+            >
+              {missedAlerts.length}
+            </Text>
+            <Text style={styles.kpiLabel}>
+              {missedAlerts.length === 1 ? 'Dose Alert' : 'Dose Alerts'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Patient Directory Button */}
-      <TouchableOpacity
-        style={styles.directoryButton}
-        onPress={() => router.push('/patient-directory')}
-      >
-        <Ionicons name="people-circle-outline" size={24} color={Theme.colors.primary} />
-        <Text style={styles.directoryButtonText}>View Patient Directory</Text>
-        <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
-      </TouchableOpacity>
+        {/* Priority Missed Dose Alerts Banner */}
+        {missedAlerts.length > 0 && (
+          <View style={styles.alertsContainer}>
+            <View style={styles.alertHeaderRow}>
+              <View style={styles.alertHeaderLeft}>
+                <Ionicons name="alert-circle" size={22} color="#DC2626" />
+                <Text style={styles.alertSectionTitle}>Requires Immediate Follow-up</Text>
+              </View>
+              <View style={styles.alertCountBadge}>
+                <Text style={styles.alertCountBadgeText}>{missedAlerts.length} Critical</Text>
+              </View>
+            </View>
 
-      {/* Pairing Code Modal */}
+            {missedAlerts.map((alert, index) => (
+              <PulseView key={index} active={true} minScale={0.98} maxScale={1.01} duration={1400}>
+                <View
+                  style={[
+                    styles.alertCard,
+                    isAccessibilityMode && styles.highContrastAlertCard,
+                  ]}
+                >
+                  <View style={styles.alertCardTop}>
+                    <View style={styles.alertIconCircle}>
+                      <Ionicons name="warning" size={20} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.alertPatientName,
+                          isAccessibilityMode && styles.largeText,
+                        ]}
+                      >
+                        {alert.patient_name}
+                      </Text>
+                      <Text style={styles.alertDetailText}>
+                        Missed {alert.missed_count} scheduled doses in the last 24 hours
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.alertActionButtons}>
+                    <TouchableOpacity
+                      style={styles.alertCallBtn}
+                      onPress={() => {
+                        triggerHaptic();
+                        router.push(
+                          `/patient-details?patientId=${alert.patient_id}&name=${encodeURIComponent(
+                            alert.patient_name
+                          )}`
+                        );
+                      }}
+                    >
+                      <Ionicons name="medical" size={16} color="#DC2626" />
+                      <Text style={styles.alertCallBtnText}>View Clinical Chart</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </PulseView>
+            ))}
+          </View>
+        )}
+
+        {/* Prescription Verification Queue Section */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionHeaderTitleGroup}>
+            <Ionicons name="shield-checkmark-outline" size={22} color={Theme.colors.primary} />
+            <Text style={[styles.sectionTitle, isAccessibilityMode && styles.largeSectionTitle]}>
+              Prescription Reviews
+            </Text>
+          </View>
+          {reviews.length > 0 && (
+            <View style={styles.badgePill}>
+              <Text style={styles.badgePillText}>{reviews.length} Pending</Text>
+            </View>
+          )}
+        </View>
+
+        {reviews.length === 0 ? (
+          <View
+            style={[
+              styles.emptyReviewCard,
+              isAccessibilityMode && styles.highContrastCard,
+            ]}
+          >
+            <View style={styles.emptyReviewIconPlate}>
+              <Ionicons name="checkmark-done-circle" size={36} color="#10B981" />
+            </View>
+            <Text style={styles.emptyReviewTitle}>Prescription Queue Clear</Text>
+            <Text style={styles.emptyReviewSubtitle}>
+              All patient prescription scans have been clinically verified.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.reviewsList}>
+            {reviews.map((review) => (
+              <TouchableOpacity
+                key={review.id}
+                style={[
+                  styles.reviewCard,
+                  isAccessibilityMode && styles.highContrastCard,
+                ]}
+                activeOpacity={0.8}
+                onPress={() => {
+                  triggerHaptic();
+                  router.push(`/review-details?id=${review.id}`);
+                }}
+              >
+                <View style={styles.reviewTopRow}>
+                  <View style={styles.reviewPatientBadge}>
+                    <Ionicons name="person-circle" size={18} color={Theme.colors.primary} />
+                    <Text style={styles.reviewPatientText}>{review.patient_name}</Text>
+                  </View>
+                  <View style={styles.ocrTag}>
+                    <MaterialCommunityIcons name="line-scan" size={14} color="#0D9488" />
+                    <Text style={styles.ocrTagText}>OCR Pre-Scanned</Text>
+                  </View>
+                </View>
+
+                <View style={styles.reviewBody}>
+                  <Text style={[styles.reviewMedTitle, isAccessibilityMode && styles.largeText]}>
+                    {review.medication}
+                  </Text>
+                  <Text style={styles.reviewHint}>
+                    Dosage & schedule ready for verification and clinical sign-off
+                  </Text>
+                </View>
+
+                <View style={styles.reviewFooter}>
+                  <Text style={styles.reviewTapCta}>Tap to Review & Approve</Text>
+                  <Ionicons name="arrow-forward-circle" size={24} color={Theme.colors.primary} />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Monitored Patient Roster Section */}
+        <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
+          <View style={styles.sectionHeaderTitleGroup}>
+            <Ionicons name="people-outline" size={22} color={Theme.colors.primary} />
+            <Text style={[styles.sectionTitle, isAccessibilityMode && styles.largeSectionTitle]}>
+              Patient Practice Roster
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.linkHeaderBtn}
+            onPress={() => {
+              triggerHaptic();
+              setModalVisible(true);
+            }}
+          >
+            <Ionicons name="person-add" size={16} color={Theme.colors.primary} />
+            <Text style={styles.linkHeaderBtnText}>Link Patient</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search & Quick Filter Chips */}
+        <View style={styles.searchBarContainer}>
+          <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search patient roster by name..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Chips */}
+        <View style={styles.filterChipRow}>
+          <TouchableOpacity
+            style={[styles.filterChip, activeFilter === 'all' && styles.filterChipActive]}
+            onPress={() => {
+              triggerHaptic();
+              setActiveFilter('all');
+            }}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'all' && styles.filterChipTextActive,
+              ]}
+            >
+              All ({patients.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, activeFilter === 'alerts' && styles.filterChipActiveAlert]}
+            onPress={() => {
+              triggerHaptic();
+              setActiveFilter(activeFilter === 'alerts' ? 'all' : 'alerts');
+            }}
+          >
+            <Ionicons
+              name="warning"
+              size={13}
+              color={activeFilter === 'alerts' ? '#FFFFFF' : '#DC2626'}
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'alerts' && styles.filterChipTextActive,
+              ]}
+            >
+              Alerts ({missedAlerts.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, activeFilter === 'pending' && styles.filterChipActiveWarning]}
+            onPress={() => {
+              triggerHaptic();
+              setActiveFilter(activeFilter === 'pending' ? 'all' : 'pending');
+            }}
+          >
+            <Ionicons
+              name="document-text"
+              size={13}
+              color={activeFilter === 'pending' ? '#FFFFFF' : '#D97706'}
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === 'pending' && styles.filterChipTextActive,
+              ]}
+            >
+              Reviews ({reviews.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Patient Cards List */}
+        {filteredPatients.length === 0 ? (
+          <View style={styles.emptyPatientsCard}>
+            <Ionicons name="person-outline" size={32} color="#94A3B8" />
+            <Text style={styles.emptyPatientsTitle}>
+              {searchQuery ? 'No matching patients found' : 'No patients linked yet'}
+            </Text>
+            <Text style={styles.emptyPatientsSubtitle}>
+              {searchQuery
+                ? 'Try adjusting your search terms.'
+                : 'Share your 6-digit pairing code with patients to monitor their medication intake.'}
+            </Text>
+          </View>
+        ) : (
+          filteredPatients.map((patient) => {
+            const displayName = patient.patient_name || patient.full_name || 'Patient';
+            const hasAlert = missedAlerts.some(
+              (a) => a.patient_id === (patient.patient_id || String(patient.id))
+            );
+
+            return (
+              <TouchableOpacity
+                key={patient.id}
+                style={[
+                  styles.patientCard,
+                  hasAlert && styles.patientCardWithAlert,
+                  isAccessibilityMode && styles.highContrastCard,
+                ]}
+                activeOpacity={0.8}
+                onPress={() => {
+                  triggerHaptic();
+                  router.push(
+                    `/patient-details?patientId=${patient.patient_id || patient.id}&name=${encodeURIComponent(
+                      displayName
+                    )}`
+                  );
+                }}
+              >
+                <View style={styles.patientTopRow}>
+                  <View style={styles.patientAvatarInitials}>
+                    <Text style={styles.patientInitialsText}>
+                      {displayName
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.patientInfoCol}>
+                    <View style={styles.patientNameRow}>
+                      <Text
+                        style={[styles.patientName, isAccessibilityMode && styles.largeText]}
+                      >
+                        {displayName}
+                      </Text>
+                      {hasAlert && (
+                        <View style={styles.alertPill}>
+                          <Text style={styles.alertPillText}>Alert</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.patientPhone}>
+                      {patient.condition ? `Condition: ${patient.condition}` : `Adherence: ${patient.adherence || 95}%`}
+                    </Text>
+                  </View>
+
+                  <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+                </View>
+
+                {/* Patient Bottom Controls */}
+                <View style={styles.patientBottomRow}>
+                  <View style={styles.overrideAlertSection}>
+                    <Ionicons
+                      name={patient.override_alerts !== false ? 'notifications' : 'notifications-off'}
+                      size={16}
+                      color={patient.override_alerts !== false ? Theme.colors.primary : '#94A3B8'}
+                    />
+                    <Text style={styles.overrideLabel}>Dose Missed Alerts</Text>
+                  </View>
+                  <Switch
+                    value={patient.override_alerts !== false}
+                    onValueChange={(val) => handleToggleOverride(patient, val)}
+                    trackColor={{ false: '#E2E8F0', true: Theme.colors.primary }}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+
+        {/* Directory Navigation Button */}
+        <View style={{ marginTop: 16 }}>
+          <SeniorButton
+            title="Open Complete Patient Directory"
+            onPress={() => {
+              triggerHaptic();
+              router.push('/patient-directory');
+            }}
+            variant="outline"
+            size="normal"
+            icon={<Ionicons name="people-circle-outline" size={22} color={Theme.colors.primary} />}
+          />
+        </View>
+      </ScrollView>
+
+      {/* Link Patient Pairing Code Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -397,310 +706,697 @@ export default function CaregiverDashboard() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Enter Patient Code</Text>
+          <View
+            style={[
+              styles.modalContent,
+              isAccessibilityMode && styles.highContrastCard,
+            ]}
+          >
+            <View style={styles.modalIconCircle}>
+              <Ionicons name="person-add" size={28} color={Theme.colors.primary} />
+            </View>
+
+            <Text style={[styles.modalTitle, isAccessibilityMode && styles.largeText]}>
+              Link New Patient
+            </Text>
             <Text style={styles.modalSubtitle}>
-              Ask your patient for their 6-character pairing code.
+              Enter the patient's 6 or 8-digit secure pairing code from their MedSync Settings.
             </Text>
 
             <TextInput
-              style={styles.codeInput}
+              style={[
+                styles.codeInput,
+                isAccessibilityMode && styles.largeCodeInput,
+              ]}
               placeholder="e.g. A4B9C2"
-              placeholderTextColor={Theme.colors.outline}
+              placeholderTextColor="#94A3B8"
               value={pairingInput}
               onChangeText={setPairingInput}
               autoCapitalize="characters"
-              maxLength={6}
+              maxLength={8}
             />
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+            <View style={styles.modalButtonsStack}>
+              <SeniorButton
+                title={linking ? 'Verifying & Linking...' : 'Confirm Patient Link'}
+                onPress={handleLinkPatient}
+                loading={linking}
+                variant="primary"
+                size="normal"
+                icon={<Ionicons name="link" size={20} color="#FFFFFF" />}
+              />
+              <SeniorButton
+                title="Cancel"
                 onPress={() => {
                   setModalVisible(false);
                   setPairingInput('');
                 }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.linkButton]}
-                onPress={handleLinkPatient}
-                disabled={linking}
-              >
-                <Text style={styles.linkButtonText}>
-                  {linking ? 'Linking...' : 'Link Patient'}
-                </Text>
-              </TouchableOpacity>
+                variant="outline"
+                size="normal"
+              />
             </View>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+  },
+  loadingText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 15,
+    color: '#64748B',
+    marginTop: 12,
   },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: '#F8FAFC',
   },
   headerRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 4,
+    marginBottom: 14,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarPlate: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#006874',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    position: 'relative',
+    ...Theme.shadows.cardElevated,
+  },
+  avatarInitials: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  onlineBadgeDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#10B981',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  headerTitleGroup: {
+    flex: 1,
+  },
+  nameBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   headerText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
-    color: Theme.colors.onSurface,
+    fontSize: 18,
+    color: '#0F172A',
+    flexShrink: 1,
+  },
+  largeHeaderText: {
+    fontSize: 21,
   },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2D7D46', // Medical Green
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
+    backgroundColor: '#059669',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 10,
+    gap: 3,
   },
   verifiedText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 12,
+    fontSize: 10,
     color: '#FFFFFF',
   },
-  subHeaderText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
-    color: Theme.colors.onSurfaceVariant,
-    marginBottom: 20,
-  },
-  linkPatientButton: {
+  statusPillRow: {
     flexDirection: 'row',
-    backgroundColor: Theme.colors.primary,
-    padding: 16,
-    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 2,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+    marginRight: 5,
+  },
+  statusPillText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: '#64748B',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  headerIconBtnActive: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  largeIconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  // KPI Grid
+  kpiGrid: {
+    flexDirection: 'row',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 14,
   },
-  linkPatientText: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
-    color: Theme.colors.onPrimary,
-  },
-  alertsContainer: {
-    marginBottom: 20,
-    gap: 12,
-  },
-  alertBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#D32F2F',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-  },
-  alertTextContainer: {
+  kpiCard: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
   },
-  alertTitle: {
+  kpiCardUrgent: {
+    borderColor: '#FCD34D',
+    backgroundColor: '#FFFBEB',
+  },
+  kpiCardAlert: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  kpiIconWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  kpiNumber: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontSize: 18,
+    color: '#0F172A',
+    marginBottom: 2,
   },
-  alertMessage: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 14,
-    color: '#FFEBEE',
+  largeKpiNumber: {
+    fontSize: 22,
   },
-  sectionHeader: {
+  kpiLabel: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 10.5,
+    color: '#64748B',
+  },
+  // Missed Dose Alerts
+  alertsContainer: {
+    marginBottom: 14,
+  },
+  alertHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  alertHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 5,
+  },
+  alertSectionTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: '#DC2626',
+  },
+  alertCountBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  alertCountBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10,
+    color: '#DC2626',
+  },
+  alertCard: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+  },
+  highContrastAlertCard: {
+    borderWidth: 2,
+    borderColor: '#991B1B',
+    backgroundColor: '#FFFFFF',
+  },
+  alertCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  alertIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alertPatientName: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: '#991B1B',
+  },
+  alertDetailText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#B91C1C',
+    marginTop: 2,
+  },
+  alertActionButtons: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#FECACA',
+    paddingTop: 6,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  alertCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  alertCallBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#DC2626',
+  },
+  // Section Header
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionHeaderTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   sectionTitle: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 22,
-    color: Theme.colors.onSurface,
-    marginLeft: 8,
+    fontSize: 15,
+    color: '#0F172A',
   },
-  emptyText: {
+  largeSectionTitle: {
+    fontSize: 18,
+  },
+  badgePill: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  badgePillText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10.5,
+    color: '#B45309',
+  },
+  // Reviews
+  emptyReviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+  },
+  emptyReviewIconPlate: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyReviewTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  emptyReviewSubtitle: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
-    color: Theme.colors.outline,
-    fontStyle: 'italic',
-    marginBottom: 12,
+    fontSize: 11.5,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  reviewsList: {
+    gap: 8,
+    marginBottom: 8,
   },
   reviewCard: {
-    backgroundColor: Theme.colors.secondaryContainer,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 13,
+    padding: 11,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  reviewTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  reviewPatientBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 5,
   },
-  reviewInfo: {
-    flex: 1,
-    paddingRight: 12,
+  reviewPatientText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#0F172A',
   },
-  reviewMed: {
-    fontFamily: 'PublicSans-Regular',
+  ocrTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#CCFBF1',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 3,
+  },
+  ocrTagText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10,
+    color: '#0F766E',
+  },
+  reviewBody: {
+    marginBottom: 10,
+  },
+  reviewMedTitle: {
+    fontFamily: 'PublicSans-Bold',
     fontSize: 14,
-    color: Theme.colors.onSecondaryContainer,
-    marginTop: 4,
+    color: '#006874',
+    marginBottom: 3,
+  },
+  reviewHint: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#64748B',
+  },
+  reviewFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
+  },
+  reviewTapCta: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: Theme.colors.primary,
+  },
+  // Patient Roster
+  linkHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  linkHeaderBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: Theme.colors.primary,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 13,
+    color: '#0F172A',
+  },
+  filterChipRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  filterChipActive: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  filterChipActiveAlert: {
+    backgroundColor: '#DC2626',
+    borderColor: '#DC2626',
+  },
+  filterChipActiveWarning: {
+    backgroundColor: '#D97706',
+    borderColor: '#D97706',
+  },
+  filterChipText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: '#64748B',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+    fontFamily: 'PublicSans-Bold',
+  },
+  emptyPatientsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginVertical: 8,
+  },
+  emptyPatientsTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: '#0F172A',
+    marginTop: 6,
+    marginBottom: 3,
+  },
+  emptyPatientsSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#64748B',
+    textAlign: 'center',
   },
   patientCard: {
-    backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: Theme.colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 13,
+    padding: 11,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+    ...Theme.shadows.card,
+  },
+  patientCardWithAlert: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FFFDFD',
   },
   patientTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  patientInfo: {
+  patientAvatarInitials: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  patientInitialsText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#334155',
+  },
+  patientInfoCol: {
     flex: 1,
+  },
+  patientNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   patientName: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 18,
-    color: Theme.colors.onSurface,
-  },
-  patientDetails: {
-    fontFamily: 'PublicSans-Regular',
     fontSize: 14,
-    color: Theme.colors.onSurfaceVariant,
-    marginTop: 4,
+    color: '#0F172A',
   },
-  adherenceBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+  alertPill: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
   },
-  adherenceText: {
+  alertPillText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 14,
+    fontSize: 9.5,
+    color: '#DC2626',
   },
-  patientCardFooter: {
+  patientPhone: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  patientBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: Theme.colors.outline,
+    borderTopColor: '#F1F5F9',
   },
-  specialAlertText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 12,
-    color: Theme.colors.onSurfaceVariant,
-    flex: 1,
-    flexWrap: 'wrap',
-    marginRight: 8,
+  overrideAlertSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  spacer: {
-    height: 32,
+  overrideLabel: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11.5,
+    color: '#475569',
   },
+  // Accessibility styles
+  highContrastCard: {
+    borderWidth: 2,
+    borderColor: '#0F172A',
+  },
+  largeText: {
+    fontSize: 15,
+  },
+  // Modal styles
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 16,
   },
   modalContent: {
-    width: '85%',
-    backgroundColor: Theme.colors.surface,
-    borderRadius: 20,
-    padding: 24,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
     alignItems: 'center',
+    ...Theme.shadows.cardElevated,
+  },
+  modalIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#CCFBF1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   modalTitle: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 22,
-    color: Theme.colors.onSurface,
-    marginBottom: 8,
+    fontSize: 17,
+    color: '#0F172A',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   modalSubtitle: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 14,
-    color: Theme.colors.onSurfaceVariant,
+    fontSize: 12.5,
+    color: '#64748B',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
+    lineHeight: 17,
   },
   codeInput: {
     width: '100%',
-    borderWidth: 2,
-    borderColor: Theme.colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 24,
-    fontFamily: 'PublicSans-Bold',
-    textAlign: 'center',
-    letterSpacing: 4,
-    marginBottom: 20,
-    color: Theme.colors.onSurface,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: Theme.colors.surfaceContainer,
-  },
-  cancelButtonText: {
-    fontFamily: 'PublicSans-Bold',
-    color: Theme.colors.onSurfaceVariant,
-  },
-  linkButton: {
-    backgroundColor: Theme.colors.primary,
-  },
-  linkButtonText: {
-    fontFamily: 'PublicSans-Bold',
-    color: Theme.colors.onPrimary,
-  },
-  directoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Theme.colors.surfaceContainerLowest,
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Theme.colors.outline,
-    gap: 12,
-  },
-  directoryButtonText: {
-    flex: 1,
-    fontFamily: 'PublicSans-Bold',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: 'PublicSans-ExtraBold',
     fontSize: 18,
-    color: Theme.colors.primary,
-    marginLeft: 8,
+    color: '#0F172A',
+    textAlign: 'center',
+    letterSpacing: 3,
+    marginBottom: 14,
+  },
+  largeCodeInput: {
+    fontSize: 22,
+    paddingVertical: 14,
+  },
+  modalButtonsStack: {
+    width: '100%',
+    gap: 8,
   },
 });

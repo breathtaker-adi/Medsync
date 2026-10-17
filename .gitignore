@@ -42,6 +42,30 @@ example
 /ios
 /android
 
-# Environment Variables (CRITICAL - DO NOT PUSH)
+# Environment Variables & Secrets (CRITICAL - DO NOT PUSH)
 .env
-.env.local
+.env.*
+!.env.example
+google-services.json
+*.pem
+*.key
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+
+# Supabase Local Backups & Sensitive Database Exports
+supabase_backup/
+supabase/.temp/
+*.csv
+
+# Mobile Build Binaries & Packages
+*.apk
+*.aab
+*.ipa
+
+# Media & Temporary Asset Scratchpads
+*.mp4
+*.mov
+med sync ui/
+graphify-out/

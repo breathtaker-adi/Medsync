@@ -1,21 +1,22 @@
-// src/app/medication-history.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { medicationService } from '../services/medicationService';
 
 interface MedicationLogItem {
   id: number;
@@ -57,45 +58,17 @@ export default function MedicationHistoryScreen() {
       return;
     }
 
-    try {
-      // Calculate date boundary
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - selectedRange);
-      const startDateStr = startDate.toISOString().split('T')[0];
-
-      // Fetch master medications to enrich logs
-      const { data: medsData } = await supabase
-        .from('medications')
-        .select('id, medicine_name, dosage')
-        .eq('patient_id', session.user.id);
-
+    const res = await medicationService.fetchHistory(session.user.id, selectedRange);
+    if (res.success && res.data) {
       const map: Record<number, MedicationMaster> = {};
-      if (medsData) {
-        medsData.forEach((m) => {
-          map[m.id] = m;
-        });
-        setMedMasterMap(map);
-      }
-
-      // Fetch medication logs for the user in the selected range
-      const { data: logsData, error: logsError } = await supabase
-        .from('medication_logs')
-        .select('*')
-        .eq('patient_id', session.user.id)
-        .gte('log_date', startDateStr)
-        .order('log_date', { ascending: false });
-
-      if (logsError) {
-        console.error('Error fetching medication logs:', logsError);
-      } else if (logsData) {
-        setLogs(logsData as MedicationLogItem[]);
-      }
-    } catch (err) {
-      console.error('Failed to load medication history:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      res.data.medications.forEach((m) => {
+        map[m.id] = m;
+      });
+      setMedMasterMap(map);
+      setLogs((res.data.logs || []) as MedicationLogItem[]);
     }
+    setLoading(false);
+    setRefreshing(false);
   }, [session?.user?.id, selectedRange]);
 
   useEffect(() => {
@@ -235,28 +208,11 @@ export default function MedicationHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            triggerHaptic();
-            router.back();
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={26} color={Theme.colors.onSurface} />
-        </TouchableOpacity>
-
-        <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, isAccessibilityMode && styles.largeHeaderTitle]}>
-            Medication History
-          </Text>
-          <Text style={styles.headerSubtitle}>Track your routine and adherence stats</Text>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Medication History"
+        subtitle="Track your routine and adherence stats"
+        fallbackRoute="/(tabs)/patient-dashboard"
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -588,9 +544,9 @@ const styles = StyleSheet.create({
   },
   overviewCard: {
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 20,
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: Theme.colors.surfaceContainerHigh,
     shadowColor: '#000',
@@ -603,17 +559,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   overviewLabel: {
     fontFamily: 'PublicSans-Medium',
-    fontSize: 14,
+    fontSize: 12.5,
     color: Theme.colors.onSurfaceVariant,
   },
   adherenceScoreText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 36,
-    marginTop: 2,
+    fontSize: 26,
+    marginTop: 1,
   },
   scoreGreen: {
     color: '#2E7D32',
@@ -628,32 +584,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF3E0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     gap: 4,
   },
   streakText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 13,
+    fontSize: 11,
     color: '#E65100',
   },
   progressBarBackground: {
-    height: 10,
+    height: 6,
     backgroundColor: Theme.colors.surfaceContainer,
-    borderRadius: 5,
+    borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 18,
+    marginBottom: 12,
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 3,
   },
   statCountersGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: Theme.colors.surfaceContainer,
   },
@@ -662,14 +618,14 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 20,
+    fontSize: 16,
     color: Theme.colors.onSurface,
   },
   statLabel: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 12,
+    fontSize: 10.5,
     color: Theme.colors.onSurfaceVariant,
-    marginTop: 2,
+    marginTop: 1,
   },
   statDivider: {
     width: 1,
@@ -740,9 +696,9 @@ const styles = StyleSheet.create({
   },
   logCard: {
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -751,30 +707,30 @@ const styles = StyleSheet.create({
   },
   logCardLeft: {
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 10,
   },
   medNameText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onSurface,
   },
   largeMedNameText: {
-    fontSize: 19,
+    fontSize: 16.5,
   },
   medMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
+    marginTop: 2,
     flexWrap: 'wrap',
   },
   medDosageText: {
     fontFamily: 'PublicSans-Medium',
-    fontSize: 13,
+    fontSize: 11.5,
     color: Theme.colors.onSurfaceVariant,
   },
   medTimeText: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 13,
+    fontSize: 11.5,
     color: Theme.colors.onSurfaceVariant,
   },
   snoozeBadge: {

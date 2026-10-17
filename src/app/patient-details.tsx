@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,190 +10,432 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SeniorButton } from '../components/SeniorButton';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
 
+import { useAccessibility } from '../context/AccessibilityContext';
+import { patientService } from '../services/patientService';
+import { UserProfile } from '../types/auth';
+import { Medication } from '../types/medication';
+
 export default function PatientDetails() {
   const router = useRouter();
   const { session } = useAuth();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { isAccessibilityMode, triggerHaptic } = useAccessibility();
+  const params = useLocalSearchParams<{ id?: string; patientId?: string; name?: string }>();
+  const targetId = params.id || params.patientId;
 
-  const [profile, setProfile] = useState<any>(null);
-  const [medications, setMedications] = useState<any[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!id || !session?.user?.id) return;
-
-      // Security check: verify the current user is linked to this patient
-      const { data: link } = await supabase
-        .from('patient_caregivers')
-        .select('id')
-        .eq('caregiver_id', session.user.id)
-        .eq('patient_id', id)
-        .maybeSingle();
-
-      if (!link) {
+      if (!targetId || !session?.user?.id) {
         setLoading(false);
-        return; // Not authorized to view this patient
+        return;
       }
-
-      // 1. Fetch Patient Profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      setProfile(profileData);
-
-      // 2. Fetch Patient Medications
-      const { data: medsData } = await supabase
-        .from('medications')
-        .select('*')
-        .eq('patient_id', id);
-
-      setMedications(medsData || []);
+      const res = await patientService.fetchPatientDetails(targetId, session.user.id);
+      if (res.success && res.data) {
+        setProfile(res.data.profile);
+        setMedications(res.data.medications);
+      } else {
+        setProfile(null);
+        setMedications([]);
+      }
       setLoading(false);
     };
 
     fetchData();
-  }, [id, session]);
+  }, [targetId, session?.user?.id]);
+
+  const handleBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.back();
+  };
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <Text style={styles.loadingText}>Loading patient record...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
-      {/* Back Button */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={28} color={Theme.colors.primary} />
-      </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <ScreenHeader
+        title={profile?.full_name || 'Patient Record'}
+        subtitle="Clinical profile & active medications"
+        onBack={handleBack}
+        fallbackRoute="/patient-directory"
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
 
-      {/* Patient Header */}
-      <View style={styles.header}>
-        <View style={styles.largeAvatar}>
-          <Text style={styles.avatarText}>
-            {profile?.full_name?.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        <Text style={styles.nameText}>{profile?.full_name}</Text>
-        <Text style={styles.roleText}>Patient</Text>
-      </View>
-
-      {/* Medical Info Card */}
-      <View style={styles.infoCard}>
-        <Text style={styles.sectionTitle}>Medical Information</Text>
-        <Text style={styles.infoText}>Blood Group: {profile?.blood_group || 'N/A'}</Text>
-        <Text style={styles.infoText}>Allergies: {profile?.allergies || 'None reported'}</Text>
-      </View>
-
-      {/* Medications List */}
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Active Medications</Text>
-
-      {medications.length === 0 ? (
-        <Text style={styles.emptyText}>No active medications prescribed.</Text>
-      ) : (
-        medications.map((med) => (
-          <View key={med.id} style={styles.medCard}>
-            <Text style={styles.medName}>{med.medicine_name}</Text>
-            <Text style={styles.medDetails}>
-              {med.dosage} • {med.time}
+        {/* Patient Profile Card */}
+        <View style={styles.profileHeaderCard}>
+          <View style={styles.largeAvatar}>
+            <Text style={styles.avatarText}>
+              {profile?.full_name?.charAt(0).toUpperCase() || 'P'}
             </Text>
-            {med.food_warning && (
-              <Text style={styles.warningText}>⚠️ {med.food_warning}</Text>
-            )}
           </View>
-        ))
-      )}
-    </ScrollView>
+          <Text style={styles.nameText}>{profile?.full_name || 'Patient'}</Text>
+          <View style={styles.roleBadge}>
+            <Ionicons name="shield-checkmark" size={16} color={Theme.colors.primary} />
+            <Text style={styles.roleBadgeText}>Linked Patient</Text>
+          </View>
+        </View>
+
+        {/* Clinical Snapshot Cards */}
+        <Text style={styles.sectionHeader}>CLINICAL INFORMATION</Text>
+        <View style={styles.clinicalGrid}>
+          {/* Blood Group */}
+          <View style={styles.clinicalCard}>
+            <View style={[styles.clinicalIconPlate, { backgroundColor: '#FFEBEE' }]}>
+              <Ionicons name="water" size={26} color="#D32F2F" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.clinicalLabel}>Blood Group</Text>
+              <Text style={styles.clinicalValue}>{profile?.blood_group || 'N/A'}</Text>
+            </View>
+          </View>
+
+          {/* Allergies */}
+          <View style={styles.clinicalCard}>
+            <View style={[styles.clinicalIconPlate, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="warning" size={26} color="#E65100" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.clinicalLabel}>Allergies</Text>
+              <Text style={[styles.clinicalValue, { fontSize: 16 }]}>
+                {profile?.allergies || 'None reported'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Active Medications List */}
+        <View style={styles.medsHeaderRow}>
+          <Text style={styles.sectionHeader}>ACTIVE MEDICATIONS</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{medications.length} Prescribed</Text>
+          </View>
+        </View>
+
+        {medications.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="medical-outline" size={48} color={Theme.colors.outline} />
+            <Text style={styles.emptyTitle}>No Active Medications</Text>
+            <Text style={styles.emptyDesc}>
+              This patient currently does not have any active medication regimens recorded.
+            </Text>
+          </View>
+        ) : (
+          medications.map((med) => (
+            <View key={med.id} style={styles.medCard}>
+              <View style={styles.medCardHeader}>
+                <View style={styles.medIconPlate}>
+                  <Ionicons name="fitness" size={24} color={Theme.colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.medName}>{med.medicine_name}</Text>
+                  <Text style={styles.medDosage}>
+                    {med.dosage} • {med.time}
+                  </Text>
+                </View>
+                {med.pills_remaining !== undefined && med.pills_remaining !== null && (
+                  <View
+                    style={[
+                      styles.stockBadge,
+                      med.pills_remaining <= 5 && styles.stockBadgeLow,
+                    ]}
+                  >
+                    <Ionicons
+                      name="cube-outline"
+                      size={14}
+                      color={med.pills_remaining <= 5 ? '#C62828' : Theme.colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.stockBadgeText,
+                        med.pills_remaining <= 5 && styles.stockBadgeTextLow,
+                      ]}
+                    >
+                      {med.pills_remaining} left
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {med.food_warning && (
+                <View style={styles.warningBanner}>
+                  <Ionicons name="information-circle" size={18} color="#E65100" />
+                  <Text style={styles.warningText}>{med.food_warning}</Text>
+                </View>
+              )}
+            </View>
+          ))
+        )}
+
+        {/* Action Button */}
+        <SeniorButton
+          title="Done"
+          icon="checkmark-circle"
+          variant="secondary"
+          onPress={handleBack}
+          style={{ marginTop: 24 }}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Theme.colors.surface },
-  container: { flex: 1, backgroundColor: Theme.colors.surface },
-  backButton: { marginBottom: 20 },
-  header: { alignItems: 'center', marginBottom: 30 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: Theme.colors.surface,
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 14,
+    paddingTop: 12,
+    paddingBottom: 32,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.surface,
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 14,
+    color: Theme.colors.onSurfaceVariant,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Theme.colors.surfaceContainerLow,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+  },
+  backButtonText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: Theme.colors.onSurface,
+    marginLeft: 6,
+  },
+  profileHeaderCard: {
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Theme.colors.outlineVariant,
+    marginBottom: 16,
+    ...Theme.elevation.level2,
+  },
   largeAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
+    ...Theme.elevation.level2,
   },
   avatarText: {
     color: Theme.colors.onPrimary,
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 40,
+    fontSize: 24,
   },
   nameText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 28,
-    color: Theme.colors.onSurface,
-  },
-  roleText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
-    color: Theme.colors.onSurfaceVariant,
-  },
-  infoCard: {
-    backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Theme.colors.outline,
-  },
-  sectionTitle: {
-    fontFamily: 'PublicSans-Bold',
     fontSize: 18,
     color: Theme.colors.onSurface,
-    marginBottom: 12,
+    textAlign: 'center',
+    marginBottom: 4,
   },
-  infoText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5F5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  roleBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: Theme.colors.primary,
+  },
+  sectionHeader: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
     color: Theme.colors.onSurfaceVariant,
+    letterSpacing: 0.8,
     marginBottom: 8,
   },
-  emptyText: {
-    fontFamily: 'PublicSans-Regular',
+  clinicalGrid: {
+    gap: 8,
+    marginBottom: 18,
+  },
+  clinicalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    borderRadius: 13,
+    padding: 11,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+    gap: 10,
+    ...Theme.elevation.level1,
+  },
+  clinicalIconPlate: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clinicalLabel: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11.5,
+    color: Theme.colors.onSurfaceVariant,
+    marginBottom: 1,
+  },
+  clinicalValue: {
+    fontFamily: 'PublicSans-ExtraBold',
     fontSize: 16,
-    color: Theme.colors.outline,
-    fontStyle: 'italic',
+    color: Theme.colors.onSurface,
+  },
+  medsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  countBadge: {
+    backgroundColor: Theme.colors.surfaceContainerLow,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  countBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: Theme.colors.onSurfaceVariant,
+  },
+  emptyCard: {
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+  },
+  emptyTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 15,
+    color: Theme.colors.onSurface,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  emptyDesc: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12.5,
+    color: Theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 17,
   },
   medCard: {
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 13,
+    padding: 11,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
     borderLeftWidth: 4,
     borderLeftColor: Theme.colors.primary,
+    ...Theme.elevation.level1,
+  },
+  medCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  medIconPlate: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#E8F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   medName: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 18,
+    fontSize: 14.5,
     color: Theme.colors.onSurface,
   },
-  medDetails: {
+  medDosage: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 14,
+    fontSize: 12,
     color: Theme.colors.onSurfaceVariant,
-    marginTop: 4,
+    marginTop: 1,
+  },
+  stockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#E8F5F5',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  stockBadgeLow: {
+    backgroundColor: '#FFEBEE',
+  },
+  stockBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: Theme.colors.primary,
+  },
+  stockBadgeTextLow: {
+    color: '#C62828',
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 12,
   },
   warningText: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 12,
+    flex: 1,
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 13,
     color: '#E65100',
-    marginTop: 8,
   },
 });

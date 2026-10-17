@@ -1,23 +1,45 @@
 // src/types/medication.ts
 
-export type MedicationStatus = 'pending' | 'taken' | 'skipped';
+export type MedicationStatus = 'pending' | 'taken' | 'skipped' | 'missed' | (string & {});
 
-// This is the blueprint for a Medication Object
 export interface Medication {
   id: number;
   medicine_name: string;
   dosage: string;
-  time: string; 
+  time: string;
   status: MedicationStatus;
-  description: string | null;
-  duration: string | null;
+  description?: string | null;
+  duration?: string | null;
+  pills_remaining?: number | null;
+  total_pills?: number | null;
+  food_warning?: string | null;
+  is_active?: boolean;
+  snooze_count?: number;
+  isOverdue?: boolean;
+  camera_verified?: boolean;
+  patient_id?: string;
+  created_at?: string;
 }
 
-// A helper function to create a new Medication object 
-// (This is like a Constructor in OOP)
+export interface MedicationLog {
+  id?: number;
+  medication_id: number;
+  patient_id: string;
+  log_date: string;
+  scheduled_time: string;
+  status: MedicationStatus;
+  notes?: string | null;
+  snooze_count?: number;
+  created_at?: string;
+  medication?: {
+    medicine_name: string;
+    dosage: string;
+  };
+}
+
 export function createNewMedication(
-  name: string, 
-  dosage: string, 
+  name: string,
+  dosage: string,
   time: string
 ): Omit<Medication, 'id'> {
   return {
@@ -25,7 +47,7 @@ export function createNewMedication(
     dosage: dosage,
     time: time,
     status: 'pending',
-    description: null, // Can be filled in later by a doctor
-    duration: null,    // Can be filled in later
+    description: null,
+    duration: null,
   };
 }

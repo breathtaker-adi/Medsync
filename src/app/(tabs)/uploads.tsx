@@ -1,12 +1,23 @@
-// src/app/(tabs)/uploads.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { PulseView } from '../../components/PulseView';
+import { SeniorButton } from '../../components/SeniorButton';
 import { useAuth } from '../../context/authcontext';
-import { supabase } from '../../lib/supabase';
+import { prescriptionService } from '../../services/prescriptionService';
 import { Theme } from '../../theme';
+import { showErrorAlert } from '../../utils/errorHandler';
 
 export default function UploadsScreen() {
   const { session, profile } = useAuth();
@@ -16,28 +27,6 @@ export default function UploadsScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'pending' | 'approved'>('idle');
 
-  // The AI Scanner Function — routes through Supabase Edge Function
-  // so the OpenAI API key is never exposed in the client bundle.
-  const scanPrescriptionWithAI = async (base64: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('scan-prescription', {
-        body: { base64Image: base64 },
-      });
-
-      if (error) throw error;
-
-      return {
-        medicine_name: data.medicine_name || 'Unknown Medicine',
-        dosage: data.dosage || 'See prescription',
-        duration: data.duration || 'Not specified',
-      };
-    } catch (error) {
-      console.error('AI Scan Error:', error);
-      Alert.alert('AI Scan Failed', 'Could not read prescription with AI. Uploading image only.');
-      return null;
-    }
-  };
-
   const pickImage = async (fromCamera: boolean) => {
     let result;
     if (fromCamera) {
@@ -45,15 +34,15 @@ export default function UploadsScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
-        base64: true, // Crucial for AI & Supabase
+        quality: 0.85,
+        base64: true,
       });
     } else {
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 0.85,
         base64: true,
       });
     }
@@ -62,214 +51,327 @@ export default function UploadsScreen() {
       const asset = result.assets[0];
       setImageUri(asset.uri);
       setBase64Image(asset.base64 || null);
-      setUploadStatus('idle'); // Reset status if new image is picked
+      setUploadStatus('idle');
+    }
+  };
+
+  const executeUpload = async () => {
+    setIsUploading(true);
+
+    const userId = session?.user?.id || 'anonymous';
+    const patientName = profile?.full_name || 'Patient';
+
+    const res = await prescriptionService.uploadAndSubmitPrescription({
+      userId,
+      patientName,
+      base64Image: base64Image!,
+    });
+
+    setIsUploading(false);
+
+    if (res.success) {
+      setUploadStatus('pending');
+      Alert.alert(
+        'Prescription Submitted',
+        'Your prescription slip has been uploaded and queued for your supervising caregiver / doctor to review and approve.'
+      );
+    } else {
+      showErrorAlert(res.error, 'Upload Failed');
     }
   };
 
   const handleUploadAndScan = async () => {
     if (!base64Image) {
-      Alert.alert('No Image', 'Please select or scan a prescription first.');
+      Alert.alert('No Image', 'Please capture or select a prescription photo first.');
       return;
     }
 
-    setIsUploading(true);
-
+    // DPDP Act 2023 Consent Check for AI OCR Data Processing
     try {
-      // 1. Upload image to Supabase Storage
-      const fileName = `prescription_${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('prescriptions')
-        .upload(fileName, decode(base64Image), {
-          contentType: 'image/jpeg',
-        });
-
-      if (uploadError) throw uploadError;
-
-      // 2. Get Public URL
-      const { data: urlData } = supabase.storage
-        .from('prescriptions')
-        .getPublicUrl(fileName);
-
-      const publicUrl = urlData.publicUrl;
-
-      // 3. Scan with AI
-      const aiData = await scanPrescriptionWithAI(base64Image);
-      const extractedData = aiData || {
-        medicine_name: 'Pending AI Review',
-        dosage: null,
-        duration: null,
-      };
-
-      // 4. Insert into pending_reviews with actual patient profile and session
-      const { error: dbError } = await supabase
-        .from('pending_reviews')
-        .insert({
-          patient_name: profile?.full_name || 'Unknown Patient',
-          patient_id: session?.user?.id, // Links prescription to logged-in patient
-          medication: extractedData.medicine_name,
-          dosage: extractedData.dosage,
-          duration: extractedData.duration,
-          image_url: publicUrl,
-          time_ago: 'Just now',
-          status: 'pending',
-        });
-
-      if (dbError) throw dbError;
-
-      // --- PUSH NOTIFICATION TO DOCTOR ---
-      try {
-        // 1. Get the doctor's push token using the database view
-        const { data: doctorData } = await supabase
-          .from('doctor_push_tokens')
-          .select('push_token')
-          .eq('patient_id', session?.user?.id);
-
-        if (doctorData && doctorData.length > 0) {
-          const doctorToken = doctorData[0].push_token;
-
-          // 2. Send the notification via Expo's Push API
-          if (doctorToken) {
-            await fetch('https://exp.host/--/api/v2/push/send', {
-              method: 'POST',
-              headers: {
-                Accept: 'application/json',
-                'Accept-encoding': 'gzip, deflate',
-                'Content-Type': 'application/json',
+      const hasConsented = await AsyncStorage.getItem('dpdp_ocr_consent');
+      if (hasConsented === 'true') {
+        await executeUpload();
+      } else {
+        Alert.alert(
+          'AI Prescription Scan Consent',
+          'Under India\'s DPDP Act 2023, your prescription slip will be processed over encrypted channels by our AI service solely to extract medicine names and dosage directions for your doctor\'s review. No images are retained for model training.\n\nDo you consent to proceed?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'I Consent & Scan',
+              onPress: async () => {
+                await AsyncStorage.setItem('dpdp_ocr_consent', 'true');
+                await executeUpload();
               },
-              body: JSON.stringify({
-                to: doctorToken,
-                title: '📋 New Prescription Review',
-                body: `${profile?.full_name || 'A patient'} just uploaded a prescription for ${extractedData.medicine_name}.`,
-                priority: 'high',
-                sound: 'default',
-              }),
-            });
-          }
-        }
-      } catch (notifError) {
-        console.error('Failed to send push notification:', notifError);
-        // Silently handle error so successful upload isn't blocked
+            },
+          ]
+        );
       }
-      // --- END PUSH NOTIFICATION ---
-
-      Alert.alert('Success', 'Prescription uploaded and sent to doctor for review!');
-      setUploadStatus('pending'); // Show the pending badge
-      setImageUri(null); // Clear preview
-      setBase64Image(null);
-    } catch (error: any) {
-      console.error('Upload Error:', error);
-      Alert.alert('Error', error.message || 'Failed to upload prescription.');
-    } finally {
-      setIsUploading(false);
+    } catch {
+      await executeUpload();
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.headerText}>Upload Prescription</Text>
-      <Text style={styles.subHeaderText}>Scan or upload your prescription for doctor review</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Scan Prescription</Text>
+        <Text style={styles.subHeaderText}>
+          Take a clear photo of your prescription slip. AI will parse the details and send them to your doctor for approval.
+        </Text>
+      </View>
 
-      {/* Status Badge */}
+      {/* Helpful Instructions for Seniors */}
+      <View style={styles.guideCard}>
+        <View style={styles.guideRow}>
+          <View style={styles.guideStepCircle}>
+            <Text style={styles.guideStepNum}>1</Text>
+          </View>
+          <Text style={styles.guideText}>Lay slip flat under good lighting</Text>
+        </View>
+        <View style={styles.guideRow}>
+          <View style={styles.guideStepCircle}>
+            <Text style={styles.guideStepNum}>2</Text>
+          </View>
+          <Text style={styles.guideText}>Hold steady and fit within the frame</Text>
+        </View>
+        <View style={styles.guideRow}>
+          <View style={styles.guideStepCircle}>
+            <Text style={styles.guideStepNum}>3</Text>
+          </View>
+          <Text style={styles.guideText}>Tap "Submit" to send to your doctor</Text>
+        </View>
+      </View>
+
+      {/* Status Banner */}
       {uploadStatus === 'pending' && (
         <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>Pending: Waiting for Dr. Sharma approval for Metformin 500mg</Text>
+          <Ionicons name="time" size={20} color="#92400E" style={{ marginRight: 8 }} />
+          <Text style={styles.statusText}>
+            Prescription queued! Waiting for supervisor approval.
+          </Text>
         </View>
       )}
 
-      {/* Image Preview Area */}
-      <View style={styles.previewContainer}>
+      {/* Image Preview / Viewfinder */}
+      <View style={[styles.previewContainer, imageUri && styles.previewContainerHasImage]}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="contain" />
-        ) : (
-          <View style={styles.placeholder}>
-            <Ionicons name="document-text-outline" size={64} color={Theme.colors.outline} />
-            <Text style={styles.placeholderText}>No prescription selected</Text>
+          <View style={styles.imageWrapper}>
+            <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
+            <TouchableOpacity
+              style={styles.retakeButton}
+              onPress={() => {
+                setImageUri(null);
+                setBase64Image(null);
+              }}
+              accessibilityLabel="Remove and retake photo"
+            >
+              <Ionicons name="close" size={20} color="#FFFFFF" />
+              <Text style={styles.retakeText}>Retake</Text>
+            </TouchableOpacity>
           </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.placeholder}
+            onPress={() => pickImage(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Tap to open camera and scan prescription"
+          >
+            <View style={styles.cameraIconPlate}>
+              <Ionicons name="camera" size={44} color={Theme.colors.primary} />
+            </View>
+            <Text style={styles.placeholderTitle}>Tap to Open Camera</Text>
+            <Text style={styles.placeholderText}>Or choose from photo gallery below</Text>
+          </TouchableOpacity>
         )}
       </View>
 
       {/* Action Buttons */}
-      <TouchableOpacity style={styles.scanButton} onPress={() => pickImage(true)}>
-        <Ionicons name="camera-outline" size={24} color={Theme.colors.onPrimary} />
-        <Text style={[styles.buttonText, { color: Theme.colors.onPrimary }]}>Scan Prescription</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonsGroup}>
+        <SeniorButton
+          title={imageUri ? "Retake with Camera" : "Snap Prescription Photo"}
+          onPress={() => pickImage(true)}
+          size="large"
+          variant={imageUri ? "outline" : "primary"}
+          icon={<Ionicons name="camera" size={24} color={imageUri ? Theme.colors.primary : "#FFFFFF"} />}
+          style={{ marginBottom: 14 }}
+        />
 
-      <TouchableOpacity style={styles.galleryButton} onPress={() => pickImage(false)}>
-        <Ionicons name="images-outline" size={24} color={Theme.colors.primary} />
-        <Text style={[styles.buttonText, { color: Theme.colors.primary }]}>Upload from Gallery</Text>
-      </TouchableOpacity>
+        <SeniorButton
+          title="Upload from Photo Gallery"
+          onPress={() => pickImage(false)}
+          size="normal"
+          variant="secondary"
+          icon={<Ionicons name="images-outline" size={22} color={Theme.colors.primary} />}
+          style={{ marginBottom: 16 }}
+        />
 
-      {/* Submit Button */}
-      {imageUri && (
-        <TouchableOpacity style={styles.submitButton} onPress={handleUploadAndScan} disabled={isUploading}>
-          {isUploading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit for Review</Text>
-          )}
-        </TouchableOpacity>
-      )}
-    </View>
+        {imageUri && (
+          <PulseView active={!isUploading} minScale={0.98} maxScale={1.02}>
+            <SeniorButton
+              title="Submit for Doctor Review"
+              onPress={handleUploadAndScan}
+              size="large"
+              variant="success"
+              loading={isUploading}
+              icon={<Ionicons name="checkmark-done-circle" size={24} color="#FFFFFF" />}
+            />
+          </PulseView>
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.surface, padding: 20, paddingTop: 60 },
-  headerText: { fontFamily: 'PublicSans-ExtraBold', fontSize: 28, color: Theme.colors.onSurface, marginBottom: 4 },
-  subHeaderText: { fontFamily: 'PublicSans-Regular', fontSize: 16, color: Theme.colors.onSurfaceVariant, marginBottom: 20 },
-
-  statusBadge: {
-    backgroundColor: Theme.colors.secondaryContainer,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 20,
+  container: {
+    flex: 1,
+    backgroundColor: Theme.colors.surface,
   },
-  statusText: { fontFamily: 'PublicSans-Medium', fontSize: 14, color: Theme.colors.onSecondaryContainer },
-
-  previewContainer: {
-    backgroundColor: Theme.colors.surfaceContainerLow,
-    borderRadius: 16,
-    height: 300,
+  contentContainer: {
+    padding: 20,
+    paddingTop: 54,
+    paddingBottom: 80,
+  },
+  header: {
+    marginBottom: 16,
+  },
+  headerText: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 30,
+    color: Theme.colors.onSurface,
+    marginBottom: 6,
+  },
+  subHeaderText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 16,
+    lineHeight: 22,
+    color: Theme.colors.onSurfaceVariant,
+  },
+  guideCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Theme.rounded.lg,
+    padding: 16,
     marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 10,
+    ...Theme.shadows.card,
+  },
+  guideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  guideStepCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#E6F4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideStepNum: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: Theme.colors.primary,
+  },
+  guideText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 15,
+    color: Theme.colors.onSurface,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    padding: 14,
+    borderRadius: Theme.rounded.md,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  statusText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#92400E',
+    flex: 1,
+  },
+  previewContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Theme.rounded.xl,
+    height: 280,
+    marginBottom: 24,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: Theme.colors.outlineVariant,
+    borderWidth: 2.5,
+    borderColor: '#0D7377',
     borderStyle: 'dashed',
+    ...Theme.shadows.card,
   },
-  previewImage: { width: '100%', height: '100%', borderRadius: 14 },
-  placeholder: { justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { fontFamily: 'PublicSans-Regular', fontSize: 16, color: Theme.colors.outline, marginTop: 8 },
-
-  scanButton: {
-    backgroundColor: Theme.colors.primary,
-    height: 56,
-    borderRadius: 16,
+  previewContainerHasImage: {
+    borderStyle: 'solid',
+    borderColor: '#A7F3D0',
+  },
+  imageWrapper: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  retakeButton: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  galleryButton: {
-    backgroundColor: 'transparent',
-    height: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Theme.colors.primary,
-    marginBottom: 24,
+    gap: 4,
   },
-  buttonText: { fontFamily: 'PublicSans-Bold', fontSize: 16, marginLeft: 8 },
-
-  submitButton: {
-    backgroundColor: Theme.colors.success,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+  retakeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#FFFFFF',
   },
-  submitButtonText: { fontFamily: 'PublicSans-Bold', fontSize: 18, color: '#fff' },
+  placeholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    width: '100%',
+    height: '100%',
+  },
+  cameraIconPlate: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E6F4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  placeholderTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 20,
+    color: Theme.colors.primary,
+    marginBottom: 4,
+  },
+  placeholderText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 15,
+    color: Theme.colors.outline,
+  },
+  buttonsGroup: {
+    width: '100%',
+  },
 });
