@@ -1,9 +1,9 @@
 // src/app/(tabs)/patient-dashboard.tsx
-import { Entypo, Ionicons } from '@expo/vector-icons';
+import { Entypo, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
-import { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,186 +17,60 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { PulseView } from '../../components/PulseView';
+import { SeniorButton } from '../../components/SeniorButton';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { useAuth } from '../../context/authcontext';
 import { supabase } from '../../lib/supabase';
+import { medicationService } from '../../services/medicationService';
+import { notificationService } from '../../services/notificationService';
 import { Theme } from '../../theme';
+import { Medication } from '../../types/medication';
+import { showErrorAlert } from '../../utils/errorHandler';
+import { checkIfOverdue, getTimeSlot, parseTimeToMinutes, TimeSlot } from '../../utils/timeUtils';
 
-export type Medication = {
-  id: number;
-  medicine_name: string;
-  dosage: string;
-  time: string;
-  status: string;
-  patient_id?: string;
-  food_warning?: string;
-  pills_remaining?: number;
-  isOverdue?: boolean;
-  snooze_count?: number;
-};
-
-// Helper component for the Timeline Section Headers
-const TimelineHeader = ({ icon, title, color }: { icon: string; title: string; color: string }) => (
-  <View style={styles.timelineHeader}>
-    <Ionicons name={icon as any} size={22} color={color} />
-    <Text style={[styles.timelineHeaderText, { color }]}>{title}</Text>
-  </View>
-);
+export type { Medication };
 
 export default function PatientDashboard() {
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const { isAccessibilityMode, isAudioEnabled, triggerHaptic } = useAccessibility();
 
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // State for Undo Toast functionality
+  // Time slot filter: 'all' | 'morning' | 'afternoon' | 'evening' | 'night'
+  const [activeSlot, setActiveSlot] = useState<'all' | TimeSlot>('all');
+
+  // Speaking state for daily brief
+  const [isSpeakingDailyBrief, setIsSpeakingDailyBrief] = useState(false);
+
+  // Undo Toast state
   const [undoToastVisible, setUndoToastVisible] = useState(false);
   const [undoMedId, setUndoMedId] = useState<number | null>(null);
   const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
-  // State for Add Medication Modal
+  // Add Medication Modal state
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [newMedName, setNewMedName] = useState('');
   const [newMedDosage, setNewMedDosage] = useState('');
   const [newMedTime, setNewMedTime] = useState('');
   const [newMedWarning, setNewMedWarning] = useState('');
 
-  // Helper function to convert ANY time string into sortable minutes
-  const parseTimeToMinutes = (timeString: string) => {
-    if (!timeString) return 9999;
-
-    let timeStr = timeString.trim().toUpperCase();
-    const isPM = timeStr.includes('PM');
-    const isAM = timeStr.includes('AM');
-
-    timeStr = timeStr.replace('AM', '').replace('PM', '').trim();
-
-    const parts = timeStr.split(':');
-    let hours = parseInt(parts[0], 10) || 0;
-    const minutes = parseInt(parts[1], 10) || 0;
-
-    if (isPM && hours < 12) hours += 12;
-    if (isAM && hours === 12) hours = 0;
-
-    return hours * 60 + minutes;
-  };
-
-  // Checks if the current time is past the scheduled medication time
-  const checkIfOverdue = (timeString: string) => {
-    const medMinutes = parseTimeToMinutes(timeString);
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    return medMinutes < currentMinutes;
-  };
-
-  // Helper function to convert time string into a future Date object for notifications
-  const getNextDateForTime = (timeString: string) => {
-    const totalMinutes = parseTimeToMinutes(timeString);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    const now = new Date();
-    const nextDate = new Date();
-    nextDate.setHours(hours, minutes, 0, 0);
-
-    if (nextDate <= now) {
-      nextDate.setDate(nextDate.getDate() + 1);
-    }
-    return nextDate;
-  };
-
-  // Schedules automatic alarms for active medications
-  const scheduleAllAlarms = async (meds: Medication[]) => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('medication-alarms-auto', {
-        name: 'Automatic Medication Alarms',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-      });
-    }
-
-    for (const med of meds) {
-      if (med.status !== 'taken' && med.status !== 'skipped') {
-        const triggerDate = getNextDateForTime(med.time);
-
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `🚨 MEDICATION ALERT`,
-            body: `Time to take ${med.medicine_name} (${med.dosage})`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-            categoryIdentifier: 'medication-alerts',
-            data: { medicationId: med.id },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: triggerDate,
-            channelId: 'medication-alarms-auto',
-          },
-        });
-      }
-    }
-  };
-
-  const fetchMedications = async () => {
+  const fetchMedications = useCallback(async () => {
     if (!session?.user?.id) {
       setLoading(false);
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
-
-    // Fetch master medication list (ONLY ACTIVE ONES)
-    const { data: medsData, error: medsError } = await supabase
-      .from('medications')
-      .select('*')
-      .eq('patient_id', session.user.id)
-      .eq('is_active', true);
-
-    if (medsError) {
-      console.error('Error fetching medications:', medsError);
+    const res = await medicationService.fetchDailySchedule(session.user.id);
+    if (res.success && res.data) {
+      setMedications(res.data);
+      await notificationService.scheduleAllAlarms(res.data);
     }
-
-    // Fetch daily logs created for today
-    const { data: logsData, error: logsError } = await supabase
-      .from('medication_logs')
-      .select('*')
-      .eq('patient_id', session.user.id)
-      .eq('log_date', today);
-
-    if (logsError) {
-      console.error('Error fetching logs:', logsError);
-    }
-
-    // Merge medications with today's logs
-    const mergedMeds =
-      medsData?.map((med) => {
-        const todayLog = logsData?.find((log) => log.medication_id === med.id);
-        const currentStatus = todayLog ? todayLog.status : 'pending';
-
-        return {
-          ...med,
-          status: currentStatus,
-          isOverdue: currentStatus === 'pending' && checkIfOverdue(med.time),
-          snooze_count: todayLog?.snooze_count || 0,
-        };
-      }) || [];
-
-    // Sort chronologically
-    const sortedData = [...mergedMeds].sort((a, b) => {
-      return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
-    });
-
-    setMedications(sortedData);
-    await scheduleAllAlarms(sortedData);
     setLoading(false);
-  };
+  }, [session?.user?.id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -207,40 +81,84 @@ export default function PatientDashboard() {
   useFocusEffect(
     useCallback(() => {
       fetchMedications();
-    }, [session?.user?.id])
+    }, [fetchMedications])
   );
 
+  // Realtime subscription with unique channel name and try/catch guard
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channelName = `patient_meds_dash_${session.user.id}_${Date.now()}`;
+    let channel: any = null;
+
+    try {
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'medications',
+            filter: `patient_id=eq.${session.user.id}`,
+          },
+          () => {
+            fetchMedications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'medication_logs',
+            filter: `patient_id=eq.${session.user.id}`,
+          },
+          () => {
+            fetchMedications();
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn('[PatientDashboard] Realtime subscription error:', err);
+    }
+
+    return () => {
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
+  }, [session?.user?.id, fetchMedications]);
+
   const handleAddMedication = async () => {
-    if (!newMedName || !newMedDosage || !newMedTime) {
-      Alert.alert('Missing Info', 'Please fill out all fields.');
+    if (!newMedName || !newMedDosage || !newMedTime || !session?.user?.id) {
+      Alert.alert('Missing Info', 'Please fill out all required fields.');
       return;
     }
 
-    try {
-      const { error } = await supabase.from('medications').insert({
-        patient_id: session?.user?.id,
-        medicine_name: newMedName,
-        dosage: newMedDosage,
-        time: newMedTime,
-        status: 'pending',
-        pills_remaining: 30, // Default starting count
-        food_warning: newMedWarning || null,
-      });
+    const res = await medicationService.createMedication({
+      patientId: session.user.id,
+      medicineName: newMedName,
+      dosage: newMedDosage,
+      time: newMedTime,
+      warning: newMedWarning || null,
+      pillsRemaining: 30,
+    });
 
-      if (error) throw error;
-
-      // Reset fields and close modal
+    if (res.success) {
+      triggerHaptic();
       setNewMedName('');
       setNewMedDosage('');
       setNewMedTime('');
       setNewMedWarning('');
       setAddModalVisible(false);
 
-      // Refresh the dashboard
-      fetchMedications();
+      await fetchMedications();
       Alert.alert('Success', 'Medication added to your schedule!');
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+    } else {
+      showErrorAlert(res.error, 'Could Not Add Medication');
     }
   };
 
@@ -248,17 +166,14 @@ export default function PatientDashboard() {
     triggerHaptic();
     setUndoMedId(med.id);
 
-    // Update UI immediately
     const updatedMeds = medications.map((m) =>
       m.id === med.id ? { ...m, status: 'taken', isOverdue: false } : m
     );
     setMedications(updatedMeds);
-    scheduleAllAlarms(updatedMeds);
+    notificationService.scheduleAllAlarms(updatedMeds);
 
-    // Show the Undo Toast
     setUndoToastVisible(true);
 
-    // Start 4-second timer to commit DB update
     const timer = setTimeout(() => {
       commitTakenToDatabase(med.id);
       setUndoToastVisible(false);
@@ -267,37 +182,29 @@ export default function PatientDashboard() {
     setUndoTimer(timer);
   };
 
-  const commitTakenToDatabase = async (id: number) => {
-    const today = new Date().toISOString().split('T')[0];
+  const commitTakenToDatabase = async (id: number, cameraVerified: boolean = false) => {
+    if (!session?.user?.id) return;
     const takenMed = medications.find((m) => m.id === id);
 
-    // Save daily log
-    const { error: logError } = await supabase.from('medication_logs').upsert(
-      {
-        medication_id: id,
-        patient_id: session?.user?.id,
-        log_date: today,
-        scheduled_time: takenMed?.time || '00:00',
-        status: 'taken',
-      },
-      { onConflict: 'medication_id, log_date' }
-    );
+    const res = await medicationService.recordDoseWithInventory({
+      medicationId: id,
+      patientId: session.user.id,
+      scheduledTime: takenMed?.time || '00:00',
+      cameraVerified,
+      currentPillsRemaining: takenMed?.pills_remaining,
+    });
 
-    if (logError) console.error('Error saving daily log:', logError);
+    if (res.success) {
+      const newPillCount = res.data.pillsRemaining;
+      setMedications((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? { ...m, pills_remaining: newPillCount, camera_verified: cameraVerified }
+            : m
+        )
+      );
 
-    // Decrement Pills
-    if (takenMed) {
-      const currentPills = takenMed.pills_remaining ?? 30;
-      const newPillCount = Math.max(0, currentPills - 1);
-      const { error: medError } = await supabase
-        .from('medications')
-        .update({ pills_remaining: newPillCount })
-        .eq('id', id);
-
-      if (medError) console.error('Error updating pill count:', medError);
-
-      // Low Stock Alert
-      if (newPillCount <= 5 && newPillCount > 0) {
+      if (newPillCount <= 5 && newPillCount > 0 && takenMed) {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: '⚠️ Refill Reminder',
@@ -307,21 +214,62 @@ export default function PatientDashboard() {
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date() },
         });
       }
+    } else {
+      showErrorAlert(res.error, 'Error Saving Dose');
+    }
+  };
+
+  const handleCameraProof = async (med: Medication) => {
+    triggerHaptic();
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          'Camera Permission Required',
+          'Camera access is needed to capture proof of dose intake.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        cameraType: ImagePicker.CameraType.front,
+        allowsEditing: false,
+        quality: 0.3,
+      });
+
+      if (!result.canceled) {
+        commitTakenToDatabase(med.id, true);
+
+        const updatedMeds = medications.map((m) =>
+          m.id === med.id
+            ? { ...m, status: 'taken', isOverdue: false, camera_verified: true }
+            : m
+        );
+        setMedications(updatedMeds);
+        notificationService.scheduleAllAlarms(updatedMeds);
+        Alert.alert(
+          'Dose Confirmed',
+          `Camera proof verified for ${med.medicine_name}. Adherence recorded!`
+        );
+      }
+    } catch (err) {
+      console.error('Camera proof error:', err);
+      Alert.alert('Error', 'Could not open camera.');
     }
   };
 
   const handleUndoTaken = () => {
+    triggerHaptic();
     if (undoTimer) {
       clearTimeout(undoTimer);
       setUndoTimer(null);
     }
 
-    // Revert UI back to pending
     const revertedMeds = medications.map((m) =>
       m.id === undoMedId ? { ...m, status: 'pending', isOverdue: checkIfOverdue(m.time) } : m
     );
     setMedications(revertedMeds);
-    scheduleAllAlarms(revertedMeds);
+    notificationService.scheduleAllAlarms(revertedMeds);
 
     setUndoToastVisible(false);
     setUndoMedId(null);
@@ -335,211 +283,342 @@ export default function PatientDashboard() {
       return;
     }
 
+    const currentSnooze = med.snooze_count || 0;
     const updatedMeds = medications.map((m) =>
-      m.id === med.id ? { ...m, snooze_count: (m.snooze_count || 0) + 1 } : m
+      m.id === med.id ? { ...m, snooze_count: currentSnooze + 1 } : m
     );
     setMedications(updatedMeds);
 
-    const snoozeDate = new Date();
-    snoozeDate.setMinutes(snoozeDate.getMinutes() + 20);
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🚨 SNOOZE OVER: MEDICATION ALERT',
-        body: `Time to take ${med.medicine_name} (${med.dosage})`,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-        categoryIdentifier: 'medication-alerts',
-        data: { medicationId: med.id },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: snoozeDate,
-        channelId: 'medication-alarms-auto',
-      },
-    });
-
+    await notificationService.scheduleSnoozeNotification(med, 20);
     Alert.alert('Snoozed', `${med.medicine_name} alarm snoozed for 20 minutes.`);
 
-    const today = new Date().toISOString().split('T')[0];
-    await supabase.from('medication_logs').upsert(
-      {
-        medication_id: med.id,
-        patient_id: session?.user?.id,
-        log_date: today,
-        scheduled_time: med.time,
-        snooze_count: (med.snooze_count || 0) + 1,
-      },
-      { onConflict: 'medication_id, log_date' }
-    );
-  };
-
-  const handleReadAloud = (med: Medication) => {
-    triggerHaptic();
-    if (isAudioEnabled) {
-      const textToRead = `${med.medicine_name}. ${med.dosage}. Scheduled for ${med.time}.${med.isOverdue ? ' Warning: This dose is overdue.' : ''
-        }`;
-      Speech.speak(textToRead);
-    } else {
-      Alert.alert('Audio Disabled', "Turn on 'Read Aloud' in settings to hear dosage.");
+    if (session?.user?.id) {
+      await medicationService.snoozeDose(med.id, session.user.id, med.time, currentSnooze);
     }
   };
 
-  const renderMedicationCard = (med: Medication) => (
-    <View
-      key={med.id}
-      style={[
-        styles.card,
-        isAccessibilityMode && styles.highContrastCard,
-        med.isOverdue && styles.overdueCard,
-      ]}
-    >
-      <View style={styles.cardHeader}>
-        <Text
-          style={[
-            styles.alertTitle,
-            isAccessibilityMode && styles.largeAlertTitle,
-            med.isOverdue && styles.overdueAlertTitle,
-          ]}
-        >
-          {med.isOverdue ? 'OVERDUE ALERT' : 'MEDICATION ALERT'}
-        </Text>
+  const handleReadAloudMed = (med: Medication) => {
+    triggerHaptic();
+    const spoken = notificationService.speakMedication(med, true);
+    if (!spoken && !isAudioEnabled) {
+      Alert.alert('Audio Disabled', "Turn on 'Read Aloud' in Settings to hear dosage instructions.");
+    }
+  };
 
-        {med.status !== 'taken' && (
-          <TouchableOpacity
-            onPress={() => router.push(`/medication-details?id=${med.id}`)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Entypo name="dots-three-vertical" size={20} color={Theme.colors.onSurfaceVariant} />
-          </TouchableOpacity>
+  // Hands-free Daily Routine Audio Overview
+  const handleReadAloudDay = () => {
+    triggerHaptic();
+    if (isSpeakingDailyBrief) {
+      notificationService.stopSpeaking();
+      setIsSpeakingDailyBrief(false);
+      return;
+    }
+
+    const totalCount = medications.length;
+    const takenCount = medications.filter((m) => m.status === 'taken').length;
+    const pendingMeds = medications.filter((m) => m.status !== 'taken' && m.status !== 'skipped');
+
+    let text = `Hello. Today you have ${totalCount} scheduled ${
+      totalCount === 1 ? 'dose' : 'doses'
+    }. You have taken ${takenCount}. `;
+
+    if (pendingMeds.length > 0) {
+      text += `Your next upcoming ${pendingMeds.length === 1 ? 'dose is' : 'doses are'}: `;
+      pendingMeds.slice(0, 3).forEach((m) => {
+        text += `${m.medicine_name}, ${m.dosage}, at ${m.time}. `;
+      });
+    } else if (totalCount > 0) {
+      text += 'Congratulations! You have completed all your medications for today.';
+    } else {
+      text += 'You have no scheduled doses for today.';
+    }
+
+    const spoken = notificationService.speakText(text, true);
+    if (spoken) {
+      setIsSpeakingDailyBrief(true);
+      setTimeout(() => setIsSpeakingDailyBrief(false), 8000);
+    }
+  };
+
+  // Filtered Medications by Slot
+  const filteredMedications = useMemo(() => {
+    if (activeSlot === 'all') return medications;
+    return medications.filter((m) => getTimeSlot(m.time) === activeSlot);
+  }, [medications, activeSlot]);
+
+  // Quadrant Counts
+  const slotCounts = useMemo(() => {
+    return {
+      all: medications.length,
+      morning: medications.filter((m) => getTimeSlot(m.time) === 'morning').length,
+      afternoon: medications.filter((m) => getTimeSlot(m.time) === 'afternoon').length,
+      evening: medications.filter((m) => getTimeSlot(m.time) === 'evening').length,
+      night: medications.filter((m) => getTimeSlot(m.time) === 'night').length,
+    };
+  }, [medications]);
+
+  // Adherence Calculations
+  const takenCount = medications.filter((m) => m.status === 'taken').length;
+  const adherencePercent =
+    medications.length > 0 ? Math.round((takenCount / medications.length) * 100) : 100;
+
+  // Time of Day Greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
+  const patientFirstName = profile?.full_name ? profile.full_name.split(' ')[0] : 'there';
+
+  const todayFormatted = useMemo(() => {
+    return new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    });
+  }, []);
+
+  const renderMedicationCard = (med: Medication) => {
+    const isTaken = med.status === 'taken';
+    const isSkipped = med.status === 'skipped';
+    const isPending = !isTaken && !isSkipped;
+    const isOverdue = med.isOverdue && isPending;
+
+    const cardContent = (
+      <View
+        style={[
+          styles.medCard,
+          isAccessibilityMode && styles.highContrastMedCard,
+          isOverdue && styles.overdueMedCard,
+          isTaken && styles.takenMedCard,
+        ]}
+      >
+        {/* Top Header of Card */}
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.badgeGroup}>
+            <View
+              style={[
+                styles.statusBadge,
+                isOverdue
+                  ? styles.statusBadgeOverdue
+                  : isTaken
+                  ? styles.statusBadgeTaken
+                  : styles.statusBadgePending,
+              ]}
+            >
+              <Ionicons
+                name={isOverdue ? 'alert-circle' : isTaken ? 'checkmark-circle' : 'time-outline'}
+                size={14}
+                color={isOverdue ? '#DC2626' : isTaken ? '#059669' : Theme.colors.primary}
+              />
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  isOverdue
+                    ? styles.statusTextOverdue
+                    : isTaken
+                    ? styles.statusTextTaken
+                    : styles.statusTextPending,
+                  isAccessibilityMode && styles.largeStatusText,
+                ]}
+              >
+                {isOverdue ? 'OVERDUE' : isTaken ? 'COMPLETED' : 'SCHEDULED'}
+              </Text>
+            </View>
+
+            {med.pills_remaining != null && (
+              <View
+                style={[
+                  styles.stockBadge,
+                  med.pills_remaining <= 5 && styles.stockBadgeLow,
+                ]}
+              >
+                <Ionicons
+                  name="medical"
+                  size={12}
+                  color={med.pills_remaining <= 5 ? '#DC2626' : '#0D9488'}
+                />
+                <Text
+                  style={[
+                    styles.stockText,
+                    med.pills_remaining <= 5 && styles.stockTextLow,
+                  ]}
+                >
+                  {med.pills_remaining} left
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Top Right Actions */}
+          <View style={styles.cardHeaderActions}>
+            <TouchableOpacity
+              style={styles.cardAudioBtn}
+              onPress={() => handleReadAloudMed(med)}
+              accessibilityRole="button"
+              accessibilityLabel={`Read aloud ${med.medicine_name}`}
+            >
+              <Ionicons name="volume-medium" size={20} color={Theme.colors.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push(`/medication-details?id=${med.id}`)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.cardMoreBtn}
+              accessibilityLabel="Medication options"
+            >
+              <Entypo name="dots-three-vertical" size={16} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Medication Info Section */}
+        <View style={styles.cardBodyRow}>
+          <View style={[styles.pillIconPlate, isTaken && styles.pillIconPlateTaken]}>
+            <Ionicons
+              name={isTaken ? 'checkmark-circle' : 'medkit'}
+              size={28}
+              color={isTaken ? '#059669' : Theme.colors.primary}
+            />
+          </View>
+
+          <View style={styles.medTextCol}>
+            <Text
+              style={[
+                styles.medicineName,
+                isAccessibilityMode && styles.largeMedicineName,
+              ]}
+            >
+              {med.medicine_name}
+            </Text>
+            <Text
+              style={[
+                styles.medicineDosage,
+                isAccessibilityMode && styles.largeMedicineDosage,
+              ]}
+            >
+              {med.dosage}
+            </Text>
+
+            {med.food_warning ? (
+              <View style={styles.instructionChip}>
+                <Ionicons name="information-circle-outline" size={13} color="#D97706" />
+                <Text style={styles.instructionText}>{med.food_warning}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.timePlate}>
+            <Ionicons name="alarm-outline" size={14} color="#64748B" />
+            <Text style={[styles.timeText, isAccessibilityMode && styles.largeTimeText]}>
+              {med.time}
+            </Text>
+          </View>
+        </View>
+
+        {/* Bottom Actions Row */}
+        {isTaken ? (
+          <View style={styles.takenConfirmationBanner}>
+            <Ionicons name="checkmark-done" size={20} color="#059669" />
+            <Text
+              style={[
+                styles.takenConfirmationText,
+                isAccessibilityMode && styles.largeButtonText,
+              ]}
+            >
+              {med.camera_verified ? 'Verified with Photo Proof' : 'Completed for Today'}
+            </Text>
+          </View>
+        ) : isSkipped ? (
+          <View style={styles.skippedBanner}>
+            <Ionicons name="close-circle-outline" size={18} color="#94A3B8" />
+            <Text style={styles.skippedBannerText}>Dose Skipped</Text>
+          </View>
+        ) : (
+          <View style={styles.actionControlsRow}>
+            {/* Primary Action Button */}
+            <View style={{ flex: 1 }}>
+              <SeniorButton
+                title="I TOOK IT"
+                variant="success"
+                icon={<Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />}
+                onPress={() => handleTaken(med)}
+              />
+            </View>
+
+            {/* Camera Proof Action */}
+            <TouchableOpacity
+              style={[
+                styles.cameraProofBtn,
+                isAccessibilityMode && styles.largeCameraBtn,
+              ]}
+              onPress={() => handleCameraProof(med)}
+              accessibilityRole="button"
+              accessibilityLabel={`Verify ${med.medicine_name} with camera proof`}
+            >
+              <Ionicons name="camera-outline" size={22} color={Theme.colors.primary} />
+            </TouchableOpacity>
+
+            {/* Snooze 20m Button */}
+            <TouchableOpacity
+              style={[
+                styles.snoozeBtn,
+                isAccessibilityMode && styles.largeSnoozeBtn,
+                (med.snooze_count || 0) >= 2 && styles.disabledBtn,
+              ]}
+              onPress={() => handleSnooze(med)}
+              disabled={(med.snooze_count || 0) >= 2}
+              accessibilityRole="button"
+              accessibilityLabel={`Snooze ${med.medicine_name} for 20 minutes`}
+            >
+              <Ionicons
+                name="time-outline"
+                size={18}
+                color={(med.snooze_count || 0) >= 2 ? '#CBD5E1' : '#334155'}
+              />
+              <Text
+                style={[
+                  styles.snoozeBtnLabel,
+                  (med.snooze_count || 0) >= 2 && { color: '#CBD5E1' },
+                ]}
+              >
+                +20m
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
+    );
 
-      {/* Medicine Icon */}
-      <View style={styles.medIconContainer}>
-        <Ionicons name="medkit-outline" size={28} color={Theme.colors.primary} />
-      </View>
+    if (isOverdue) {
+      return (
+        <PulseView key={med.id} active={true} minScale={0.99} maxScale={1.01} duration={1400}>
+          {cardContent}
+        </PulseView>
+      );
+    }
 
-      <View style={styles.medImageContainer}>
-        <TouchableOpacity
-          style={[styles.audioBtn, isAccessibilityMode && styles.largeAudioBtn]}
-          onPress={() => handleReadAloud(med)}
-        >
-          <Ionicons
-            name="volume-high"
-            size={isAccessibilityMode ? 24 : 20}
-            color={med.isOverdue ? '#D32F2F' : Theme.colors.primary}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <Text style={[styles.medicineName, isAccessibilityMode && styles.largeText]}>
-        {med.medicine_name}
-      </Text>
-      <Text style={[styles.dosageText, isAccessibilityMode && styles.largeDosageText]}>
-        {med.dosage}
-      </Text>
-      <Text style={[styles.timeDisplay, isAccessibilityMode && styles.largeTimeDisplay]}>
-        {med.time}
-      </Text>
-
-      {med.status === 'taken' ? (
-        <View
-          style={[
-            styles.button,
-            styles.takenButton,
-            isAccessibilityMode && styles.largeButton,
-          ]}
-        >
-          <Text style={[styles.buttonText, isAccessibilityMode && styles.largeButtonText]}>
-            TAKEN
-          </Text>
-        </View>
-      ) : med.status === 'skipped' ? (
-        <View
-          style={[
-            styles.button,
-            styles.skippedButton,
-            isAccessibilityMode && styles.largeButton,
-          ]}
-        >
-          <Text
-            style={[
-              styles.buttonText,
-              styles.skippedText,
-              isAccessibilityMode && styles.largeButtonText,
-            ]}
-          >
-            SKIPPED
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.successButton,
-              styles.mainActionButton,
-              isAccessibilityMode && styles.largeButton,
-            ]}
-            onPress={() => handleTaken(med)}
-          >
-            <Text style={[styles.buttonText, isAccessibilityMode && styles.largeButtonText]}>
-              I TOOK IT
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.snoozeButton,
-              isAccessibilityMode && styles.largeSnoozeButton,
-              (med.snooze_count || 0) >= 2 && styles.disabledButton,
-            ]}
-            onPress={() => handleSnooze(med)}
-            disabled={(med.snooze_count || 0) >= 2}
-            accessibilityRole="button"
-            accessibilityLabel={`Snooze alarm for ${med.medicine_name} by 20 minutes`}
-          >
-            <Ionicons
-              name="time-outline"
-              size={isAccessibilityMode ? 26 : 22}
-              color={(med.snooze_count || 0) >= 2 ? Theme.colors.outline : Theme.colors.onSurface}
-            />
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
+    return <View key={med.id}>{cardContent}</View>;
+  };
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <Text style={[styles.loadingLabel, isAccessibilityMode && styles.largeText]}>
+          Loading Medication Routine...
+        </Text>
       </View>
     );
   }
 
   return (
     <View style={styles.wrapper}>
-      {/* Floating Settings Gear (Sticks to top right corner) */}
-      <TouchableOpacity
-        style={styles.settingsGear}
-        onPress={() => router.push('/settings')}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-      >
-        <Ionicons
-          name="settings-outline"
-          size={isAccessibilityMode ? 32 : 28}
-          color={Theme.colors.onSurface}
-        />
-      </TouchableOpacity>
-
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ padding: 20, paddingTop: 60, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 14, paddingTop: Platform.OS === 'android' ? 36 : 48, paddingBottom: 72 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -549,103 +628,342 @@ export default function PatientDashboard() {
           />
         }
       >
-        {/* Screen Header with Title & Analytics */}
-        <View style={styles.dashboardHeader}>
-          <View style={styles.headerTitleContainer}>
-            <Text style={[styles.headerText, isAccessibilityMode && styles.largeHeaderText]}>
-              Today's Medication
+        {/* Header Greeting Row */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerGreetingCol}>
+            <Text style={[styles.greetingSubtext, isAccessibilityMode && styles.largeText]}>
+              {todayFormatted}
             </Text>
-            <Text style={[styles.subHeaderText, isAccessibilityMode && styles.largeSubHeaderText]}>
-              Remember to take your pills on time
+            <Text
+              style={[styles.greetingTitle, isAccessibilityMode && styles.largeGreetingTitle]}
+            >
+              {greeting}, {patientFirstName}
             </Text>
           </View>
 
-          {/* Analytics Button (stays next to title) */}
-          <TouchableOpacity
-            onPress={() => router.push('/medication-history')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Medication History"
-          >
-            <Ionicons
-              name="stats-chart"
-              size={isAccessibilityMode ? 32 : 28}
-              color={Theme.colors.primary}
-            />
-          </TouchableOpacity>
+          {/* Header Action Buttons */}
+          <View style={styles.headerIconsGroup}>
+            <TouchableOpacity
+              style={[
+                styles.headerActionBtn,
+                isSpeakingDailyBrief && styles.headerActionBtnActive,
+                isAccessibilityMode && styles.largeActionBtn,
+              ]}
+              onPress={handleReadAloudDay}
+              accessibilityRole="button"
+              accessibilityLabel="Listen to daily schedule read aloud"
+            >
+              <Ionicons
+                name={isSpeakingDailyBrief ? 'volume-high' : 'volume-medium-outline'}
+                size={isAccessibilityMode ? 20 : 17}
+                color={isSpeakingDailyBrief ? '#FFFFFF' : Theme.colors.primary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.headerActionBtn, isAccessibilityMode && styles.largeActionBtn]}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/medication-history');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="View Medication Adherence History"
+            >
+              <Ionicons
+                name="stats-chart"
+                size={isAccessibilityMode ? 20 : 17}
+                color={Theme.colors.primary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.headerActionBtn, isAccessibilityMode && styles.largeActionBtn]}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/settings');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Open Settings"
+            >
+              <Ionicons
+                name="settings-outline"
+                size={isAccessibilityMode ? 20 : 17}
+                color="#0F172A"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.spacer} />
+        {/* Adherence Hero Card */}
+        {medications.length > 0 && (
+          <View
+            style={[
+              styles.heroAdherenceCard,
+              isAccessibilityMode && styles.highContrastHeroCard,
+            ]}
+          >
+            <View style={styles.heroTopRow}>
+              <View>
+                <View style={styles.streakBadge}>
+                  <Ionicons name="flame" size={14} color="#F59E0B" />
+                  <Text style={styles.streakBadgeText}>7-Day Adherence Streak</Text>
+                </View>
+                <Text style={styles.heroTitle}>Today's Routine</Text>
+                <Text style={styles.heroSubtitle}>
+                  {takenCount} of {medications.length} doses taken
+                </Text>
+              </View>
 
-        {/* Grouped Timeline View Structure */}
-        {medications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="checkmark-done-circle" size={80} color={Theme.colors.outline} />
-            <Text style={styles.emptyStateTitle}>All Caught Up!</Text>
-            <Text style={styles.emptyStateText}>You have no medications scheduled for today.</Text>
-          </View>
-        ) : (
-          <View>
-            {/* MORNING (12:00 AM - 11:59 AM) */}
-            {medications.filter((m) => parseTimeToMinutes(m.time) < 720).length > 0 && (
-              <>
-                <TimelineHeader icon="sunny-outline" title="Morning" color="#F59E0B" />
-                {medications
-                  .filter((m) => parseTimeToMinutes(m.time) < 720)
-                  .map(renderMedicationCard)}
-              </>
-            )}
+              <View
+                style={[
+                  styles.percentPill,
+                  takenCount === medications.length && styles.percentPillCompleted,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.percentPillText,
+                    takenCount === medications.length && styles.percentPillTextCompleted,
+                  ]}
+                >
+                  {adherencePercent}%
+                </Text>
+              </View>
+            </View>
 
-            {/* AFTERNOON (12:00 PM - 4:59 PM) */}
-            {medications.filter(
-              (m) => parseTimeToMinutes(m.time) >= 720 && parseTimeToMinutes(m.time) < 1020
-            ).length > 0 && (
-                <>
-                  <TimelineHeader icon="partly-sunny-outline" title="Afternoon" color="#0D7377" />
-                  {medications
-                    .filter(
-                      (m) => parseTimeToMinutes(m.time) >= 720 && parseTimeToMinutes(m.time) < 1020
-                    )
-                    .map(renderMedicationCard)}
-                </>
-              )}
+            {/* Progress Bar */}
+            <View style={styles.progressBarTrack}>
+              <View
+                style={[
+                  styles.progressBarIndicator,
+                  {
+                    width: `${adherencePercent}%`,
+                    backgroundColor:
+                      takenCount === medications.length ? '#34D399' : '#46E4C1',
+                  },
+                ]}
+              />
+            </View>
 
-            {/* EVENING (5:00 PM - 8:59 PM) */}
-            {medications.filter(
-              (m) => parseTimeToMinutes(m.time) >= 1020 && parseTimeToMinutes(m.time) < 1260
-            ).length > 0 && (
-                <>
-                  <TimelineHeader icon="moon-outline" title="Evening" color="#6750A4" />
-                  {medications
-                    .filter(
-                      (m) => parseTimeToMinutes(m.time) >= 1020 && parseTimeToMinutes(m.time) < 1260
-                    )
-                    .map(renderMedicationCard)}
-                </>
-              )}
-
-            {/* NIGHT (9:00 PM - 11:59 PM) */}
-            {medications.filter((m) => parseTimeToMinutes(m.time) >= 1260).length > 0 && (
-              <>
-                <TimelineHeader icon="cloudy-night-outline" title="Night" color="#37474F" />
-                {medications
-                  .filter((m) => parseTimeToMinutes(m.time) >= 1260)
-                  .map(renderMedicationCard)}
-              </>
+            {takenCount === medications.length ? (
+              <View style={styles.heroAllDoneNotice}>
+                <Ionicons name="sparkles" size={16} color="#34D399" />
+                <Text style={styles.heroAllDoneText}>
+                  Outstanding! All scheduled doses completed for today.
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.heroRemainingNotice}>
+                {medications.length - takenCount}{' '}
+                {medications.length - takenCount === 1 ? 'dose' : 'doses'} remaining today
+              </Text>
             )}
           </View>
         )}
+
+        {/* Time-of-Day Quadrant Filter Tabs */}
+        {medications.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.slotsScroll}
+          >
+            <TouchableOpacity
+              style={[styles.slotTab, activeSlot === 'all' && styles.slotTabActive]}
+              onPress={() => {
+                triggerHaptic();
+                setActiveSlot('all');
+              }}
+            >
+              <Text style={[styles.slotTabText, activeSlot === 'all' && styles.slotTabTextActive]}>
+                All Doses ({slotCounts.all})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.slotTab, activeSlot === 'morning' && styles.slotTabActive]}
+              onPress={() => {
+                triggerHaptic();
+                setActiveSlot('morning');
+              }}
+            >
+              <Ionicons
+                name="sunny-outline"
+                size={14}
+                color={activeSlot === 'morning' ? '#FFFFFF' : '#D97706'}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={[
+                  styles.slotTabText,
+                  activeSlot === 'morning' && styles.slotTabTextActive,
+                ]}
+              >
+                Morning ({slotCounts.morning})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.slotTab, activeSlot === 'afternoon' && styles.slotTabActive]}
+              onPress={() => {
+                triggerHaptic();
+                setActiveSlot('afternoon');
+              }}
+            >
+              <Ionicons
+                name="partly-sunny-outline"
+                size={14}
+                color={activeSlot === 'afternoon' ? '#FFFFFF' : '#0284C7'}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={[
+                  styles.slotTabText,
+                  activeSlot === 'afternoon' && styles.slotTabTextActive,
+                ]}
+              >
+                Afternoon ({slotCounts.afternoon})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.slotTab, activeSlot === 'evening' && styles.slotTabActive]}
+              onPress={() => {
+                triggerHaptic();
+                setActiveSlot('evening');
+              }}
+            >
+              <Ionicons
+                name="moon-outline"
+                size={14}
+                color={activeSlot === 'evening' ? '#FFFFFF' : '#EA580C'}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={[
+                  styles.slotTabText,
+                  activeSlot === 'evening' && styles.slotTabTextActive,
+                ]}
+              >
+                Evening ({slotCounts.evening})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.slotTab, activeSlot === 'night' && styles.slotTabActive]}
+              onPress={() => {
+                triggerHaptic();
+                setActiveSlot('night');
+              }}
+            >
+              <Ionicons
+                name="cloudy-night-outline"
+                size={14}
+                color={activeSlot === 'night' ? '#FFFFFF' : '#7C3AED'}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={[
+                  styles.slotTabText,
+                  activeSlot === 'night' && styles.slotTabTextActive,
+                ]}
+              >
+                Night ({slotCounts.night})
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        {/* Medication Cards List */}
+        {filteredMedications.length === 0 ? (
+          <View
+            style={[
+              styles.emptyStateCard,
+              isAccessibilityMode && styles.highContrastMedCard,
+            ]}
+          >
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="checkmark-done-circle" size={44} color="#10B981" />
+            </View>
+            <Text style={styles.emptyStateTitle}>
+              {medications.length === 0
+                ? 'No Scheduled Doses'
+                : 'No Doses in This Time Slot'}
+            </Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {medications.length === 0
+                ? 'Tap the button below or scan your prescription to add medications.'
+                : 'Switch tabs above to view doses scheduled in other time slots.'}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.medsList}>
+            {filteredMedications.map(renderMedicationCard)}
+          </View>
+        )}
+
+        {/* Quick Health Actions Banner */}
+        <View style={styles.quickActionsContainer}>
+          <Text style={[styles.quickActionsTitle, isAccessibilityMode && styles.largeText]}>
+            Health Shortcuts
+          </Text>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={styles.quickActionTile}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/(tabs)/uploads');
+              }}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#CCFBF1' }]}>
+                <Ionicons name="camera" size={20} color="#0F766E" />
+              </View>
+              <Text style={styles.quickActionLabel}>Scan Rx Slip</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionTile}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/medication-history');
+              }}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="calendar" size={20} color="#0284C7" />
+              </View>
+              <Text style={styles.quickActionLabel}>Log History</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionTile}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/settings');
+              }}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="key" size={20} color="#B45309" />
+              </View>
+              <Text style={styles.quickActionLabel}>Doctor Link</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* Floating Add Button */}
+      {/* Floating Action Button for Manual Add */}
       <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setAddModalVisible(true)}
+        style={[styles.fabButton, isAccessibilityMode && styles.largeFabButton]}
+        onPress={() => {
+          triggerHaptic();
+          setAddModalVisible(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Add medication to schedule"
       >
-        <Ionicons name="add" size={32} color="#FFFFFF" />
+        <Ionicons name="add" size={isAccessibilityMode ? 36 : 30} color="#FFFFFF" />
       </TouchableOpacity>
 
-      {/* Add Medication Modal */}
+      {/* Manual Add Medication Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -653,73 +971,96 @@ export default function PatientDashboard() {
         onRequestClose={() => setAddModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Medication</Text>
+          <View
+            style={[
+              styles.modalContent,
+              isAccessibilityMode && styles.highContrastMedCard,
+            ]}
+          >
+            <View style={styles.modalHeaderIcon}>
+              <Ionicons name="medkit" size={28} color={Theme.colors.primary} />
+            </View>
 
-            <Text style={styles.inputLabel}>Medicine Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Metformin"
-              placeholderTextColor={Theme.colors.outline}
-              value={newMedName}
-              onChangeText={setNewMedName}
-            />
+            <Text style={[styles.modalTitle, isAccessibilityMode && styles.largeText]}>
+              Add Medication
+            </Text>
 
-            <Text style={styles.inputLabel}>Dosage</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 500mg (1 tablet)"
-              placeholderTextColor={Theme.colors.outline}
-              value={newMedDosage}
-              onChangeText={setNewMedDosage}
-            />
+            <View style={styles.inputBlock}>
+              <Text style={styles.inputLabel}>Medicine Name *</Text>
+              <TextInput
+                style={[styles.textInput, isAccessibilityMode && styles.largeTextInput]}
+                placeholder="e.g., Metformin"
+                placeholderTextColor="#94A3B8"
+                value={newMedName}
+                onChangeText={setNewMedName}
+              />
+            </View>
 
-            <Text style={styles.inputLabel}>Time</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 08:00 AM"
-              placeholderTextColor={Theme.colors.outline}
-              value={newMedTime}
-              onChangeText={setNewMedTime}
-            />
+            <View style={styles.inputBlock}>
+              <Text style={styles.inputLabel}>Dosage *</Text>
+              <TextInput
+                style={[styles.textInput, isAccessibilityMode && styles.largeTextInput]}
+                placeholder="e.g., 500mg (1 tablet)"
+                placeholderTextColor="#94A3B8"
+                value={newMedDosage}
+                onChangeText={setNewMedDosage}
+              />
+            </View>
 
-            <Text style={styles.inputLabel}>Instructions (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Take after food"
-              placeholderTextColor={Theme.colors.outline}
-              value={newMedWarning}
-              onChangeText={setNewMedWarning}
-            />
+            <View style={styles.inputBlock}>
+              <Text style={styles.inputLabel}>Scheduled Time *</Text>
+              <TextInput
+                style={[styles.textInput, isAccessibilityMode && styles.largeTextInput]}
+                placeholder="e.g., 08:00 AM"
+                placeholderTextColor="#94A3B8"
+                value={newMedTime}
+                onChangeText={setNewMedTime}
+              />
+            </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setAddModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+            <View style={styles.inputBlock}>
+              <Text style={styles.inputLabel}>Instructions (Optional)</Text>
+              <TextInput
+                style={[styles.textInput, isAccessibilityMode && styles.largeTextInput]}
+                placeholder="e.g., Take with food"
+                placeholderTextColor="#94A3B8"
+                value={newMedWarning}
+                onChangeText={setNewMedWarning}
+              />
+            </View>
 
-              <TouchableOpacity
-                style={[styles.modalButton, styles.linkButton]}
+            <View style={styles.modalButtonsGroup}>
+              <SeniorButton
+                title="Save Medication"
                 onPress={handleAddMedication}
-              >
-                <Text style={styles.linkButtonText}>Save Med</Text>
-              </TouchableOpacity>
+                variant="primary"
+                size="normal"
+                icon={<Ionicons name="save" size={20} color="#FFFFFF" />}
+              />
+              <SeniorButton
+                title="Cancel"
+                onPress={() => setAddModalVisible(false)}
+                variant="outline"
+                size="normal"
+              />
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Undo Toast Pop-up */}
+      {/* Undo Toast Notification */}
       {undoToastVisible && (
         <View style={styles.undoToast}>
-          <Text style={styles.undoToastText}>Marked as Taken</Text>
+          <View style={styles.undoToastLeft}>
+            <Ionicons name="checkmark-circle" size={20} color="#34D399" />
+            <Text style={styles.undoToastText}>Marked as Taken</Text>
+          </View>
           <TouchableOpacity
             onPress={handleUndoTaken}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.undoBtn}
           >
-            <Text style={styles.undoButtonText}>UNDO</Text>
+            <Text style={styles.undoBtnText}>UNDO</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -730,331 +1071,624 @@ export default function PatientDashboard() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: '#F8FAFC',
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+  },
+  loadingLabel: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 15,
+    color: '#64748B',
+    marginTop: 12,
   },
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.surface,
+    backgroundColor: '#F8FAFC',
   },
-  dashboardHeader: {
+  // Header
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerGreetingCol: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  greetingSubtext: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11.5,
+    color: '#0D9488',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  greetingTitle: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 20,
+    color: '#0F172A',
+  },
+  largeGreetingTitle: {
+    fontSize: 24,
+  },
+  headerIconsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  headerActionBtnActive: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  largeActionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  // Hero Card
+  heroAdherenceCard: {
+    backgroundColor: '#006874',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    ...Theme.shadows.cardElevated,
+  },
+  highContrastHeroCard: {
+    borderWidth: 2,
+    borderColor: '#0F172A',
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 4,
+    marginBottom: 6,
+    alignSelf: 'flex-start',
+  },
+  streakBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10.5,
+    color: '#FEF3C7',
+  },
+  heroTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 15,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  heroSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#CCFBF1',
+  },
+  percentPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  percentPillCompleted: {
+    backgroundColor: '#10B981',
+  },
+  percentPillText: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 13.5,
+    color: '#FFFFFF',
+  },
+  percentPillTextCompleted: {
+    color: '#FFFFFF',
+  },
+  progressBarTrack: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarIndicator: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  heroAllDoneNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  heroAllDoneText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#A7F3D0',
+  },
+  heroRemainingNotice: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11.5,
+    color: '#CCFBF1',
+  },
+  // Quadrant Slots Scroll
+  slotsScroll: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+    paddingVertical: 2,
+  },
+  slotTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  slotTabActive: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
+  },
+  slotTabText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: '#64748B',
+  },
+  slotTabTextActive: {
+    color: '#FFFFFF',
+    fontFamily: 'PublicSans-Bold',
+  },
+  // Med Cards
+  medsList: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  medCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  highContrastMedCard: {
+    borderWidth: 2,
+    borderColor: '#0F172A',
+  },
+  overdueMedCard: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FFFDFD',
+  },
+  takenMedCard: {
+    borderColor: '#D1FAE5',
+    backgroundColor: '#F0FDF4',
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
-    paddingRight: 50, // Space to prevent overlap with floating settings gear
   },
-  headerTitleContainer: {
+  badgeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  statusBadgePending: {
+    backgroundColor: '#E0F2FE',
+  },
+  statusBadgeTaken: {
+    backgroundColor: '#DCFCE7',
+  },
+  statusBadgeOverdue: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 9.5,
+    letterSpacing: 0.3,
+  },
+  statusTextPending: {
+    color: Theme.colors.primary,
+  },
+  statusTextTaken: {
+    color: '#059669',
+  },
+  statusTextOverdue: {
+    color: '#DC2626',
+  },
+  largeStatusText: {
+    fontSize: 11,
+  },
+  stockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#CCFBF1',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  stockBadgeLow: {
+    backgroundColor: '#FEE2E2',
+  },
+  stockText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10,
+    color: '#0F766E',
+  },
+  stockTextLow: {
+    color: '#DC2626',
+  },
+  cardHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardAudioBtn: {
+    padding: 3,
+  },
+  cardMoreBtn: {
+    padding: 3,
+  },
+  // Card Body
+  cardBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  pillIconPlate: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#E6F4F4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  pillIconPlateTaken: {
+    backgroundColor: '#DCFCE7',
+  },
+  medTextCol: {
     flex: 1,
-    paddingRight: 12,
-  },
-  headerText: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
-    color: Theme.colors.onSurface,
-    marginBottom: 4,
-  },
-  largeHeaderText: {
-    fontSize: 36,
-  },
-  subHeaderText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
-    color: Theme.colors.onSurfaceVariant,
-  },
-  largeSubHeaderText: {
-    fontSize: 18,
-  },
-  headerActions: {},
-  settingsGear: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    zIndex: 10,
-  },
-  spacer: {
-    height: 12,
-  },
-  timelineHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-    marginLeft: 4,
-    gap: 8,
-  },
-  timelineHeaderText: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 18,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateTitle: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 22,
-    color: Theme.colors.onSurface,
-    marginTop: 12,
-  },
-  emptyStateText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
-    color: Theme.colors.onSurfaceVariant,
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: Theme.colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  highContrastCard: {
-    borderWidth: 3,
-    borderColor: Theme.colors.primary,
-  },
-  overdueCard: {
-    borderWidth: 2,
-    borderColor: '#D32F2F',
-    backgroundColor: '#FFEBEE',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  medImageContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  medIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Theme.colors.primaryContainer,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  audioBtn: {
-    backgroundColor: Theme.colors.surfaceContainer,
-    padding: 10,
-    borderRadius: 20,
-  },
-  largeAudioBtn: {
-    padding: 14,
-    borderRadius: 24,
-  },
-  alertTitle: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 14,
-    color: Theme.colors.secondaryContainer,
-  },
-  largeAlertTitle: {
-    fontSize: 16,
-  },
-  overdueAlertTitle: {
-    color: '#D32F2F',
+    paddingRight: 6,
   },
   medicineName: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 28,
-    color: Theme.colors.onSurface,
-    marginBottom: 4,
+    fontSize: 14.5,
+    color: '#0F172A',
+    marginBottom: 2,
   },
-  largeText: {
-    fontSize: 34,
-    lineHeight: 42,
-  },
-  dosageText: {
-    fontFamily: 'PublicSans-Regular',
+  largeMedicineName: {
     fontSize: 18,
-    color: Theme.colors.onSurfaceVariant,
-    marginBottom: 12,
   },
-  largeDosageText: {
-    fontSize: 22,
-    lineHeight: 28,
+  medicineDosage: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 12,
+    color: '#64748B',
   },
-  timeDisplay: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
-    color: Theme.colors.primary,
-    marginBottom: 16,
+  largeMedicineDosage: {
+    fontSize: 14,
   },
-  largeTimeDisplay: {
-    fontSize: 38,
-  },
-  actionRow: {
+  instructionChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 3,
+    marginTop: 3,
   },
-  mainActionButton: {
-    flex: 1,
+  instructionText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: '#D97706',
   },
-  button: {
-    height: 56,
+  timePlate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  timeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#334155',
+  },
+  largeTimeText: {
+    fontSize: 13.5,
+  },
+  // Card Bottom Actions
+  takenConfirmationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 5,
+  },
+  takenConfirmationText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: '#059669',
+  },
+  skippedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 5,
+  },
+  skippedBannerText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 12,
+    color: '#64748B',
+  },
+  actionControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cameraProofBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
   },
-  largeButton: {
-    height: 64,
+  largeCameraBtn: {
+    width: 44,
+    height: 44,
   },
-  successButton: {
-    backgroundColor: Theme.colors.success,
-  },
-  snoozeButton: {
-    width: 56,
-    backgroundColor: Theme.colors.surfaceContainerHigh,
-  },
-  largeSnoozeButton: {
-    width: 64,
-    height: 64,
-  },
-  disabledButton: {
-    backgroundColor: Theme.colors.surfaceContainerLow,
-    opacity: 0.5,
-  },
-  takenButton: {
-    width: '100%',
-    backgroundColor: Theme.colors.surfaceContainer,
-  },
-  skippedButton: {
-    width: '100%',
-    backgroundColor: Theme.colors.surfaceContainer,
-  },
-  buttonText: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
-    color: Theme.colors.onPrimary,
-  },
-  largeButtonText: {
-    fontSize: 19,
-  },
-  skippedText: {
-    color: Theme.colors.onSurfaceVariant,
-  },
-  undoToast: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    backgroundColor: Theme.colors.onSurface,
+  snoozeBtn: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    gap: 3,
+    paddingHorizontal: 8,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+  },
+  largeSnoozeBtn: {
+    height: 44,
+    paddingHorizontal: 12,
+  },
+  snoozeBtnLabel: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#334155',
+  },
+  disabledBtn: {
+    opacity: 0.4,
+  },
+  // Empty State
+  emptyStateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginVertical: 10,
+  },
+  emptyIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyStateTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 15,
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  emptyStateSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  // Quick Actions
+  quickActionsContainer: {
+    marginTop: 6,
+  },
+  quickActionsTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickActionTile: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
   },
-  undoToastText: {
-    fontFamily: 'PublicSans-Medium',
-    fontSize: 16,
-    color: Theme.colors.surface,
+  quickActionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  undoButtonText: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 16,
-    color: Theme.colors.secondary,
+  quickActionLabel: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10.5,
+    color: '#334155',
   },
-  fab: {
+  // FAB
+  fabButton: {
     position: 'absolute',
-    bottom: 30,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: 18,
+    right: 16,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: Theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Theme.shadows.cardElevated,
+    zIndex: 20,
   },
+  largeFabButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+  },
+  // Modal
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 16,
   },
   modalContent: {
-    width: '85%',
-    backgroundColor: Theme.colors.surface,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 24,
+    padding: 18,
+    ...Theme.shadows.cardElevated,
+  },
+  modalHeaderIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#CCFBF1',
+    justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 10,
   },
   modalTitle: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 22,
-    color: Theme.colors.onSurface,
-    marginBottom: 16,
+    fontSize: 17,
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  inputBlock: {
+    marginBottom: 10,
   },
   inputLabel: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 14,
-    color: Theme.colors.onSurfaceVariant,
-    marginBottom: 4,
-    alignSelf: 'flex-start',
+    fontSize: 12,
+    color: '#475569',
+    marginBottom: 3,
   },
-  input: {
-    width: '100%',
-    borderWidth: 2,
-    borderColor: Theme.colors.outline,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     fontFamily: 'PublicSans-Regular',
-    marginBottom: 16,
-    color: Theme.colors.onSurface,
-    backgroundColor: Theme.colors.surfaceContainerLowest,
+    fontSize: 13.5,
+    color: '#0F172A',
   },
-  modalActions: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 12,
+  largeTextInput: {
+    fontSize: 15,
+    paddingVertical: 10,
+  },
+  modalButtonsGroup: {
     marginTop: 8,
+    gap: 6,
   },
-  modalButton: {
-    flex: 1,
-    padding: 16,
+  // Undo Toast
+  undoToast: {
+    position: 'absolute',
+    bottom: 72,
+    left: 16,
+    right: 16,
+    backgroundColor: '#0F172A',
     borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    ...Theme.shadows.cardElevated,
+    zIndex: 30,
   },
-  cancelButton: {
-    backgroundColor: Theme.colors.surfaceContainer,
+  undoToastLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  cancelButtonText: {
+  undoToastText: {
     fontFamily: 'PublicSans-Bold',
-    color: Theme.colors.onSurfaceVariant,
+    fontSize: 12.5,
+    color: '#FFFFFF',
   },
-  linkButton: {
-    backgroundColor: Theme.colors.primary,
+  undoBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
   },
-  linkButtonText: {
-    fontFamily: 'PublicSans-Bold',
-    color: Theme.colors.onPrimary,
+  undoBtnText: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 12.5,
+    color: '#46E4C1',
+  },
+  // Accessibility
+  largeText: {
+    fontSize: 14.5,
+  },
+  largeButtonText: {
+    fontSize: 13.5,
   },
 });

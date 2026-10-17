@@ -5,11 +5,24 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, LogBox, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AccessibilityProvider } from '../context/AccessibilityContext';
 import { AuthProvider, useAuth } from '../context/authcontext';
+import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { MedSyncLogo } from '../components/MedSyncLogo';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
+
+LogBox.ignoreLogs([
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  'expo-notifications: Android Push notifications',
+  'Push notifications (remote notifications) are unavailable in Expo Go',
+  'ExpoNotificationChannelManager.setNotificationChannelAsync',
+  'NotificationsChannelsProvider',
+  'null cannot be cast to non-null type expo.modules.notifications',
+]);
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -29,12 +42,12 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
 
   const isReady = fontsLoaded && !loading;
 
-  // Hide splash screen when fonts & auth are ready
+  // Hide native OS splash screen once fonts load to transition into AnimatedSplashScreen
   useEffect(() => {
-    if (isReady) {
-      SplashScreen.hideAsync();
+    if (fontsLoaded) {
+      SplashScreen.hideAsync().catch(() => {});
     }
-  }, [isReady]);
+  }, [fontsLoaded]);
 
   // Handle Notification Action Buttons (Mark Taken / Snooze)
   useEffect(() => {
@@ -43,7 +56,10 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
       {
         identifier: 'MARK_TAKEN',
         buttonTitle: 'I Took It',
-        options: { opensAppToForeground: false }, // Keeps app in background
+        options: {
+          opensAppToForeground: false, // Keeps app in background
+          isAuthenticationRequired: true, // Requires device unlock before logging intake
+        },
       },
       {
         identifier: 'SNOOZE',
@@ -52,11 +68,15 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
       },
     ];
 
-    Notifications.setNotificationCategoryAsync('medication-alerts', actions);
+    try {
+      Notifications.setNotificationCategoryAsync('medication-alerts', actions).catch(() => {});
+    } catch {}
 
     // 2. Listen for notification button interactions
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      async (response) => {
+    let subscription: Notifications.Subscription | null = null;
+    try {
+      subscription = Notifications.addNotificationResponseReceivedListener(
+        async (response) => {
         const actionId = response.actionIdentifier;
         const medId = response.notification.request.content.data?.medicationId;
 
@@ -72,32 +92,41 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
           } = await supabase.auth.getSession();
           if (!currentSession?.user?.id) return;
 
-          // Fetch current medication data
-          const { data: med } = await supabase
-            .from('medications')
-            .select('time, pills_remaining')
-            .eq('id', medId)
-            .single();
+          // Attempt atomic take_dose RPC to avoid race conditions with app taps
+          const { error: rpcError } = await supabase.rpc('take_dose', {
+            p_medication_id: medId,
+            p_scheduled_time: '00:00',
+          });
 
-          // Log daily intake
-          await supabase.from('medication_logs').upsert(
-            {
-              medication_id: medId,
-              patient_id: currentSession.user.id,
-              log_date: today,
-              scheduled_time: med?.time || '00:00',
-              status: 'taken',
-            },
-            { onConflict: 'medication_id, log_date' }
-          );
-
-          // Decrement pill counter
-          if (med) {
-            const newPills = Math.max(0, (med.pills_remaining ?? 30) - 1);
-            await supabase
+          if (rpcError) {
+            console.warn('take_dose RPC failed or not deployed, using client fallback:', rpcError);
+            // Fetch current medication data
+            const { data: med } = await supabase
               .from('medications')
-              .update({ pills_remaining: newPills })
-              .eq('id', medId);
+              .select('time, pills_remaining')
+              .eq('id', medId)
+              .single();
+
+            // Log daily intake
+            await supabase.from('medication_logs').upsert(
+              {
+                medication_id: medId,
+                patient_id: currentSession.user.id,
+                log_date: today,
+                scheduled_time: med?.time || '00:00',
+                status: 'taken',
+              },
+              { onConflict: 'medication_id, log_date' }
+            );
+
+            // Decrement pill counter
+            if (med) {
+              const newPills = Math.max(0, (med.pills_remaining ?? 30) - 1);
+              await supabase
+                .from('medications')
+                .update({ pills_remaining: newPills })
+                .eq('id', medId);
+            }
           }
 
           // Dismiss notification banner
@@ -130,10 +159,12 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
             response.notification.request.identifier
           );
         }
-      }
-    );
+      });
+    } catch {}
 
-    return () => subscription.remove();
+    return () => {
+      subscription?.remove?.();
+    };
   }, []);
 
   // Auth routing gate
@@ -160,23 +191,8 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
     }
   }, [isReady, session, profile, segments]);
 
-  if (!isReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: Theme.colors.surface,
-        }}
-      >
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
-      </View>
-    );
-  }
-
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: Theme.colors.surface }}>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -188,9 +204,13 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="patient-directory" options={{ headerShown: false }} />
         <Stack.Screen name="review-details" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
+        <Stack.Screen name="doctor-settings" options={{ headerShown: false }} />
+        <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </>
+      <AnimatedSplashScreen isReady={isReady} />
+    </View>
   );
 }
 
@@ -203,10 +223,14 @@ export default function Layout() {
   });
 
   return (
-    <AccessibilityProvider>
-      <AuthProvider>
-        <RootLayoutNav fontsLoaded={fontsLoaded} />
-      </AuthProvider>
-    </AccessibilityProvider>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <AccessibilityProvider>
+          <AuthProvider>
+            <RootLayoutNav fontsLoaded={fontsLoaded} />
+          </AuthProvider>
+        </AccessibilityProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

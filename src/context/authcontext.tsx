@@ -1,40 +1,47 @@
-// src/context/AuthContext.tsx
+// src/context/authcontext.tsx
 import { Session, User } from '@supabase/supabase-js';
 import * as Device from 'expo-device';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { authService } from '../services/authService';
+import { UserProfile } from '../types/auth';
+import { handleAppError } from '../utils/errorHandler';
 
-type Profile = {
-  id: string;
-  role: 'patient' | 'caregiver' | 'doctor' | null;
-  full_name: string | null;
-  alerts_enabled: boolean | null;
-  push_token?: string | null;
-};
-
-type AuthContextType = {
+export interface AuthContextType {
   session: Session | null;
-  profile: Profile | null;
+  profile: UserProfile | null;
   loading: boolean;
-};
+  refreshProfile: () => Promise<void>;
+  signOut: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   profile: null,
   loading: true,
+  refreshProfile: async () => {},
+  signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Function to register for push notifications and save token
   const registerForPushNotifications = async (userId: string) => {
     if (!Device.isDevice) {
-      console.log('Must use physical device for Push Notifications');
+      return;
+    }
+
+    // Expo Go on Android does not support remote push notifications since SDK 53
+    const isExpoGo =
+      Constants.appOwnership === 'expo' ||
+      Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+    if (isExpoGo) {
       return;
     }
 
@@ -48,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (finalStatus !== 'granted') {
-        console.log('Push notification permissions not granted!');
         return;
       }
 
@@ -59,43 +65,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ).data;
 
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
-        });
+        try {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF231F7C',
+          });
+        } catch {
+          // Channel creation unsupported
+        }
       }
 
-      // Save token to Supabase profile
-      await supabase
-        .from('profiles')
-        .update({ push_token: token })
-        .eq('id', userId);
+      try {
+        await supabase
+          .from('user_push_tokens')
+          .upsert({ user_id: userId, push_token: token, updated_at: new Date().toISOString() });
+      } catch {}
 
+      try {
+        await supabase
+          .from('profiles')
+          .update({ push_token: token })
+          .eq('id', userId);
+      } catch {}
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
+      // Gracefully silent in environments without push support
+      console.warn('[authcontext] Push registration unavailable in current client environment');
     }
   };
 
+  const loadProfile = async (userId: string) => {
+    const res = await authService.fetchProfile(userId);
+    if (res.success && res.data) {
+      setProfile(res.data);
+      registerForPushNotifications(res.data.id);
+    } else {
+      setProfile(null);
+    }
+    setLoading(false);
+  };
+
+  const refreshProfile = async () => {
+    if (session?.user?.id) {
+      await loadProfile(session.user.id);
+    }
+  };
+
+  const signOut = async () => {
+    setLoading(true);
+    await authService.signOut();
+    setSession(null);
+    setProfile(null);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user);
+      if (session?.user?.id) {
+        loadProfile(session.user.id);
       } else {
         setLoading(false);
       }
     });
 
-    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
-      if (newSession?.user) {
-        fetchProfile(newSession.user);
+      if (newSession?.user?.id) {
+        loadProfile(newSession.user.id);
       } else {
         setProfile(null);
         setLoading(false);
@@ -105,32 +145,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch the user's profile from the 'profiles' table
-  const fetchProfile = async (user: User) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, role, full_name, alerts_enabled, push_token')
-      .eq('id', user.id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        setProfile(null);
-      } else {
-        console.error('Error fetching profile:', error);
-      }
-    } else if (data) {
-      setProfile(data as Profile);
-      registerForPushNotifications(data.id);
-    }
-    setLoading(false);
-  };
-
   return (
-    <AuthContext.Provider value={{ session, profile, loading }}>
+    <AuthContext.Provider value={{ session, profile, loading, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
+export default AuthContext;

@@ -1,4 +1,3 @@
-// src/app/settings.tsx
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import { router } from 'expo-router';
@@ -6,6 +5,7 @@ import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   Linking,
   Platform,
   ScrollView,
@@ -15,12 +15,35 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Application from 'expo-application';
+import { MedSyncLogo } from '../components/MedSyncLogo';
+import { SeniorButton } from '../components/SeniorButton';
+import { ScreenHeader } from '../components/ScreenHeader';
+
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+const generateRandomPairingCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 export default function SettingsScreen() {
   const { profile, session } = useAuth();
@@ -44,19 +67,25 @@ export default function SettingsScreen() {
     }
   }, [profile?.alerts_enabled]);
 
-  // Fetch existing pairing code on mount if available
+  // Fetch existing pairing code on mount if available and not expired (15m window)
   useEffect(() => {
     const fetchExistingCode = async () => {
       if (!session?.user?.id || profile?.role !== 'patient') return;
 
       const { data } = await supabase
         .from('patient_caregivers')
-        .select('pairing_code')
+        .select('pairing_code, created_at, caregiver_id')
         .eq('patient_id', session.user.id)
+        .is('caregiver_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (data?.pairing_code) {
-        setPairingCode(data.pairing_code);
+      if (data?.pairing_code && data?.created_at) {
+        const isExpired = Date.now() - new Date(data.created_at).getTime() > 15 * 60 * 1000;
+        if (!isExpired) {
+          setPairingCode(data.pairing_code);
+        }
       }
     };
 
@@ -68,24 +97,32 @@ export default function SettingsScreen() {
     triggerHaptic();
     setLoadingCode(true);
 
+    // Check for an existing unexpired code
     const { data: existingConnection } = await supabase
       .from('patient_caregivers')
-      .select('pairing_code')
+      .select('pairing_code, created_at, caregiver_id')
       .eq('patient_id', session.user.id)
+      .is('caregiver_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (existingConnection?.pairing_code) {
-      setPairingCode(existingConnection.pairing_code);
-      setLoadingCode(false);
-      return;
+    if (existingConnection?.pairing_code && existingConnection?.created_at) {
+      const isExpired = Date.now() - new Date(existingConnection.created_at).getTime() > 15 * 60 * 1000;
+      if (!isExpired) {
+        setPairingCode(existingConnection.pairing_code);
+        setLoadingCode(false);
+        return;
+      }
     }
 
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // 8-character random pairing code
+    const newCode = generateRandomPairingCode();
 
     const { error } = await supabase.from('patient_caregivers').insert({
       patient_id: session.user.id,
       pairing_code: newCode,
-      status: 'active',
+      status: 'pending',
     });
 
     if (!error) {
@@ -107,6 +144,7 @@ export default function SettingsScreen() {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
 
       // 2. Fetch logs and medications (include medication_id so names can be mapped)
       const { data: logs, error: logsError } = await supabase
@@ -125,7 +163,36 @@ export default function SettingsScreen() {
 
       if (medsError) throw medsError;
 
-      // 3. Format HTML for the PDF
+      // 3. Format HTML for the PDF with strict character escaping
+      const safePatientName = escapeHtml(profile?.full_name || 'Patient');
+      const safeDateRange = `${escapeHtml(thirtyDaysAgoStr)} to ${escapeHtml(todayStr)}`;
+      const safeGeneratedDate = escapeHtml(new Date().toLocaleDateString());
+
+      const tableRows = logs && logs.length > 0
+        ? logs
+            .map((log) => {
+              const med = meds?.find((m) => m.id === log.medication_id);
+              const safeLogDate = escapeHtml(log.log_date);
+              const safeTime = escapeHtml(log.scheduled_time || '-');
+              const safeMedName = escapeHtml(med?.medicine_name || 'Unknown Med');
+              const rawStatus = (log.status || 'PENDING').toUpperCase();
+              const safeStatus = escapeHtml(rawStatus);
+              const safeNotes = escapeHtml(log.notes || '-');
+              const statusClass = escapeHtml(log.status || 'pending');
+
+              return `
+                <tr>
+                  <td>${safeLogDate}</td>
+                  <td>${safeTime}</td>
+                  <td><strong>${safeMedName}</strong></td>
+                  <td class="${statusClass}">${safeStatus}</td>
+                  <td>${safeNotes}</td>
+                </tr>
+              `;
+            })
+            .join('')
+        : `<tr><td colspan="5" style="text-align: center; color: #79747e;">No logs recorded in the last 30 days.</td></tr>`;
+
       const html = `
         <!DOCTYPE html>
         <html>
@@ -149,9 +216,9 @@ export default function SettingsScreen() {
           <body>
             <h1>MedSync Health Report</h1>
             <div class="meta">
-              <p><strong>Patient:</strong> ${profile?.full_name || 'Patient'}</p>
-              <p><strong>Report Window:</strong> Last 30 Days (${thirtyDaysAgoStr} to ${new Date().toISOString().split('T')[0]})</p>
-              <p><strong>Generated On:</strong> ${new Date().toLocaleDateString()}</p>
+              <p><strong>Patient:</strong> ${safePatientName}</p>
+              <p><strong>Report Window:</strong> Last 30 Days (${safeDateRange})</p>
+              <p><strong>Generated On:</strong> ${safeGeneratedDate}</p>
             </div>
             
             <table>
@@ -165,23 +232,7 @@ export default function SettingsScreen() {
                 </tr>
               </thead>
               <tbody>
-                ${logs && logs.length > 0
-          ? logs
-            .map((log) => {
-              const med = meds?.find((m) => m.id === log.medication_id);
-              return `
-                            <tr>
-                              <td>${log.log_date}</td>
-                              <td>${log.scheduled_time || '-'}</td>
-                              <td><strong>${med?.medicine_name || 'Unknown Med'}</strong></td>
-                              <td class="${log.status}">${(log.status || 'PENDING').toUpperCase()}</td>
-                              <td>${log.notes || '-'}</td>
-                            </tr>
-                          `;
-            })
-            .join('')
-          : `<tr><td colspan="5" style="text-align: center; color: #79747e;">No logs recorded in the last 30 days.</td></tr>`
-        }
+                ${tableRows}
               </tbody>
             </table>
           </body>
@@ -223,12 +274,25 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     triggerHaptic();
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Error', 'Failed to log out.');
-    } else {
-      router.replace('/login');
-    }
+    Alert.alert(
+      'Log Out of MedSync?',
+      'Are you sure you want to sign out? You will need your email and password to log back in.',
+      [
+        { text: 'Stay Logged In', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              Alert.alert('Error', 'Failed to log out.');
+            } else {
+              router.replace('/login');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openAlarmSoundSettings = async () => {
@@ -263,19 +327,45 @@ export default function SettingsScreen() {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={28} color={Theme.colors.onSurface} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
+  const openExactAlarmSettings = async () => {
+    triggerHaptic();
+    if (Platform.OS === 'android') {
+      try {
+        await IntentLauncher.startActivityAsync(
+          'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+          {
+            data: `package:${Application.applicationId}`,
+          }
+        );
+      } catch (e) {
+        Alert.alert(
+          'Exact Alarm Settings',
+          'To ensure medication alarms fire precisely on time, enable "Alarms & Reminders" for MedSync in your device settings.',
+          [
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+      }
+    } else {
+      Linking.openSettings();
+    }
+  };
 
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+  const isDoctor = profile?.role === 'doctor' || profile?.is_verified_doctor === true;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScreenHeader
+        title="Settings"
+        subtitle={isDoctor ? 'Clinical & physician preferences' : 'Health & device preferences'}
+        fallbackRoute={isDoctor ? '/(tabs)/caregiver-dashboard' : '/(tabs)/patient-dashboard'}
+      />
+
+      <ScrollView contentContainerStyle={{ padding: 14 }}>
         {/* Profile Section */}
         <View style={styles.profileCard}>
-          <Ionicons name="person-circle" size={64} color={Theme.colors.primary} />
+          <Ionicons name="person-circle" size={48} color={Theme.colors.primary} />
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile?.full_name || 'Guest User'}</Text>
             <Text style={styles.profileRole}>
@@ -286,18 +376,49 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Doctor Clinical Settings Banner */}
+        {isDoctor && (
+          <TouchableOpacity
+            style={styles.doctorBanner}
+            onPress={() => {
+              triggerHaptic();
+              router.push('/doctor-settings');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Open Doctor Settings"
+          >
+            <View style={styles.doctorBannerLeft}>
+              <View style={styles.doctorBannerIcon}>
+                <Ionicons name="medical" size={24} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <Text style={styles.doctorBannerTitle}>Doctor Clinical Settings</Text>
+                  <View style={styles.doctorBadge}>
+                    <Text style={styles.doctorBadgeText}>Verified MD</Text>
+                  </View>
+                </View>
+                <Text style={styles.doctorBannerSubtitle}>
+                  Practice roster, prescription review alerts & clinical credentials
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color={Theme.colors.primary} />
+          </TouchableOpacity>
+        )}
+
         {/* Export Health Report Button (Patients Only) */}
         {profile?.role === 'patient' && (
-          <TouchableOpacity
-            style={styles.exportButton}
-            onPress={exportHealthReport}
-            disabled={generatingPdf}
-          >
-            <Ionicons name="document-text-outline" size={24} color={Theme.colors.onPrimary} />
-            <Text style={styles.exportButtonText}>
-              {generatingPdf ? 'Generating Report...' : 'Export 30-Day Health Report'}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ marginBottom: 18 }}>
+            <SeniorButton
+              title={generatingPdf ? 'Generating Report...' : 'Export 30-Day Health Report'}
+              onPress={exportHealthReport}
+              loading={generatingPdf}
+              variant="outline"
+              size="normal"
+              icon={<Ionicons name="document-text-outline" size={22} color={Theme.colors.primary} />}
+            />
+          </View>
         )}
 
         {/* Caregiver Pairing Code Section */}
@@ -313,15 +434,14 @@ export default function SettingsScreen() {
                 <Text style={styles.codeText}>{pairingCode}</Text>
               </View>
             ) : (
-              <TouchableOpacity
-                style={styles.generateButton}
+              <SeniorButton
+                title={loadingCode ? 'Generating...' : 'Generate 8-Digit Pairing Code'}
                 onPress={generatePairingCode}
-                disabled={loadingCode}
-              >
-                <Text style={styles.generateButtonText}>
-                  {loadingCode ? 'Generating...' : 'Generate Pairing Code'}
-                </Text>
-              </TouchableOpacity>
+                loading={loadingCode}
+                variant="primary"
+                size="normal"
+                icon={<Ionicons name="key-outline" size={20} color="#FFFFFF" />}
+              />
             )}
           </View>
         )}
@@ -329,8 +449,8 @@ export default function SettingsScreen() {
         {/* Preferences Section */}
         <Text style={styles.sectionTitle}>Preferences</Text>
 
-        {/* Mute Alerts Toggle (Caregivers Only) */}
-        {profile?.role === 'caregiver' && (
+        {/* Mute Alerts Toggle (Caregivers & Doctors) */}
+        {(profile?.role === 'caregiver' || isDoctor) && (
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Ionicons name="notifications-outline" size={24} color={Theme.colors.onSurfaceVariant} />
@@ -388,8 +508,59 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
         </TouchableOpacity>
 
+        {Platform.OS === 'android' && (
+          <TouchableOpacity style={styles.settingRow} onPress={openExactAlarmSettings}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="time-outline" size={24} color={Theme.colors.onSurfaceVariant} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingTitle}>Exact Alarms (Android 14+)</Text>
+                <Text style={styles.settingSubtitle}>Permit exact timing even in low battery mode</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        )}
+
+        {/* Privacy & Health Data Section */}
+        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Privacy & Security</Text>
+
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => {
+            triggerHaptic();
+            router.push('/privacy-policy' as any);
+          }}
+        >
+          <View style={styles.settingInfo}>
+            <Ionicons name="shield-checkmark-outline" size={24} color={Theme.colors.primary} />
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>Data Privacy & Consent</Text>
+              <Text style={styles.settingSubtitle}>Review AI processing & health privacy</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
+        </TouchableOpacity>
+
         {/* Account Section */}
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Account</Text>
+
+        {/* Exit Application */}
+        <TouchableOpacity
+          style={styles.settingRow}
+          onPress={() => {
+            triggerHaptic();
+            Alert.alert('Exit MedSync', 'Are you sure you want to close MedSync?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
+            ]);
+          }}
+        >
+          <View style={styles.settingInfo}>
+            <Ionicons name="exit-outline" size={24} color={Theme.colors.primary} />
+            <Text style={[styles.settingText, { color: Theme.colors.onSurface }]}>Exit MedSync</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color={Theme.colors.outline} />
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
           <View style={styles.settingInfo}>
@@ -398,8 +569,56 @@ export default function SettingsScreen() {
           </View>
           <Ionicons name="chevron-forward" size={24} color={Theme.colors.outline} />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.settingRow, { borderBottomWidth: 0 }]}
+          onPress={() => {
+            triggerHaptic();
+            Alert.alert(
+              'Delete Account & Data',
+              'Are you sure you want to delete your account? All medication logs, active schedules, and caregiver links will be deleted. This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete Everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      if (session?.user?.id) {
+                        await supabase.from('medication_logs').delete().eq('patient_id', session.user.id);
+                        await supabase.from('medications').delete().eq('patient_id', session.user.id);
+                        await supabase.from('patient_caregivers').delete().or(`patient_id.eq.${session.user.id},caregiver_id.eq.${session.user.id}`);
+                        await supabase.from('profiles').delete().eq('id', session.user.id);
+                      }
+                      await supabase.auth.signOut();
+                      router.replace('/login');
+                    } catch (err) {
+                      console.error('Account deletion error:', err);
+                      Alert.alert('Error', 'Failed to delete account. Please try again.');
+                    }
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <View style={styles.settingInfo}>
+            <Ionicons name="trash-outline" size={24} color={Theme.colors.error} />
+            <View style={styles.settingTextContainer}>
+              <Text style={[styles.settingTitle, { color: Theme.colors.error }]}>Delete Account & Data</Text>
+              <Text style={styles.settingSubtitle}>Permanently erase all health records</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Branded Vector Logo App Footer */}
+        <View style={styles.appFooter}>
+          <MedSyncLogo size={48} variant="horizontal" />
+          <Text style={styles.appVersionText}>Version 1.0.0 (Build 57)</Text>
+          <Text style={styles.appMissionText}>Accessible & Secure Healthcare Companion</Text>
+        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -412,134 +631,205 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.outlineVariant,
   },
   backBtn: {
-    padding: 8,
-    marginLeft: -8,
+    padding: 6,
+    marginRight: 8,
   },
   headerTitle: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 22,
+    fontSize: 20,
     color: Theme.colors.onSurface,
-    marginLeft: 8,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.colors.surfaceContainerLow,
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+  doctorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#86EFAC',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+    ...Theme.shadows.level1,
+  },
+  doctorBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 8,
+  },
+  doctorBannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  doctorBannerTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: Theme.colors.onSurface,
+  },
+  doctorBannerSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: Theme.colors.onSurfaceVariant,
+    lineHeight: 15,
+  },
+  doctorBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  doctorBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 9.5,
+    color: '#15803D',
   },
   profileInfo: {
-    marginLeft: 16,
+    marginLeft: 12,
   },
   profileName: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 20,
+    fontSize: 17,
     color: Theme.colors.onSurface,
   },
   profileRole: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 14,
+    fontSize: 12.5,
     color: Theme.colors.onSurfaceVariant,
     textTransform: 'capitalize',
   },
   exportButton: {
     flexDirection: 'row',
     backgroundColor: Theme.colors.primary,
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 20,
+    gap: 6,
+    marginBottom: 14,
   },
   exportButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onPrimary,
   },
   pairingCard: {
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: Theme.colors.outline,
   },
   pairingSubtitle: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 14,
+    fontSize: 12.5,
     color: Theme.colors.onSurfaceVariant,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   codeDisplay: {
     backgroundColor: Theme.colors.primaryContainer,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 12,
     alignItems: 'center',
   },
   codeText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
+    fontSize: 24,
     color: Theme.colors.primary,
-    letterSpacing: 4,
+    letterSpacing: 3,
   },
   generateButton: {
     backgroundColor: Theme.colors.primary,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 12,
     alignItems: 'center',
   },
   generateButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onPrimary,
   },
   sectionTitle: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 18,
+    fontSize: 15,
     color: Theme.colors.onSurfaceVariant,
-    marginBottom: 12,
-    marginLeft: 4,
+    marginBottom: 10,
+    marginLeft: 2,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 8,
   },
   settingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 10,
   },
   settingTextContainer: {
-    marginLeft: 16,
+    marginLeft: 12,
     flex: 1,
   },
   settingTitle: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onSurface,
   },
   settingSubtitle: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 13,
+    fontSize: 11.5,
     color: Theme.colors.onSurfaceVariant,
-    marginTop: 2,
+    marginTop: 1,
   },
   settingText: {
     fontFamily: 'PublicSans-Medium',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onSurface,
-    marginLeft: 16,
+    marginLeft: 12,
+  },
+  appFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 28,
+    marginBottom: 16,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  appVersionText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: Theme.colors.outline,
+    marginTop: 8,
+  },
+  appMissionText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: Theme.colors.onSurfaceVariant,
+    marginTop: 3,
   },
 });

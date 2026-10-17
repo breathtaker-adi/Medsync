@@ -15,10 +15,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
 import { Medication } from '../types/medication';
+import { SeniorButton } from '../components/SeniorButton';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { medicationService } from '../services/medicationService';
 
 export default function MedicationDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -33,18 +37,11 @@ export default function MedicationDetailsScreen() {
   }, [id]);
 
   const fetchMedicationDetails = async (medId: number) => {
-    const { data, error } = await supabase
-      .from('medications')
-      .select('*')
-      .eq('id', medId)
-      .eq('patient_id', session?.user?.id) // Security: scope to current user
-      .single();
-
-    if (error) {
+    const res = await medicationService.fetchMedicationById(medId);
+    if (res.success && res.data) {
+      setMed(res.data);
+    } else {
       Alert.alert('Error', 'Could not load medication details.');
-      console.error(error);
-    } else if (data) {
-      setMed(data);
     }
     setLoading(false);
   };
@@ -148,33 +145,65 @@ export default function MedicationDetailsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header with Back Button */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={28} color={Theme.colors.onSurface} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Medication Details</Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <ScreenHeader
+        title="Medication Details"
+        subtitle={med?.medicine_name ? `${med.medicine_name} • ${med.dosage}` : undefined}
+        fallbackRoute="/(tabs)/patient-dashboard"
+      />
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 160 }}>
-        <Text style={styles.medicineName}>{med.medicine_name}</Text>
-        <Text style={styles.dosageText}>{med.dosage}</Text>
-        <Text style={styles.timeDisplay}>{med.time}</Text>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 170 }} showsVerticalScrollIndicator={false}>
+        {/* Hero Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroIconPlate}>
+            <Ionicons name="medical" size={32} color={Theme.colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.medicineName}>{med.medicine_name}</Text>
+            <Text style={styles.dosageText}>{med.dosage}</Text>
+          </View>
+        </View>
 
-        <View style={styles.spacer} />
+        {/* Schedule & Stock Grid */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Ionicons name="time" size={22} color={Theme.colors.primary} />
+            <Text style={styles.statLabel}>Daily Time</Text>
+            <Text style={styles.statValue}>{med.time}</Text>
+          </View>
 
-        <Text style={styles.sectionTitle}>Description</Text>
-        <Text style={styles.sectionText}>
-          {med.description || 'No description available for this medication.'}
-        </Text>
+          <View style={styles.statCard}>
+            <Ionicons name="calendar-outline" size={22} color={Theme.colors.secondary} />
+            <Text style={styles.statLabel}>Duration</Text>
+            <Text style={styles.statValue}>{med.duration || '30 days'}</Text>
+          </View>
 
-        <View style={styles.spacer} />
+          <View style={styles.statCard}>
+            <Ionicons name="cube-outline" size={22} color="#0284C7" />
+            <Text style={styles.statLabel}>Pills Left</Text>
+            <Text style={styles.statValue}>
+              {med.pills_remaining ?? 30} / {med.total_pills ?? 30}
+            </Text>
+          </View>
+        </View>
 
-        <Text style={styles.sectionTitle}>Prescribed Duration</Text>
-        <Text style={styles.sectionText}>
-          {med.duration || 'Not specified by doctor.'}
-        </Text>
+        {/* Food & Instruction Warning */}
+        {med.food_warning && (
+          <View style={styles.warningCard}>
+            <Ionicons name="information-circle" size={24} color="#D97706" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.warningTitle}>Doctor's Instructions</Text>
+              <Text style={styles.warningBody}>{med.food_warning}</Text>
+            </View>
+          </View>
+        )}
+
+        <Text style={styles.sectionTitle}>Description & Clinical Notes</Text>
+        <View style={styles.infoBox}>
+          <Text style={styles.sectionText}>
+            {med.description || 'Take strictly according to schedule. If experiencing side effects, notify your caregiver immediately.'}
+          </Text>
+        </View>
 
         {/* Management Actions */}
         <View style={styles.actionsContainer}>
@@ -238,21 +267,23 @@ export default function MedicationDetailsScreen() {
 
       {/* Order & Skip Buttons */}
       <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity style={styles.orderButton} onPress={handleOrderMedicine}>
-          <Ionicons
-            name="cart-outline"
-            size={20}
-            color={Theme.colors.onPrimary}
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.orderButtonText}>Order Medicine</Text>
-        </TouchableOpacity>
+        <SeniorButton
+          title="Order Refill Medicine"
+          onPress={handleOrderMedicine}
+          variant="primary"
+          size="large"
+          icon={<Ionicons name="cart-outline" size={22} color="#FFFFFF" />}
+          style={{ marginBottom: 10 }}
+        />
 
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipButtonText}>Skip Dosage for this Term</Text>
-        </TouchableOpacity>
+        <SeniorButton
+          title="Skip Dosage for this Term"
+          onPress={handleSkip}
+          variant="outline"
+          size="normal"
+        />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -270,136 +301,218 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.outlineVariant,
+  },
+  backBtn: {
+    padding: 6,
+    marginRight: 8,
   },
   headerTitle: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 22,
+    fontSize: 20,
     color: Theme.colors.onSurface,
-    marginLeft: 16,
+  },
+  heroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+    marginBottom: 16,
+    gap: 16,
+    ...Theme.elevation.level1,
+  },
+  heroIconPlate: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E8F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   medicineName: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
+    fontSize: 24,
     color: Theme.colors.onSurface,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dosageText: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 18,
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 16,
     color: Theme.colors.onSurfaceVariant,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+    alignItems: 'center',
+    gap: 4,
+    ...Theme.elevation.level1,
+  },
+  statLabel: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: Theme.colors.onSurfaceVariant,
+  },
+  statValue: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 15,
+    color: Theme.colors.onSurface,
+  },
+  warningCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFBEB',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 16,
+    gap: 12,
+    alignItems: 'center',
+  },
+  warningTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  warningBody: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 13,
+    color: '#B45309',
+    lineHeight: 18,
+  },
+  infoBox: {
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+    marginBottom: 14,
+    ...Theme.elevation.level1,
   },
   timeDisplay: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 24,
+    fontSize: 18,
     color: Theme.colors.primary,
     backgroundColor: Theme.colors.surfaceContainerLow,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignSelf: 'flex-start',
   },
   spacer: {
-    height: 24,
+    height: 16,
   },
   sectionTitle: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 18,
+    fontSize: 15,
     color: Theme.colors.onSurface,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   sectionText: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
+    fontSize: 13.5,
     color: Theme.colors.onSurfaceVariant,
-    lineHeight: 24,
+    lineHeight: 19,
   },
   bottomButtonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
+    padding: 14,
     backgroundColor: Theme.colors.surface,
   },
   orderButton: {
     backgroundColor: Theme.colors.primary,
-    height: 56,
-    borderRadius: 16,
+    height: 46,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   orderButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onPrimary,
   },
   skipButton: {
     backgroundColor: Theme.colors.surfaceContainerHigh,
-    height: 56,
-    borderRadius: 16,
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: Theme.colors.outlineVariant,
   },
   skipButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.error,
   },
   actionsContainer: {
-    marginTop: 32,
-    gap: 12,
+    marginTop: 20,
+    gap: 8,
   },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
+    gap: 6,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
     borderColor: Theme.colors.primary,
     backgroundColor: Theme.colors.surfaceContainerLowest,
   },
   editButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.primary,
   },
   disableButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
+    gap: 6,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: Theme.colors.secondaryContainer,
   },
   disableButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: Theme.colors.onSecondaryContainer,
   },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
+    gap: 6,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
     borderColor: '#D32F2F',
     backgroundColor: Theme.colors.surfaceContainerLowest,
   },
   deleteButtonText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: '#D32F2F',
   },
   modalOverlay: {
@@ -411,45 +524,45 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '85%',
     backgroundColor: Theme.colors.surface,
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 16,
+    padding: 18,
     alignItems: 'center',
   },
   modalTitle: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 22,
+    fontSize: 18,
     color: Theme.colors.onSurface,
     marginBottom: 4,
   },
   modalSubtitle: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 14,
+    fontSize: 12.5,
     color: Theme.colors.onSurfaceVariant,
-    marginBottom: 20,
+    marginBottom: 14,
     textAlign: 'center',
   },
   timeInput: {
     width: '100%',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: Theme.colors.primary,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 22,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 18,
     fontFamily: 'PublicSans-Bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
     color: Theme.colors.onSurface,
     backgroundColor: Theme.colors.surfaceContainerLowest,
   },
   modalActions: {
     flexDirection: 'row',
     width: '100%',
-    gap: 12,
+    gap: 8,
   },
   modalButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     alignItems: 'center',
   },
   cancelModalButton: {
@@ -457,6 +570,7 @@ const styles = StyleSheet.create({
   },
   cancelModalButtonText: {
     fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
     color: Theme.colors.onSurfaceVariant,
   },
   saveModalButton: {
@@ -464,6 +578,7 @@ const styles = StyleSheet.create({
   },
   saveModalButtonText: {
     fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
     color: Theme.colors.onPrimary,
   },
 });

@@ -1,42 +1,105 @@
-// @ts-nocheck
-// supabase/functions/scan-prescription/index.ts
-// This Edge Function proxies the OpenAI Vision call so the API key
-// never leaves the server. Deploy with: supabase functions deploy scan-prescription
-//
-// Set the secret on your Supabase project:
-//   supabase secrets set OPENAI_API_KEY=sk-proj-xxxxxxxxxxxx
-
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req: Request) => {
+// Max payload size ~3MB image (~4.2MB base64)
+const MAX_BASE64_LENGTH = 4.2 * 1024 * 1024;
+const MAX_DAILY_SCANS = 10;
+
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // 1. Verify caller authentication via JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid or expired session' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 2. Parse and validate request payload
     const { base64Image } = await req.json();
 
-    if (!base64Image) {
-      return new Response(JSON.stringify({ error: 'No image provided' }), {
+    if (!base64Image || typeof base64Image !== 'string') {
+      return new Response(JSON.stringify({ error: 'No valid image provided' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Check payload size
+    if (base64Image.length > MAX_BASE64_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: 'Payload too large: image exceeds 3MB limit. Please compress before uploading.' }),
+        {
+          status: 413,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // 3. Enforce per-user daily scan quota to protect against OpenAI billing abuse
+    const todayKolkata = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+
+    const { count: dailyScanCount, error: countError } = await supabase
+      .from('pending_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('patient_id', user.id)
+      .gte('created_at', `${todayKolkata}T00:00:00+05:30`);
+
+    if (!countError && dailyScanCount !== null && dailyScanCount >= MAX_DAILY_SCANS) {
+      return new Response(
+        JSON.stringify({
+          error: `Daily prescription scan quota reached (${MAX_DAILY_SCANS} scans per day). Please try again tomorrow or contact support.`,
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
-        status: 500,
+      console.error('Server configuration error: OPENAI_API_KEY missing');
+      return new Response(JSON.stringify({ error: 'AI service unavailable. Please configure server keys.' }), {
+        status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // 4. Request OpenAI Vision extraction
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -63,22 +126,33 @@ serve(async (req: Request) => {
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: 'OpenAI API error', details: data }), {
+      const errDetails = await response.text();
+      console.error('OpenAI API upstream error:', response.status, errDetails);
+      return new Response(JSON.stringify({ error: 'AI OCR failed to process prescription.' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const aiSummary = JSON.parse(data.choices[0].message.content);
+    const data = await response.json();
+    const rawContent = data.choices?.[0]?.message?.content;
+    if (!rawContent) {
+      throw new Error('Empty response from AI service');
+    }
+
+    let aiSummary: { medicine_name?: string; dosage?: string; duration?: string } = {};
+    try {
+      aiSummary = JSON.parse(rawContent);
+    } catch {
+      console.warn('Failed to parse AI JSON:', rawContent);
+    }
 
     return new Response(
       JSON.stringify({
-        medicine_name: aiSummary.medicine_name || 'Unknown Medicine',
-        dosage: aiSummary.dosage || 'See prescription',
-        duration: aiSummary.duration || 'Not specified',
+        medicine_name: typeof aiSummary.medicine_name === 'string' ? aiSummary.medicine_name.trim() : 'Unknown Medicine',
+        dosage: typeof aiSummary.dosage === 'string' ? aiSummary.dosage.trim() : 'See prescription',
+        duration: typeof aiSummary.duration === 'string' ? aiSummary.duration.trim() : 'Not specified',
       }),
       {
         status: 200,
@@ -86,7 +160,8 @@ serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('scan-prescription internal error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error processing prescription' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
