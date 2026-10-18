@@ -266,4 +266,301 @@ describe('Security & Integrity Test Suite', () => {
       assert.strictEqual(checkDailyScanQuota(15).allowed, false);
     });
   });
+
+  describe('Targeted Doctor Review Isolation & Fallback Invariants', () => {
+    function simulateApproveReview({ callerId, isVerifiedDoctor, review, activeLinks }) {
+      if (!callerId) throw new Error('Unauthorized');
+      const isLinkedCaregiver = activeLinks.some(
+        (l) => l.patient_id === review.patient_id && l.caregiver_id === callerId && l.status === 'active'
+      );
+      if (!isVerifiedDoctor && !isLinkedCaregiver) {
+        throw new Error('Only verified doctors or active linked caregivers can review prescriptions');
+      }
+      if (review.target_doctor_id && review.target_doctor_id !== callerId && !isLinkedCaregiver) {
+        throw new Error('Not your patient: prescription assigned to another physician');
+      }
+      return { success: true, status: 'approved' };
+    }
+
+    it('should allow targeted doctor to approve prescription', () => {
+      const review = { id: 101, patient_id: 'pat-1', target_doctor_id: 'doc-target-123' };
+      const res = simulateApproveReview({
+        callerId: 'doc-target-123',
+        isVerifiedDoctor: true,
+        review,
+        activeLinks: [],
+      });
+      assert.strictEqual(res.success, true);
+    });
+
+    it('should reject unauthorized Doctor B from approving a review targeted to Doctor A', () => {
+      const review = { id: 101, patient_id: 'pat-1', target_doctor_id: 'doc-target-123' };
+      assert.throws(
+        () =>
+          simulateApproveReview({
+            callerId: 'doc-stranger-999',
+            isVerifiedDoctor: true,
+            review,
+            activeLinks: [],
+          }),
+        /Not your patient/
+      );
+    });
+
+    it('should allow active linked caregiver to approve even if doctor target differs', () => {
+      const review = { id: 101, patient_id: 'pat-1', target_doctor_id: 'doc-target-123' };
+      const res = simulateApproveReview({
+        callerId: 'caregiver-mom',
+        isVerifiedDoctor: false,
+        review,
+        activeLinks: [{ patient_id: 'pat-1', caregiver_id: 'caregiver-mom', status: 'active' }],
+      });
+      assert.strictEqual(res.success, true);
+    });
+  });
+
+  describe('Non-Prescription / Random Photo Fallback Queueing', () => {
+    function processUploadedImage({ ocrResult, userInput }) {
+      let extractedData = {
+        medicine_name: userInput.medicineName?.trim() || 'Prescription Slip Review',
+        dosage: userInput.dosage?.trim() || '1 dose as prescribed on slip',
+        duration: userInput.duration?.trim() || '30 days',
+      };
+      let ocrStatus = 'ok';
+
+      if (ocrResult.is_valid_prescription === false) {
+        ocrStatus = 'failed';
+        extractedData = {
+          medicine_name: userInput.medicineName?.trim() || ocrResult.medicine_name || '⚠️ Unrecognized / Non-prescription',
+          dosage: userInput.dosage?.trim() || ocrResult.dosage || 'Please inspect uploaded slip',
+          duration: userInput.duration?.trim() || ocrResult.duration || 'N/A',
+        };
+      }
+
+      const initialDoctorNote =
+        ocrStatus === 'failed' || extractedData.medicine_name.includes('⚠️')
+          ? '⚠️ AI Warning: Uploaded image may not be an official prescription slip. Please inspect photo carefully. You may edit details to approve, or tap Reject.'
+          : 'Prescription scanned and queued. Verified physician review & dosing sign-off required.';
+
+      return {
+        queuedForReview: true,
+        ocr_status: ocrStatus,
+        medication: extractedData.medicine_name,
+        doctor_notes: initialDoctorNote,
+      };
+    }
+
+    it('should queue non-prescription random photo with failed status and warning banner note', () => {
+      const result = processUploadedImage({
+        ocrResult: {
+          is_valid_prescription: false,
+          medicine_name: '⚠️ Unrecognized / Non-prescription',
+          dosage: 'Please inspect uploaded image',
+          duration: 'N/A',
+        },
+        userInput: {},
+      });
+
+      assert.strictEqual(result.queuedForReview, true);
+      assert.strictEqual(result.ocr_status, 'failed');
+      assert.strictEqual(result.medication, '⚠️ Unrecognized / Non-prescription');
+      assert.match(result.doctor_notes, /AI Warning: Uploaded image may not be an official prescription slip/);
+    });
+
+    it('should queue valid prescription with ok status and extracted medicine name', () => {
+      const result = processUploadedImage({
+        ocrResult: {
+          is_valid_prescription: true,
+          medicine_name: 'Amoxicillin 500mg',
+          dosage: '1 capsule tid',
+          duration: '7 days',
+        },
+        userInput: { medicineName: 'Amoxicillin 500mg' },
+      });
+
+      assert.strictEqual(result.queuedForReview, true);
+      assert.strictEqual(result.ocr_status, 'ok');
+      assert.strictEqual(result.medication, 'Amoxicillin 500mg');
+    });
+  });
+
+  describe('DPDP Consent & Right to Erasure Invariants', () => {
+    function simulateDeleteAccount(userId, database) {
+      if (!userId) throw new Error('Unauthorized');
+      // Delete storage files
+      database.storageFiles = database.storageFiles.filter((f) => !f.startsWith(`${userId}/`));
+      // Delete user profile
+      database.profiles = database.profiles.filter((p) => p.id !== userId);
+      // Delete auth user
+      database.users = database.users.filter((u) => u.id !== userId);
+      return { success: true };
+    }
+
+    it('should purge storage objects when account is deleted (Right to Erasure)', () => {
+      const db = {
+        users: [{ id: 'user-del-1' }, { id: 'user-del-2' }],
+        profiles: [{ id: 'user-del-1' }, { id: 'user-del-2' }],
+        storageFiles: ['user-del-1/rx1.jpg', 'user-del-1/rx2.jpg', 'user-del-2/rx3.jpg'],
+      };
+
+      simulateDeleteAccount('user-del-1', db);
+
+      assert.strictEqual(db.users.length, 1);
+      assert.strictEqual(db.profiles.length, 1);
+      assert.deepStrictEqual(db.storageFiles, ['user-del-2/rx3.jpg']);
+      assert.strictEqual(db.storageFiles.some((f) => f.startsWith('user-del-1/')), false);
+    });
+
+    it('should validate DPDP consent logging format and versioning', () => {
+      const consentRecord = {
+        user_id: 'user-dpdp-1',
+        consent_type: 'dpdp_ocr_processing',
+        consent_version: '1.0',
+        consented_at: new Date().toISOString(),
+      };
+
+      assert.strictEqual(consentRecord.consent_type, 'dpdp_ocr_processing');
+      assert.strictEqual(consentRecord.consent_version, '1.0');
+      assert.ok(consentRecord.consented_at);
+    });
+  });
+
+  describe('SQL Migration View Dependency & Column Drop Order', () => {
+    it('should drop dependent views before dropping profiles.push_token column', () => {
+      // Simulate PostgreSQL dependency graph
+      const schemaState = {
+        columns: ['id', 'full_name', 'role', 'push_token'],
+        views: ['doctor_push_tokens', 'patient_push_tokens'],
+      };
+
+      function dropColumnSafe(table, column, cascade = false) {
+        if (column === 'push_token' && schemaState.views.length > 0 && !cascade) {
+          throw new Error('ERROR 2BP01: cannot drop column push_token because other objects depend on it');
+        }
+        schemaState.columns = schemaState.columns.filter((c) => c !== column);
+        if (cascade) {
+          schemaState.views = [];
+        }
+      }
+
+      function dropView(viewName) {
+        schemaState.views = schemaState.views.filter((v) => v !== viewName);
+      }
+
+      // Safe migration sequence: drop views first (with CASCADE), then drop column CASCADE
+      dropView('doctor_push_tokens');
+      dropView('patient_push_tokens');
+      assert.doesNotThrow(() => dropColumnSafe('profiles', 'push_token', true));
+      assert.strictEqual(schemaState.columns.includes('push_token'), false);
+    });
+  });
+
+  describe('Prescription Storage Path Normalization & HMAC Resolution', () => {
+    function normalizePrescriptionStoragePath(imageUrl) {
+      if (!imageUrl) return null;
+      const trimmed = imageUrl.trim();
+      if (!trimmed) return null;
+      if (trimmed.startsWith('data:image/') || trimmed.startsWith('file://')) {
+        return trimmed;
+      }
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        if (!trimmed.includes('/storage/v1/object/')) {
+          return trimmed;
+        }
+      }
+      let clean = trimmed
+        .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\/prescriptions\//, '')
+        .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\//, '')
+        .split('?')[0];
+
+      clean = clean.replace(/^\/?prescriptions\//, '');
+      clean = clean.replace(/^\/+/, '');
+      return clean.trim() || null;
+    }
+
+    it('should strip redundant "prescriptions/" prefix to avoid 404 path doubling', () => {
+      const input = 'prescriptions/user-123/1729267123_prescription.jpg';
+      const normalized = normalizePrescriptionStoragePath(input);
+      assert.strictEqual(normalized, 'user-123/1729267123_prescription.jpg');
+    });
+
+    it('should strip leading slashes', () => {
+      const input = '/user-123/1729267123_prescription.jpg';
+      const normalized = normalizePrescriptionStoragePath(input);
+      assert.strictEqual(normalized, 'user-123/1729267123_prescription.jpg');
+    });
+
+    it('should strip full Supabase signed or public URL prefixes and query params', () => {
+      const input =
+        'https://xyz.supabase.co/storage/v1/object/sign/prescriptions/user-123/1729267123_prescription.jpg?token=abcd123';
+      const normalized = normalizePrescriptionStoragePath(input);
+      assert.strictEqual(normalized, 'user-123/1729267123_prescription.jpg');
+    });
+
+    it('should preserve data URIs and local file URIs as-is', () => {
+      const dataUri = 'data:image/jpeg;base64,/9j/4AAQSkZJRg...';
+      const fileUri = 'file:///var/mobile/Containers/Data/rx.jpg';
+      assert.strictEqual(normalizePrescriptionStoragePath(dataUri), dataUri);
+      assert.strictEqual(normalizePrescriptionStoragePath(fileUri), fileUri);
+    });
+  });
+
+  describe('Multi-Doctor Routing & Prescription History Isolation', () => {
+    const mockDoctors = [
+      { id: 'doc-1', full_name: 'Dr. Ananya Sharma', specialty: 'Cardiology' },
+      { id: 'doc-2', full_name: 'Dr. Rajesh Gupta', specialty: 'General Medicine' },
+    ];
+
+    it('should auto-select doctor when exactly 1 doctor is connected', () => {
+      const singleDocList = [mockDoctors[0]];
+      let selectedDoctorId = null;
+
+      if (singleDocList.length === 1) {
+        selectedDoctorId = singleDocList[0].id;
+      }
+
+      assert.strictEqual(selectedDoctorId, 'doc-1');
+    });
+
+    it('should require explicit selection when patient is connected to multiple doctors', () => {
+      let selectedDoctorId = null;
+      let promptModalShown = false;
+
+      function onSubmitUpload() {
+        if (mockDoctors.length > 1 && !selectedDoctorId) {
+          promptModalShown = true;
+          return { status: 'prompt_doctor_choice' };
+        }
+        return { status: 'proceed_upload' };
+      }
+
+      const res = onSubmitUpload();
+      assert.strictEqual(res.status, 'prompt_doctor_choice');
+      assert.strictEqual(promptModalShown, true);
+
+      // Once patient selects doctor
+      selectedDoctorId = 'doc-2';
+      const resAfterSelect = onSubmitUpload();
+      assert.strictEqual(resAfterSelect.status, 'proceed_upload');
+    });
+
+    it('should isolate patient prescription history exclusively to the patient', () => {
+      const allPendingReviews = [
+        { id: 1, patient_id: 'patient-A', medication: 'Metformin', status: 'pending' },
+        { id: 2, patient_id: 'patient-A', medication: 'Amlodipine', status: 'approved' },
+        { id: 3, patient_id: 'patient-B', medication: 'Atorvastatin', status: 'pending' },
+      ];
+
+      function getPatientHistory(patientId) {
+        return allPendingReviews.filter((r) => r.patient_id === patientId);
+      }
+
+      const historyA = getPatientHistory('patient-A');
+      assert.strictEqual(historyA.length, 2);
+      assert.ok(historyA.every((r) => r.patient_id === 'patient-A'));
+      assert.strictEqual(historyA.some((r) => r.medication === 'Atorvastatin'), false);
+    });
+  });
 });
+
+

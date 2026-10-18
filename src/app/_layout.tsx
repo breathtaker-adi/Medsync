@@ -235,6 +235,7 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="role-selection" options={{ headerShown: false }} />
         <Stack.Screen name="medication-details" options={{ headerShown: false }} />
         <Stack.Screen name="medication-history" options={{ headerShown: false }} />
+        <Stack.Screen name="prescription-history" options={{ headerShown: false }} />
         <Stack.Screen name="paused-medications" options={{ headerShown: false }} />
         <Stack.Screen name="patient-details" options={{ headerShown: false }} />
         <Stack.Screen name="patient-directory" options={{ headerShown: false }} />
