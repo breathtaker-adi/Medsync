@@ -135,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       if (newSession?.user?.id) {
+        setLoading(true);
         loadProfile(newSession.user.id);
       } else {
         setProfile(null);

@@ -48,7 +48,15 @@ export default function LoginScreen() {
       if (!res.success) {
         showErrorAlert(res.error, 'Sign Up Failed');
       } else {
-        Alert.alert('Success', 'Account created! If email confirmation is required, please check your inbox.');
+        if (res.data?.session) {
+          router.replace('/role-selection');
+        } else {
+          Alert.alert(
+            'Account Created',
+            'Your MedSync account has been created! If email confirmation is required for your project, please check your inbox before signing in.',
+            [{ text: 'Sign In', onPress: () => setIsSignUp(false) }]
+          );
+        }
       }
     } else {
       const res = await authService.signIn({
@@ -57,37 +65,43 @@ export default function LoginScreen() {
       });
 
       if (!res.success) {
-        showErrorAlert(res.error, 'Login Failed');
+        const msg = res.error?.message || '';
+        if (msg.toLowerCase().includes('invalid login credentials')) {
+          Alert.alert(
+            'Sign In Failed',
+            'Invalid email or password. If you recently reset the database or do not have an account yet, tap "Create One" below to register.',
+            [
+              { text: 'Try Again', style: 'cancel' },
+              { text: 'Create Account', onPress: () => setIsSignUp(true) },
+            ]
+          );
+        } else {
+          showErrorAlert(res.error, 'Login Failed');
+        }
       } else {
-        router.replace('/role-selection');
+        const userId = res.data?.user?.id;
+        if (userId) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (prof?.role === 'doctor' || prof?.role === 'caregiver') {
+            router.replace('/(tabs)/caregiver-dashboard');
+          } else if (prof?.role === 'patient') {
+            router.replace('/(tabs)/patient-dashboard');
+          } else {
+            router.replace('/role-selection');
+          }
+        } else {
+          router.replace('/role-selection');
+        }
       }
     }
     setLoading(false);
   };
 
-  const handleQuickDemo = async (role: 'doctor' | 'patient') => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const demoEmail = role === 'doctor' ? 'doctor@medsync.demo' : 'patient@medsync.demo';
-    const demoPassword = 'Password123!';
-
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setLoading(true);
-
-    const res = await authService.signInWithDemo(role);
-
-    if (res.success) {
-      if (role === 'doctor') {
-        router.replace('/(tabs)/caregiver-dashboard');
-      } else {
-        router.replace('/(tabs)/patient-dashboard');
-      }
-    } else {
-      showErrorAlert(res.error, 'Demo Login Failed');
-    }
-
-    setLoading(false);
-  };
 
   return (
     <KeyboardAvoidingView
@@ -174,7 +188,16 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.forgotPasswordContainer}
               onPress={() => router.push('/forgot-password' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Forgot Password? Reset your credentials"
+              activeOpacity={0.7}
             >
+              <Ionicons
+                name="key-outline"
+                size={16}
+                color={Theme.colors.primary}
+                style={styles.forgotPasswordIcon}
+              />
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           )}
@@ -196,7 +219,7 @@ export default function LoginScreen() {
 
           {/* Senior Accessible Action Button */}
           <SeniorButton
-            title={isSignUp ? 'Create Account' : 'Sign In'}
+            title={isSignUp ? 'Create Account' : 'Sign\u00A0In'}
             onPress={handleAuth}
             loading={loading}
             size="large"
@@ -216,56 +239,11 @@ export default function LoginScreen() {
           onPress={() => setIsSignUp(!isSignUp)}
         >
           <Text style={styles.toggleText}>
-            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
+            {isSignUp ? 'Already have an account? Sign\u00A0In' : "Don't have an account? Sign\u00A0Up"}
           </Text>
         </TouchableOpacity>
 
-        {/* One-Tap Demo Exploration Card (Development Only) */}
-        {__DEV__ && (
-          <View style={styles.demoCard}>
-            <View style={styles.demoHeaderRow}>
-              <Ionicons name="sparkles" size={18} color={Theme.colors.primary} />
-              <Text style={styles.demoHeaderTitle}>ONE-TAP DEMO EXPLORATION (DEV ONLY)</Text>
-            </View>
-            <Text style={styles.demoHeaderSubtitle}>
-              Try MedSync with pre-filled clinical and senior patient details:
-            </Text>
 
-            <View style={styles.demoButtonsContainer}>
-              {/* Demo Doctor Button */}
-              <TouchableOpacity
-                style={styles.demoItemBtn}
-                onPress={() => handleQuickDemo('doctor')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.demoIconPlate, { backgroundColor: '#E0F2FE' }]}>
-                  <Ionicons name="medkit" size={24} color="#0284C7" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoItemName}>Dr. Evelyn Reed, MD</Text>
-                  <Text style={styles.demoItemSubtitle}>Verified Doctor • Clinic Dashboard</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={Theme.colors.primary} />
-              </TouchableOpacity>
-
-              {/* Demo Patient Button */}
-              <TouchableOpacity
-                style={styles.demoItemBtn}
-                onPress={() => handleQuickDemo('patient')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.demoIconPlate, { backgroundColor: '#E8F5F5' }]}>
-                  <Ionicons name="person" size={24} color={Theme.colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoItemName}>Martha Davis (74y)</Text>
-                  <Text style={styles.demoItemSubtitle}>Senior Patient • 4 Active Doses</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={Theme.colors.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -337,15 +315,26 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   forgotPasswordContainer: {
-    alignSelf: 'flex-end',
-    marginTop: -2,
-    marginBottom: 14,
-    paddingVertical: 4,
-    paddingHorizontal: 2,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 16,
+    minHeight: 38,
+  },
+  forgotPasswordIcon: {
+    marginRight: 6,
   },
   forgotPasswordText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 13,
+    fontSize: 13.5,
     color: Theme.colors.primary,
   },
   consentContainer: {
@@ -372,64 +361,5 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-Bold',
     fontSize: 14,
     color: Theme.colors.primary,
-  },
-  demoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 14,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...Theme.shadows.card,
-  },
-  demoHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  demoHeaderTitle: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 11,
-    color: Theme.colors.primary,
-    letterSpacing: 0.8,
-  },
-  demoHeaderSubtitle: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 12,
-    color: Theme.colors.onSurfaceVariant,
-    marginBottom: 10,
-    lineHeight: 16,
-  },
-  demoButtonsContainer: {
-    gap: 8,
-  },
-  demoItemBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Theme.colors.surfaceContainerLow,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Theme.colors.outlineVariant,
-    gap: 10,
-  },
-  demoIconPlate: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  demoItemName: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 14,
-    color: Theme.colors.onSurface,
-  },
-  demoItemSubtitle: {
-    fontFamily: 'PublicSans-Regular',
-    fontSize: 11.5,
-    color: Theme.colors.onSurfaceVariant,
-    marginTop: 1,
   },
 });

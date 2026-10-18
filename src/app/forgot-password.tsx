@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -14,10 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BackButton } from '../components/BackButton';
+import { MedSyncLogo } from '../components/MedSyncLogo';
+import { SeniorButton } from '../components/SeniorButton';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
-import { SeniorButton } from '../components/SeniorButton';
-import { BackButton } from '../components/BackButton';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -50,183 +51,262 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: Theme.colors.surface }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <BackButton
-          fallbackRoute="/login"
-          style={{ alignSelf: 'flex-start', marginBottom: 20 }}
-        />
-
-        <View style={styles.iconContainer}>
-          <Ionicons name="lock-closed-outline" size={48} color={Theme.colors.primary} />
-        </View>
-
-        <Text style={styles.headerText}>Reset Password</Text>
-        <Text style={styles.subHeaderText}>
-          Enter your registered email address to receive secure password recovery instructions.
-        </Text>
-
-        {sent ? (
-          <View style={styles.successCard}>
-            <Ionicons name="checkmark-circle" size={40} color={Theme.colors.success} />
-            <Text style={styles.successTitle}>Recovery Email Sent</Text>
-            <Text style={styles.successBody}>
-              Please check your inbox at <Text style={{ fontWeight: 'bold' }}>{email}</Text> and follow the link to set your new password.
-            </Text>
-            <SeniorButton
-              title="Return to Login"
-              onPress={() => router.replace('/login')}
-              variant="outline"
-              size="normal"
-              style={{ marginTop: 16 }}
-            />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top Bar with Consistent Back Navigation */}
+          <View style={styles.topBar}>
+            <BackButton fallbackRoute="/login" />
           </View>
-        ) : (
-          <View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="name@example.com"
-                placeholderTextColor={Theme.colors.outline}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
+
+          {/* Logo Header */}
+          <View style={styles.logoWrapper}>
+            <MedSyncLogo size={52} variant="stacked" animated={true} />
+          </View>
+
+          {sent ? (
+            <View style={styles.card}>
+              <View style={styles.successIconPlate}>
+                <Ionicons name="checkmark-circle" size={44} color={Theme.colors.primary} />
+              </View>
+              <Text style={styles.successTitle}>Recovery Instructions Sent</Text>
+              <Text style={styles.successBody}>
+                We sent a secure password reset link to:
+              </Text>
+              <Text style={styles.emailHighlight}>{email}</Text>
+              <Text style={styles.successNote}>
+                Open the link in your email on this device to set a new password, or proceed below if you received a recovery code.
+              </Text>
+
+              <View style={styles.successActions}>
+                <SeniorButton
+                  title="Enter New Password"
+                  onPress={() => router.push('/reset-password' as any)}
+                  size="large"
+                  variant="primary"
+                  icon={<Ionicons name="key-outline" size={20} color="#FFFFFF" />}
+                />
+                <TouchableOpacity
+                  style={styles.returnBtn}
+                  onPress={() => router.replace('/login')}
+                >
+                  <Text style={styles.returnBtnText}>Return to Sign In</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+          ) : (
+            <View style={styles.card}>
+              <View style={styles.cardIconPlate}>
+                <Ionicons name="lock-open-outline" size={32} color={Theme.colors.primary} />
+              </View>
+              <Text style={styles.headerText}>Reset Password</Text>
+              <Text style={styles.subHeaderText}>
+                Enter your registered MedSync email address. We will send you secure instructions to recover your account.
+              </Text>
 
-            <SeniorButton
-              title="Send Recovery Link"
-              onPress={handleResetPassword}
-              loading={loading}
-              size="large"
-              variant="primary"
-              icon={<Ionicons name="mail-outline" size={22} color="#FFFFFF" />}
-              style={{ marginBottom: 14 }}
-            />
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Registered Email</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={22}
+                    color={Theme.colors.primary}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="you@example.com"
+                    placeholderTextColor={Theme.colors.outline}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    returnKeyType="done"
+                  />
+                </View>
+              </View>
 
-            <TouchableOpacity style={styles.cancelLink} onPress={() => router.back()}>
-              <Text style={styles.cancelLinkText}>Cancel & Go Back</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+              {/* Action Button */}
+              <SeniorButton
+                title="Send Recovery Link"
+                onPress={handleResetPassword}
+                loading={loading}
+                size="large"
+                variant="primary"
+                icon={<Ionicons name="paper-plane-outline" size={20} color="#FFFFFF" />}
+              />
+
+              <TouchableOpacity
+                style={styles.cancelLink}
+                onPress={() => router.replace('/login')}
+              >
+                <Ionicons name="arrow-back" size={16} color={Theme.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.cancelLinkText}>Back to Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    padding: 8,
+  safeArea: {
+    flex: 1,
+    backgroundColor: Theme.colors.surface,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Theme.colors.surfaceContainerLow,
+  scrollContent: {
+    flexGrow: 1,
+    padding: 18,
+    paddingBottom: 32,
     justifyContent: 'center',
+  },
+  topBar: {
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  logoWrapper: {
     alignItems: 'center',
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.cardElevated,
+  },
+  cardIconPlate: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E6F4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: 14,
   },
   headerText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 28,
+    fontSize: 22,
     color: Theme.colors.onSurface,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subHeaderText: {
     fontFamily: 'PublicSans-Regular',
-    fontSize: 15,
+    fontSize: 13.5,
+    lineHeight: 19,
     color: Theme.colors.onSurfaceVariant,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: 20,
     paddingHorizontal: 8,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 14,
+    fontSize: 13.5,
     color: Theme.colors.onSurface,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  input: {
-    backgroundColor: Theme.colors.surfaceContainerLowest,
-    height: 56,
-    borderRadius: 16,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.surfaceContainerLow,
+    height: Theme.spacing.touchTargetSenior,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: Theme.colors.outlineVariant,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    height: '100%',
     fontFamily: 'PublicSans-Regular',
-    fontSize: 16,
+    fontSize: 15,
     color: Theme.colors.onSurface,
   },
-  actionButton: {
-    backgroundColor: Theme.colors.primary,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  actionButtonText: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
-    color: Theme.colors.onPrimary,
-  },
   cancelLink: {
-    marginTop: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    paddingVertical: 6,
   },
   cancelLinkText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 15,
-    color: Theme.colors.outline,
+    fontSize: 14,
+    color: Theme.colors.primary,
   },
-  successCard: {
-    backgroundColor: Theme.colors.surfaceContainerLow,
-    borderRadius: 20,
-    padding: 24,
+  successIconPlate: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E6F4F4',
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 14,
   },
   successTitle: {
-    fontFamily: 'PublicSans-Bold',
-    fontSize: 18,
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 21,
     color: Theme.colors.onSurface,
-    marginTop: 12,
-    marginBottom: 8,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   successBody: {
     fontFamily: 'PublicSans-Regular',
     fontSize: 14,
     color: Theme.colors.onSurfaceVariant,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
   },
-  backToLoginButton: {
-    backgroundColor: Theme.colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 14,
-  },
-  backToLoginText: {
+  emailHighlight: {
     fontFamily: 'PublicSans-Bold',
     fontSize: 15,
-    color: Theme.colors.onPrimary,
+    color: Theme.colors.primary,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  successNote: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: Theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    marginBottom: 20,
+    backgroundColor: Theme.colors.surfaceContainerLow,
+    padding: 10,
+    borderRadius: 10,
+  },
+  successActions: {
+    width: '100%',
+    gap: 12,
+  },
+  returnBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  returnBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: Theme.colors.primary,
   },
 });

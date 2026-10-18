@@ -16,28 +16,59 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PulseView } from '../../components/PulseView';
 import { SeniorButton } from '../../components/SeniorButton';
+import { MedSyncLogo } from '../../components/MedSyncLogo';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { useAuth } from '../../context/authcontext';
 import { useCaregiverRoster } from '../../hooks/useCaregiverRoster';
 import { notificationService } from '../../services/notificationService';
 import { Theme } from '../../theme';
+import { avatarHelper } from '../../utils/avatarHelper';
 import { MissedAlertItem, PatientItem } from '../../types/patient';
 import { PendingReview } from '../../types/review';
+import { getPrescriptionPublicUrlSync } from '../../utils/prescriptionHelper';
 
 export type PendingReviewItem = PendingReview;
 export type { PatientItem, MissedAlertItem };
 
 export default function CaregiverDashboard() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session, profile } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const { isAccessibilityMode, isAudioEnabled, triggerHaptic } = useAccessibility();
+
+  // Avatar State
+  const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url || null);
+
+  React.useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarUri(profile.avatar_url);
+    } else if (session?.user?.id) {
+      avatarHelper.getLocalAvatar(session.user.id).then((local) => {
+        if (local) setAvatarUri(local);
+      });
+    }
+  }, [session?.user?.id, profile?.avatar_url]);
+
+  const handlePickAvatar = async () => {
+    if (!session?.user?.id) return;
+    triggerHaptic();
+    const newAvatar = await avatarHelper.promptPickAvatar(session.user.id);
+    if (newAvatar) {
+      setAvatarUri(newAvatar);
+      await refreshProfile();
+    }
+  };
 
   const {
     patients,
     reviews,
     missedAlerts,
+    personalMeds,
+    takePersonalDose,
     loading,
     refreshing,
     linking,
@@ -46,6 +77,17 @@ export default function CaregiverDashboard() {
     toggleAlertOverride,
     refetch,
   } = useCaregiverRoster(session?.user?.id);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      if (session?.user?.id) {
+        avatarHelper.getLocalAvatar(session.user.id).then((local) => {
+          if (local) setAvatarUri(local);
+        });
+      }
+    }, [refetch, session?.user?.id])
+  );
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,6 +138,18 @@ export default function CaregiverDashboard() {
       return;
     }
 
+    if (!isAudioEnabled) {
+      Alert.alert(
+        'Voice Guidance Disabled',
+        "Clinical briefing audio is disabled. You can turn on 'Audio Read-Aloud' in Settings.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Settings', onPress: () => router.push('/doctor-settings') },
+        ]
+      );
+      return;
+    }
+
     const doctorName = profile?.full_name ? `Dr. ${profile.full_name.split(' ').pop()}` : 'Doctor';
     const patientCount = patients.length;
     const reviewCount = reviews.length;
@@ -113,7 +167,7 @@ export default function CaregiverDashboard() {
         : 'No critical adherence alerts at this time.'
     }`;
 
-    const spoken = notificationService.speakText(briefText, true);
+    const spoken = notificationService.speakText(briefText, isAudioEnabled);
     if (spoken) {
       setIsSpeakingBrief(true);
       // Auto reset speaking state after estimated duration
@@ -165,7 +219,11 @@ export default function CaregiverDashboard() {
     <View style={styles.wrapper}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ padding: 14, paddingTop: Platform.OS === 'android' ? 36 : 48, paddingBottom: 72 }}
+        contentContainerStyle={{
+          padding: 14,
+          paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 8 : 12),
+          paddingBottom: 72,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -175,64 +233,27 @@ export default function CaregiverDashboard() {
           />
         }
       >
-        {/* Executive Physician Header */}
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarPlate}>
-              <Text style={styles.avatarInitials}>
-                {profile?.full_name
-                  ? profile.full_name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase()
-                  : 'MD'}
-              </Text>
-              <View style={styles.onlineBadgeDot} />
-            </View>
-
-            <View style={styles.headerTitleGroup}>
-              <View style={styles.nameBadgeRow}>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.headerText, isAccessibilityMode && styles.largeHeaderText]}
-                >
-                  {doctorDisplayName}
-                </Text>
-                {profile?.is_verified_doctor && (
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="shield-checkmark" size={13} color="#FFFFFF" />
-                    <Text style={styles.verifiedText}>Verified</Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.statusPillRow}>
-                <View style={styles.pulseDot} />
-                <Text style={styles.statusPillText}>Live Telehealth Surveillance</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Action Header Icons */}
-          <View style={styles.headerRightActions}>
+        {/* Top App Bar: Brand Logo on Left, Doctor Avatar & Settings on Right */}
+        <View style={styles.topAppBar}>
+          <MedSyncLogo size={40} variant="horizontal" />
+          <View style={styles.headerActionCluster}>
             <TouchableOpacity
-              onPress={handlePlayClinicalBrief}
-              style={[
-                styles.headerIconBtn,
-                isSpeakingBrief && styles.headerIconBtnActive,
-                isAccessibilityMode && styles.largeIconBtn,
-              ]}
-              activeOpacity={0.7}
+              style={styles.avatarButton}
+              onPress={handlePickAvatar}
+              activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Listen to hands-free clinical briefing"
+              accessibilityLabel="Change physician profile picture"
             >
-              <Ionicons
-                name={isSpeakingBrief ? 'volume-high' : 'volume-medium-outline'}
-                size={isAccessibilityMode ? 26 : 22}
-                color={isSpeakingBrief ? '#FFFFFF' : Theme.colors.primary}
-              />
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.headerAvatarImage} />
+              ) : (
+                <View style={styles.headerAvatarPlaceholder}>
+                  <Ionicons name="medical" size={18} color="#FFFFFF" />
+                </View>
+              )}
+              <View style={styles.headerCameraBadge}>
+                <Ionicons name="camera" size={10} color="#FFFFFF" />
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -240,17 +261,30 @@ export default function CaregiverDashboard() {
                 triggerHaptic();
                 router.push('/doctor-settings');
               }}
-              style={[styles.headerIconBtn, isAccessibilityMode && styles.largeIconBtn]}
+              style={styles.settingsIconButton}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Doctor Clinical Settings"
             >
               <Ionicons
                 name="settings-outline"
-                size={isAccessibilityMode ? 26 : 22}
+                size={21}
                 color={Theme.colors.onSurface}
               />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Clinical Oversight Status Banner */}
+        <View style={styles.clinicalStatusRow}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.clinicalBadge}>
+              <View style={styles.livePulseDot} />
+              <Text style={styles.clinicalBadgeText}>LIVE CLINICAL SURVEILLANCE</Text>
+            </View>
+            <Text style={[styles.clinicalHeaderTitle, isAccessibilityMode && styles.largeText]}>
+              Patient Triage &amp; Approvals
+            </Text>
           </View>
         </View>
 
@@ -277,7 +311,7 @@ export default function CaregiverDashboard() {
             activeOpacity={0.8}
             onPress={() => {
               triggerHaptic();
-              setActiveFilter(activeFilter === 'pending' ? 'all' : 'pending');
+              router.push('/pending-reviews' as any);
             }}
             style={[
               styles.kpiCard,
@@ -438,52 +472,98 @@ export default function CaregiverDashboard() {
             <View style={styles.emptyReviewIconPlate}>
               <Ionicons name="checkmark-done-circle" size={36} color="#10B981" />
             </View>
-            <Text style={styles.emptyReviewTitle}>Prescription Queue Clear</Text>
+            <Text style={styles.emptyReviewTitle}>Prescription Review Queue Clear</Text>
             <Text style={styles.emptyReviewSubtitle}>
               All patient prescription scans have been clinically verified.
             </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: '#F0FDFA',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 10,
+                marginTop: 10,
+                borderWidth: 1,
+                borderColor: '#CCFBF1',
+              }}
+            >
+              <Ionicons name="camera-outline" size={16} color="#0D9488" />
+              <Text style={{ flex: 1, fontFamily: 'PublicSans-Regular', fontSize: 11, color: '#0F766E', lineHeight: 15 }}>
+                When patients scan a prescription in the Camera tab, AI OCR extracts medications and queues them here for physician sign-off.
+              </Text>
+            </View>
           </View>
         ) : (
           <View style={styles.reviewsList}>
-            {reviews.map((review) => (
-              <TouchableOpacity
-                key={review.id}
-                style={[
-                  styles.reviewCard,
-                  isAccessibilityMode && styles.highContrastCard,
-                ]}
-                activeOpacity={0.8}
-                onPress={() => {
-                  triggerHaptic();
-                  router.push(`/review-details?id=${review.id}`);
-                }}
-              >
-                <View style={styles.reviewTopRow}>
-                  <View style={styles.reviewPatientBadge}>
-                    <Ionicons name="person-circle" size={18} color={Theme.colors.primary} />
-                    <Text style={styles.reviewPatientText}>{review.patient_name}</Text>
+            {reviews.map((review) => {
+              const thumbUrl = getPrescriptionPublicUrlSync(review.image_url);
+              return (
+                <TouchableOpacity
+                  key={review.id}
+                  style={[
+                    styles.reviewCard,
+                    isAccessibilityMode && styles.highContrastCard,
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    triggerHaptic();
+                    router.push(`/review-details?id=${review.id}`);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Review prescription for ${review.patient_name}, medication ${review.medication}`}
+                >
+                  <View style={styles.reviewTopRow}>
+                    <View style={styles.reviewPatientBadge}>
+                      <Ionicons name="person-circle" size={18} color={Theme.colors.primary} />
+                      <Text style={styles.reviewPatientText}>{review.patient_name}</Text>
+                    </View>
+                    <View style={styles.ocrTag}>
+                      <MaterialCommunityIcons name="line-scan" size={14} color="#0D9488" />
+                      <Text style={styles.ocrTagText}>OCR Pre-Scanned</Text>
+                    </View>
                   </View>
-                  <View style={styles.ocrTag}>
-                    <MaterialCommunityIcons name="line-scan" size={14} color="#0D9488" />
-                    <Text style={styles.ocrTagText}>OCR Pre-Scanned</Text>
+
+                  <View style={styles.reviewCardContentRow}>
+                    {thumbUrl ? (
+                      <View style={styles.reviewThumbWrapper}>
+                        <Image
+                          source={{ uri: thumbUrl }}
+                          style={styles.reviewThumbImage}
+                          contentFit="cover"
+                        />
+                        <View style={styles.reviewThumbBadge}>
+                          <Ionicons name="document-text" size={10} color="#FFFFFF" />
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.reviewThumbPlaceholder}>
+                        <Ionicons name="document-text-outline" size={24} color="#0D9488" />
+                      </View>
+                    )}
+
+                    <View style={styles.reviewBody}>
+                      <Text style={[styles.reviewMedTitle, isAccessibilityMode && styles.largeText]} numberOfLines={1}>
+                        {review.medication || 'Prescription Slip Review'}
+                      </Text>
+                      <Text style={styles.reviewDosageText} numberOfLines={1}>
+                        Dosage: {review.dosage || 'See uploaded slip'}
+                      </Text>
+                      <Text style={styles.reviewDurationText} numberOfLines={1}>
+                        Course: {review.duration || '30 days supply'}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.reviewBody}>
-                  <Text style={[styles.reviewMedTitle, isAccessibilityMode && styles.largeText]}>
-                    {review.medication}
-                  </Text>
-                  <Text style={styles.reviewHint}>
-                    Dosage & schedule ready for verification and clinical sign-off
-                  </Text>
-                </View>
-
-                <View style={styles.reviewFooter}>
-                  <Text style={styles.reviewTapCta}>Tap to Review & Approve</Text>
-                  <Ionicons name="arrow-forward-circle" size={24} color={Theme.colors.primary} />
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.reviewFooter}>
+                    <Text style={styles.reviewTapCta}>Tap to Inspect Photo &amp; Approve</Text>
+                    <Ionicons name="arrow-forward-circle" size={22} color={Theme.colors.primary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -783,6 +863,103 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  topAppBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  headerActionCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatarButton: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+  },
+  headerAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: '#0D9488',
+  },
+  headerAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    ...Theme.shadows.card,
+  },
+  headerCameraBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  clinicalStatusRow: {
+    marginBottom: 14,
+  },
+  clinicalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    marginBottom: 4,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  clinicalBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10,
+    color: '#047857',
+    letterSpacing: 0.5,
+  },
+  clinicalHeaderTitle: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 20,
+    color: '#0F172A',
+  },
+  settingsIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  brandBar: {
+    marginBottom: 10,
+    alignItems: 'flex-start',
   },
   headerRow: {
     flexDirection: 'row',
@@ -1134,13 +1311,64 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   reviewBody: {
-    marginBottom: 10,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  reviewCardContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 6,
+  },
+  reviewThumbWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  reviewThumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  reviewThumbBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    borderRadius: 4,
+    padding: 2,
+  },
+  reviewThumbPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewDosageText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 12,
+    color: '#334155',
+    marginTop: 2,
+  },
+  reviewDurationText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
   },
   reviewMedTitle: {
     fontFamily: 'PublicSans-Bold',
     fontSize: 14,
     color: '#006874',
-    marginBottom: 3,
+    marginBottom: 1,
   },
   reviewHint: {
     fontFamily: 'PublicSans-Regular',
@@ -1154,6 +1382,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingTop: 8,
+    marginTop: 2,
   },
   reviewTapCta: {
     fontFamily: 'PublicSans-Bold',
@@ -1398,5 +1627,137 @@ const styles = StyleSheet.create({
   modalButtonsStack: {
     width: '100%',
     gap: 8,
+  },
+  // Personal Medications Self-Care Card
+  personalMedsCard: {
+    backgroundColor: '#FAF5FF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E9D5FF',
+    padding: 12,
+    marginBottom: 14,
+  },
+  personalMedsTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  personalMedsTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  personalMedsIconPlate: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  personalMedsTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#581C87',
+  },
+  personalMedsSub: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 10.5,
+    color: '#7E22CE',
+  },
+  personalMedsSwitchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D8B4FE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  personalMedsSwitchBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: '#7C3AED',
+  },
+  personalMedsList: {
+    gap: 6,
+  },
+  personalMedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 9,
+    borderWidth: 1,
+    borderColor: '#F3E8FF',
+  },
+  personalMedName: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12.5,
+    color: '#0F172A',
+  },
+  personalMedDetail: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  personalMedTakenBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  personalMedTakenText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10.5,
+    color: '#059669',
+  },
+  personalMedTakeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  personalMedTakeBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  personalMedsEmptyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingTop: 2,
+  },
+  personalMedsEmptyText: {
+    flex: 1,
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#6B21A8',
+    lineHeight: 15,
+  },
+  personalMedsAddBtn: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  personalMedsAddBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: '#FFFFFF',
   },
 });

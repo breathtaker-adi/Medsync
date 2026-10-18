@@ -171,21 +171,56 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
   useEffect(() => {
     if (!isReady) return;
 
-    const inAuthGroup = segments[0] === 'login';
-    const inSetup = segments[0] === 'profile-setup';
+    // Wait for profile to load before making routing decisions when session exists
+    if (session && !profile) return;
 
-    if (!session && !inAuthGroup) {
-      router.replace('/login');
-    } else if (session) {
-      if (!profile && !inSetup) {
-        // Logged in without a profile -> complete setup
-        router.replace('/profile-setup');
-      } else if (profile && (inAuthGroup || inSetup)) {
-        // Profile exists -> redirect using router.replace to avoid building stack history
-        if (profile.role && ['caregiver', 'doctor'].includes(profile.role)) {
-          router.replace('/(tabs)/caregiver-dashboard');
-        } else if (profile.role === 'patient') {
-          router.replace('/(tabs)/patient-dashboard');
+    const currentRoute = segments[0] as string | undefined;
+    // Routes that are strictly for unauthenticated users
+    const authOnlyRoutes = ['login', 'forgot-password', 'reset-password'];
+    // Routes accessible by anyone (even without logging in)
+    const publicAccessibleRoutes = [...authOnlyRoutes, 'privacy-policy', 'clinical-privacy-policy'];
+    const isAuthOnlyRoute = currentRoute ? authOnlyRoutes.includes(currentRoute) : false;
+    const isPublicAccessibleRoute = currentRoute ? publicAccessibleRoutes.includes(currentRoute) : false;
+    const inSetup = currentRoute === 'profile-setup' || currentRoute === 'role-selection';
+
+    if (!session) {
+      if (!isPublicAccessibleRoute) {
+        router.replace('/login');
+      }
+    } else {
+      // Authenticated session exists
+      if (!profile || !profile.role) {
+        // Incomplete profile -> direct to profile setup if not already in setup flow
+        if (!inSetup) {
+          router.replace('/profile-setup');
+        }
+      } else {
+        // Role protection: Patient users cannot access clinical oversight screens
+        const isCaregiverOrDoctor = profile.role === 'caregiver' || profile.role === 'doctor';
+
+        const currentTabRoute = segments.length > 1 ? segments[1] : undefined;
+        const currentActiveRoute = currentTabRoute || currentRoute;
+        const caregiverRestrictedRoutes = [
+          'caregiver-dashboard',
+          'doctor-settings',
+          'patient-directory',
+          'pending-reviews',
+        ];
+
+        if (!isCaregiverOrDoctor && profile.role === 'patient') {
+          if (currentActiveRoute && caregiverRestrictedRoutes.includes(currentActiveRoute)) {
+            router.replace('/(tabs)/patient-dashboard');
+            return;
+          }
+        }
+
+        // Profile exists and has a configured role: redirect away ONLY from auth-only routes (login, forgot-password)
+        if (isAuthOnlyRoute) {
+          if (['caregiver', 'doctor'].includes(profile.role)) {
+            router.replace('/(tabs)/caregiver-dashboard');
+          } else {
+            router.replace('/(tabs)/patient-dashboard');
+          }
         }
       }
     }
@@ -200,13 +235,20 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="role-selection" options={{ headerShown: false }} />
         <Stack.Screen name="medication-details" options={{ headerShown: false }} />
         <Stack.Screen name="medication-history" options={{ headerShown: false }} />
+        <Stack.Screen name="paused-medications" options={{ headerShown: false }} />
         <Stack.Screen name="patient-details" options={{ headerShown: false }} />
         <Stack.Screen name="patient-directory" options={{ headerShown: false }} />
+        <Stack.Screen name="pending-reviews" options={{ headerShown: false }} />
         <Stack.Screen name="review-details" options={{ headerShown: false }} />
+        <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
         <Stack.Screen name="doctor-settings" options={{ headerShown: false }} />
+        <Stack.Screen name="doctor-verification" options={{ headerShown: false }} />
+        <Stack.Screen name="doctor-link" options={{ headerShown: false }} />
         <Stack.Screen name="privacy-policy" options={{ headerShown: false }} />
+        <Stack.Screen name="clinical-privacy-policy" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
       <AnimatedSplashScreen isReady={isReady} />

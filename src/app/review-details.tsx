@@ -25,12 +25,19 @@ import { useAccessibility } from '../context/AccessibilityContext';
 import { notificationService } from '../services/notificationService';
 import { prescriptionService } from '../services/prescriptionService';
 import { showErrorAlert } from '../utils/errorHandler';
+import { resolvePrescriptionImageUrl } from '../utils/prescriptionHelper';
 
 export default function ReviewDetailsScreen() {
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  // Expo Router may return params as string | string[]; safely extract scalar
+  const rawId = params.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const { isAccessibilityMode, triggerHaptic } = useAccessibility();
   const [review, setReview] = useState<any>(null);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [fullscreenImageVisible, setFullscreenImageVisible] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
 
@@ -38,6 +45,8 @@ export default function ReviewDetailsScreen() {
   const [editedMedicine, setEditedMedicine] = useState('');
   const [editedDosage, setEditedDosage] = useState('');
   const [editedDuration, setEditedDuration] = useState('');
+  const [editedQuantity, setEditedQuantity] = useState('30');
+  const [editedUnit, setEditedUnit] = useState('Tablets');
   const [doctorNote, setDoctorNote] = useState('');
 
   const { profile, session } = useAuth();
@@ -49,7 +58,7 @@ export default function ReviewDetailsScreen() {
     const dosage = editedDosage || review?.dosage || 'unspecified dosage';
     const duration = editedDuration || review?.duration || 'standard duration';
     const patient = review?.patient_name || 'the patient';
-    const text = `Prescription for ${patient}. Medication: ${medName}. Dosage: ${dosage}. Duration: ${duration}. ${
+    const text = `Prescription for ${patient}. Medication: ${medName}. Dosage: ${dosage}. Supply: ${editedQuantity} ${editedUnit}. Duration: ${duration}. ${
       doctorNote ? `Doctor's note: ${doctorNote}` : ''
     }`;
     notificationService.speakText(text, true);
@@ -57,13 +66,15 @@ export default function ReviewDetailsScreen() {
 
   useEffect(() => {
     if (id) fetchReviewDetails(Number(id));
+    else setLoading(false);
   }, [id]);
 
   const fetchReviewDetails = async (reviewId: number) => {
     const res = await prescriptionService.fetchReviewById(reviewId);
 
     if (!res.success || !res.data) {
-      showErrorAlert(res.error, 'Could not load review details');
+      // Show a clear error but don't block the "not found" UI from showing
+      console.warn('[review-details] fetchReviewById failed:', res.error);
       setReview(null);
       setLoading(false);
       return;
@@ -71,28 +82,27 @@ export default function ReviewDetailsScreen() {
 
     const data = res.data;
     setReview(data);
-      // Pre-fill editable fields
-      setEditedMedicine(data.medication || '');
-      setEditedDosage(data.dosage || 'Take 1 tablet');
-      setEditedDuration(data.duration || '30 days');
-      setDoctorNote(data.doctor_notes || '');
+    // Pre-fill editable fields
+    setEditedMedicine(data.medication || '');
+    setEditedDosage(data.dosage || 'Take 1 tablet');
+    setEditedDuration(data.duration || '30 days');
+    setDoctorNote(data.doctor_notes || '');
 
-      // Resolve signed URL for private bucket paths
-      if (data.image_url) {
-        if (data.image_url.startsWith('http://') || data.image_url.startsWith('https://')) {
-          setResolvedImageUrl(data.image_url);
-        } else {
-          try {
-            const { data: signedData } = await supabase.storage
-              .from('prescriptions')
-              .createSignedUrl(data.image_url, 3600);
-            setResolvedImageUrl(signedData?.signedUrl || data.image_url);
-          } catch (e) {
-            console.error('Failed to create signed URL:', e);
-            setResolvedImageUrl(data.image_url);
-          }
-        }
+    // Robust multi-strategy image URL resolution
+    if (data.image_url) {
+      setImageLoading(true);
+      setImageLoadError(false);
+      try {
+        const url = await resolvePrescriptionImageUrl(data.image_url);
+        setResolvedImageUrl(url);
+      } catch (e) {
+        console.error('[review-details] Error resolving prescription image:', e);
+      } finally {
+        setImageLoading(false);
       }
+    } else {
+      setResolvedImageUrl(null);
+    }
     setLoading(false);
   };
 
@@ -130,26 +140,43 @@ export default function ReviewDetailsScreen() {
   const handleApprove = async () => {
     if (!review) return;
 
-    if (!isDoctor) {
+    // Both Caregivers and Doctors have full authority to approve prescriptions!
+    const isDoctor = profile?.role === 'doctor' || profile?.is_verified_doctor === true;
+    const isCaregiver = profile?.role === 'caregiver';
+
+    if (!isDoctor && !isCaregiver) {
       Alert.alert(
-        'Physician Verification Required',
-        'Only verified doctors can approve prescriptions and schedule medications for patients. Caregiver view is read-only.'
+        'Authority Required',
+        'Only caregivers or doctors linked to this patient are authorized to review and approve prescriptions.'
       );
       return;
     }
 
     const medName = editedMedicine || review.medication;
     const dosageInfo = editedDosage || review.dosage;
+    const supplyCount = parseInt(editedQuantity, 10) || 30;
+    const formattedDosage = `${dosageInfo} (${supplyCount} ${editedUnit})`;
+
+    // Stamp with appropriate attestation: Verified Physician Seal or Family Caregiver Signature
+    const approverTitle = isDoctor && profile?.is_verified_doctor
+      ? `Verified Physician (Dr. ${profile?.full_name?.replace(/^Dr\.\s*/i, '') || 'Doctor'})`
+      : `Family Caregiver (${profile?.full_name || 'Caregiver'})`;
+
+    const notesWithAttestation = doctorNote
+      ? `${doctorNote}\n[Approved by ${approverTitle}]`
+      : `Approved by ${approverTitle}`;
 
     // 1. Attempt Atomic RPC Approval (single transactional execution)
     let approved = false;
     const { data: rpcData, error: rpcError } = await supabase.rpc('approve_review', {
       p_review_id: review.id,
       p_medicine_name: medName,
-      p_dosage: dosageInfo,
+      p_dosage: formattedDosage,
       p_duration: editedDuration,
       p_time: review.time || '08:00',
-      p_doctor_notes: doctorNote || null,
+      p_doctor_notes: notesWithAttestation,
+      p_pills_remaining: supplyCount,
+      p_total_pills: supplyCount,
     });
 
     if (!rpcError && rpcData?.success) {
@@ -161,10 +188,10 @@ export default function ReviewDetailsScreen() {
         .from('pending_reviews')
         .update({
           status: 'approved',
-          medication: editedMedicine,
-          dosage: editedDosage,
+          medication: medName,
+          dosage: formattedDosage,
           duration: editedDuration,
-          doctor_notes: doctorNote,
+          doctor_notes: notesWithAttestation,
         })
         .eq('id', review.id);
 
@@ -176,10 +203,12 @@ export default function ReviewDetailsScreen() {
 
       const { error: medError } = await supabase.from('medications').insert({
         medicine_name: medName,
-        dosage: dosageInfo,
+        dosage: formattedDosage,
         time: review.time || '08:00',
         status: 'pending',
         patient_id: review.patient_id,
+        pills_remaining: supplyCount,
+        total_pills: supplyCount,
       });
 
       if (medError) {
@@ -243,15 +272,87 @@ export default function ReviewDetailsScreen() {
       return;
     }
 
-    Alert.alert('Rejected', 'Prescription has been rejected.');
+    // Push notification to patient that prescription was rejected
+    try {
+      const { data: patientData } = await supabase
+        .from('patient_push_tokens')
+        .select('push_token')
+        .eq('patient_id', review.patient_id);
+
+      if (patientData && patientData.length > 0 && patientData[0].push_token) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: patientData[0].push_token,
+            title: '❌ Prescription Requires Resubmission',
+            body: doctorNote
+              ? `Doctor note: ${doctorNote}`
+              : 'Your uploaded prescription could not be verified. Tap to view and re-upload.',
+            priority: 'high',
+            sound: 'default',
+          }),
+        });
+      }
+    } catch (e) {
+      console.warn('[review-details] Push error on rejection:', e);
+    }
+
+    Alert.alert('Rejected', 'Prescription has been rejected and the patient has been notified.');
     router.back();
   };
 
-  if (loading || !review) {
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Theme.colors.primary} />
       </View>
+    );
+  }
+
+  if (!review) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScreenHeader
+          title="Review Prescription"
+          fallbackRoute="/(tabs)/caregiver-dashboard"
+        />
+        <View style={styles.center}>
+          <Ionicons name="document-text-outline" size={56} color="#94A3B8" />
+          <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 16, color: '#0F172A', marginTop: 12 }}>
+            Prescription Review Not Found
+          </Text>
+          <Text
+            style={{
+              fontFamily: 'PublicSans-Regular',
+              fontSize: 13,
+              color: '#64748B',
+              textAlign: 'center',
+              marginTop: 6,
+              marginHorizontal: 24,
+            }}
+          >
+            This prescription may have already been reviewed or requires clinical roster refresh.
+          </Text>
+          <TouchableOpacity
+            style={{
+              marginTop: 20,
+              backgroundColor: Theme.colors.primary,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 10,
+            }}
+            onPress={() => router.replace('/(tabs)/caregiver-dashboard')}
+          >
+            <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 14, color: '#FFFFFF' }}>
+              Return to Clinical Dashboard
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -274,68 +375,222 @@ export default function ReviewDetailsScreen() {
       />
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-        {/* Image of Prescription */}
-        <Image
-          source={{ uri: resolvedImageUrl || review.image_url }}
-          style={styles.prescriptionImage}
-          contentFit="contain"
-        />
+        {/* Role & Approval Authority Banner */}
+        {profile?.role === 'caregiver' && !profile?.is_verified_doctor ? (
+          <View style={styles.caregiverAuthBanner}>
+            <View style={styles.caregiverAuthIconPlate}>
+              <Ionicons name="shield-checkmark" size={20} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.caregiverAuthTitle}>Family Caregiver Full Authorization</Text>
+              <Text style={styles.caregiverAuthDesc}>
+                You have full authority to review, edit dosages, and approve medication schedules for your loved ones.
+              </Text>
+            </View>
+          </View>
+        ) : profile?.is_verified_doctor ? (
+          <View style={styles.doctorVerifiedBanner}>
+            <Ionicons name="shield-checkmark" size={18} color="#059669" />
+            <Text style={styles.doctorVerifiedBannerText}>
+              Verified Physician Seal Attached • Official Medical Attestation
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.doctorVerificationBanner}
+            onPress={() => router.push('/doctor-verification')}
+          >
+            <Ionicons name="shield-outline" size={20} color="#D97706" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.doctorVerificationBannerTitle}>
+                Optional: Attach Verified Physician Seal
+              </Text>
+              <Text style={styles.doctorVerificationBannerDesc}>
+                If you are a practicing medical doctor, verify your license to include a verified digital doctor seal.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#D97706" />
+          </TouchableOpacity>
+        )}
+
+        {/* Image Inspection Card */}
+        <View style={styles.imageCardContainer}>
+          <View style={styles.imageCardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="image-outline" size={18} color={Theme.colors.primary} />
+              <Text style={styles.imageCardTitle}>Prescription Document</Text>
+            </View>
+            {resolvedImageUrl ? (
+              <TouchableOpacity
+                onPress={() => {
+                  triggerHaptic();
+                  setFullscreenImageVisible(true);
+                }}
+                style={styles.expandHeaderBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Enlarge prescription document in full screen"
+              >
+                <Ionicons name="expand" size={13} color={Theme.colors.primary} />
+                <Text style={styles.expandHeaderBtnText}>Full Screen</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {imageLoading ? (
+            <View style={styles.imagePlaceholderBox}>
+              <ActivityIndicator size="large" color={Theme.colors.primary} />
+              <Text style={styles.imagePlaceholderText}>Loading prescription photo...</Text>
+            </View>
+          ) : resolvedImageUrl && !imageLoadError ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => {
+                triggerHaptic();
+                setFullscreenImageVisible(true);
+              }}
+              style={styles.imageTouchable}
+              accessibilityRole="imagebutton"
+              accessibilityLabel="Tap to view enlarged prescription photo"
+            >
+              <Image
+                source={{ uri: resolvedImageUrl }}
+                style={styles.prescriptionImage}
+                contentFit="contain"
+                onError={() => setImageLoadError(true)}
+              />
+              <View style={styles.zoomBadge}>
+                <Ionicons name="search" size={12} color="#FFFFFF" />
+                <Text style={styles.zoomBadgeText}>Tap to Zoom / Inspect</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.imagePlaceholderBox}>
+              <Ionicons name="document-text-outline" size={44} color="#94A3B8" />
+              <Text style={styles.imagePlaceholderTitle}>Prescription Slip Attached</Text>
+              <Text style={styles.imagePlaceholderText}>
+                {review?.image_url
+                  ? `Storage File: ${review.image_url}`
+                  : 'Document reference on cloud storage'}
+              </Text>
+              <TouchableOpacity
+                style={styles.retryImageBtn}
+                onPress={() => fetchReviewDetails(review.id)}
+              >
+                <Ionicons name="refresh" size={14} color={Theme.colors.primary} />
+                <Text style={styles.retryImageBtnText}>Reload Photo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {!isDoctor && (
-          <View style={[styles.notesContainer, { backgroundColor: Theme.colors.surfaceContainerHigh, marginTop: 16 }]}>
+          <View style={[styles.notesContainer, { backgroundColor: Theme.colors.surfaceContainerHigh, marginTop: 12 }]}>
             <Text style={[styles.notesTitle, { color: Theme.colors.onSurfaceVariant }]}>
               ℹ️ Caregiver Oversight View
             </Text>
             <Text style={[styles.notesText, { color: Theme.colors.onSurfaceVariant }]}>
-              Only verified medical doctors can officially approve prescriptions to a patient's schedule. You may inspect the slip and record notes.
+              Designated caregivers and verified physicians can review, adjust dosages, and approve prescriptions into the patient's daily medication routine.
             </Text>
           </View>
         )}
 
         <View style={styles.spacer} />
 
-        {/* Patient Info */}
-        <Text style={styles.sectionTitle}>Patient</Text>
-        <Text style={styles.sectionText}>{review.patient_name}</Text>
-
-        <View style={styles.spacer} />
-
-        {/* AI Summary / Details */}
+        {/* Prescription Summary Header & Quick Actions */}
         <View style={styles.summaryHeaderRow}>
-          <Text style={[styles.sectionTitle, isAccessibilityMode && styles.largeSectionTitle]}>Summary</Text>
-          <TouchableOpacity
-            style={styles.voiceAssistBtn}
-            onPress={handleReadAloudPrescription}
-            accessibilityRole="button"
-            accessibilityLabel="Listen to prescription details"
-          >
-            <Ionicons name="volume-high" size={18} color={Theme.colors.primary} />
-            <Text style={styles.voiceAssistBtnText}>Read Aloud</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="receipt-outline" size={20} color={Theme.colors.primary} />
+            <Text style={[styles.sectionTitle, isAccessibilityMode && styles.largeSectionTitle, { marginBottom: 0 }]}>
+              Prescription Summary
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.editSummaryBtn}
+              onPress={() => {
+                triggerHaptic();
+                setEditModalVisible(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Edit medicine name, dosage and duration"
+            >
+              <Ionicons name="create-outline" size={14} color={Theme.colors.primary} />
+              <Text style={styles.editSummaryBtnText}>Edit Details</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.voiceAssistBtn}
+              onPress={handleReadAloudPrescription}
+              accessibilityRole="button"
+              accessibilityLabel="Listen to prescription details read aloud"
+            >
+              <Ionicons name="volume-high" size={14} color={Theme.colors.primary} />
+              <Text style={styles.voiceAssistBtnText}>Listen</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
+        {/* Suspected Non-Prescription Image Warning */}
+        {(review.medication?.includes('⚠️') ||
+          review.medication?.toLowerCase().includes('unrecognized') ||
+          review.doctor_notes?.includes('AI Warning')) && (
+          <View style={styles.suspectedNonPrescriptionBanner}>
+            <View style={styles.suspectedIconCircle}>
+              <Ionicons name="alert-circle" size={22} color="#DC2626" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.suspectedBannerTitle}>Suspected Non-Prescription Image</Text>
+              <Text style={styles.suspectedBannerText}>
+                AI OCR detected that this photo may not be an official prescription slip. Please inspect the photo carefully. If invalid, tap &quot;Reject&quot; below.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Structured Summary Card */}
         <View style={[styles.summaryCard, isAccessibilityMode && styles.highContrastCard]}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Medicine:</Text>
-            <Text style={styles.summaryValue}>{editedMedicine}</Text>
+            <Text style={styles.summaryLabel}>Patient:</Text>
+            <Text style={[styles.summaryValue, { fontFamily: 'PublicSans-Bold', color: '#0F172A' }]}>
+              {review.patient_name || 'Patient'}
+            </Text>
           </View>
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Medication:</Text>
+            <Text style={[styles.summaryValue, styles.summaryMedValue]}>
+              {editedMedicine || 'Prescription Slip Review'}
+            </Text>
+          </View>
+          <View style={styles.summaryDivider} />
+
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Dosage:</Text>
-            <Text style={styles.summaryValue}>{editedDosage}</Text>
+            <Text style={styles.summaryValue}>{editedDosage || '1 dose as prescribed'}</Text>
           </View>
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Supply:</Text>
+            <Text style={styles.summaryValue}>
+              {editedQuantity} {editedUnit}
+            </Text>
+          </View>
+          <View style={styles.summaryDivider} />
+
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Duration:</Text>
-            <Text style={styles.summaryValue}>{editedDuration}</Text>
+            <Text style={styles.summaryValue}>{editedDuration || '30 days'}</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Notes / Advice:</Text>
+            <Text style={[styles.summaryValue, { color: doctorNote ? '#0F172A' : '#64748B' }]}>
+              {doctorNote || 'No specific doctor instructions. Tap "Edit Details" to record directions.'}
+            </Text>
           </View>
         </View>
-
-        {/* Show Doctor Notes if they exist */}
-        {doctorNote ? (
-          <View style={styles.notesContainer}>
-            <Text style={styles.notesTitle}>Doctor's Note:</Text>
-            <Text style={styles.notesText}>{doctorNote}</Text>
-          </View>
-        ) : null}
       </ScrollView>
 
       {/* Approve / Reject Buttons */}
@@ -387,6 +642,42 @@ export default function ReviewDetailsScreen() {
               value={editedDosage}
               onChangeText={setEditedDosage}
             />
+
+            <Text style={styles.inputLabel}>Supply Quantity & Unit</Text>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+              <TextInput
+                style={[styles.input, { width: 80, marginBottom: 0 }]}
+                value={editedQuantity}
+                onChangeText={setEditedQuantity}
+                keyboardType="numeric"
+                placeholder="30"
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+                {['Tablets', 'Capsules', 'ml (Liquid)', 'Grams', 'Units'].map((u) => (
+                  <TouchableOpacity
+                    key={u}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 10,
+                      borderRadius: 8,
+                      marginRight: 6,
+                      backgroundColor: editedUnit === u ? Theme.colors.primary : '#F1F5F9',
+                    }}
+                    onPress={() => setEditedUnit(u)}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: 'PublicSans-Bold',
+                        fontSize: 12,
+                        color: editedUnit === u ? '#FFFFFF' : '#334155',
+                      }}
+                    >
+                      {u}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
             <Text style={styles.inputLabel}>Duration / When</Text>
             <TextInput
@@ -445,13 +736,174 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: 'PublicSans-Bold', fontSize: 15, color: Theme.colors.onSurface, marginBottom: 6 },
   sectionText: { fontFamily: 'PublicSans-Regular', fontSize: 13.5, color: Theme.colors.onSurfaceVariant },
   summaryCard: {
-    backgroundColor: Theme.colors.surfaceContainerLow,
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
   },
-  summaryRow: { flexDirection: 'row', marginBottom: 6 },
-  summaryLabel: { fontFamily: 'PublicSans-Bold', fontSize: 13.5, color: Theme.colors.onSurface, width: 85 },
-  summaryValue: { fontFamily: 'PublicSans-Regular', fontSize: 13.5, color: Theme.colors.onSurfaceVariant, flex: 1 },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 4,
+  },
+  summaryLabel: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#475569',
+    width: 130,
+  },
+  summaryValue: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 13,
+    color: '#0F172A',
+    flex: 1,
+    textAlign: 'right',
+  },
+  summaryMedValue: {
+    fontFamily: 'PublicSans-Bold',
+    color: Theme.colors.primary,
+    fontSize: 14,
+  },
+  imageCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+    ...Theme.shadows.card,
+  },
+  imageCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  imageCardTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#334155',
+  },
+  expandHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#E6F4F4',
+  },
+  expandHeaderBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: Theme.colors.primary,
+  },
+  imageTouchable: {
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  zoomBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  zoomBadgeText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 10.5,
+    color: '#FFFFFF',
+  },
+  imagePlaceholderBox: {
+    height: 200,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  imagePlaceholderTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#475569',
+    marginTop: 8,
+  },
+  imagePlaceholderText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  retryImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E6F4F4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  retryImageBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: Theme.colors.primary,
+  },
+  editSummaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  editSummaryBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: Theme.colors.primary,
+  },
+  fullscreenModalBg: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  fullscreenModalTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  fullscreenModalTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  fullscreenCloseBtn: {
+    padding: 6,
+  },
+  fullscreenImage: {
+    flex: 1,
+    width: '100%',
+  },
   notesContainer: {
     marginTop: 12,
     padding: 12,
@@ -550,5 +1002,105 @@ const styles = StyleSheet.create({
   highContrastCard: {
     borderWidth: 2,
     borderColor: '#0F172A',
+  },
+  caregiverAuthBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#BAE6FD',
+    marginBottom: 16,
+  },
+  caregiverAuthIconPlate: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  caregiverAuthTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#0369A1',
+  },
+  caregiverAuthDesc: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#0C4A6E',
+    marginTop: 1,
+    lineHeight: 15,
+  },
+  doctorVerifiedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    marginBottom: 16,
+  },
+  doctorVerifiedBannerText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: '#065F46',
+  },
+  doctorVerificationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 16,
+  },
+  doctorVerificationBannerTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12.5,
+    color: '#92400E',
+  },
+  doctorVerificationBannerDesc: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#78350F',
+    marginTop: 1,
+  },
+  suspectedNonPrescriptionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    marginBottom: 16,
+  },
+  suspectedIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suspectedBannerTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: '#991B1B',
+  },
+  suspectedBannerText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#B91C1C',
+    marginTop: 2,
+    lineHeight: 16,
   },
 });

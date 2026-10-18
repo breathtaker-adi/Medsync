@@ -22,9 +22,18 @@ import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
 
 export default function ProfileSetupScreen() {
-  const { session } = useAuth();
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'patient' | 'caregiver' | null>(null);
+  const { session, profile, refreshProfile } = useAuth();
+  const [fullName, setFullName] = useState(
+    profile?.full_name || session?.user?.user_metadata?.full_name || ''
+  );
+  const [role, setRole] = useState<'patient' | 'caregiver' | null>(
+    (profile?.role as any) === 'caregiver' || (profile?.role as any) === 'patient'
+      ? (profile?.role as any)
+      : (session?.user?.user_metadata?.role as any) === 'caregiver' ||
+        (session?.user?.user_metadata?.role as any) === 'patient'
+      ? (session?.user?.user_metadata?.role as any)
+      : null
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSelectRole = (selectedRole: 'patient' | 'caregiver') => {
@@ -51,15 +60,27 @@ export default function ProfileSetupScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('profiles').insert({
-        id: session.user.id,
-        full_name: fullName.trim(),
-        role: role,
+      const { error } = await supabase.from('profiles').upsert(
+        {
+          id: session.user.id,
+          full_name: fullName.trim(),
+          role: role,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+
+      await supabase.auth.updateUser({
+        data: {
+          full_name: fullName.trim(),
+          role: role,
+        },
       });
 
       if (error) {
         Alert.alert('Error saving profile', error.message);
       } else {
+        await refreshProfile();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (role === 'patient') {
           router.replace('/(tabs)/patient-dashboard');
@@ -111,7 +132,7 @@ export default function ProfileSetupScreen() {
                 />
                 <TextInput
                   style={styles.textInput}
-                  placeholder="e.g. Eleanor Vance"
+                  placeholder="Enter your full name"
                   placeholderTextColor={Theme.colors.outline}
                   value={fullName}
                   onChangeText={setFullName}

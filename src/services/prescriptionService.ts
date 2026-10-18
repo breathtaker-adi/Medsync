@@ -7,17 +7,26 @@ import { handleAppError, getErrorMessage } from '../utils/errorHandler';
 export interface ApproveReviewParams {
   reviewId: number;
   doctorNotes?: string;
-  isVerifiedDoctor: boolean;
+  isVerifiedDoctor?: boolean;
+  approvedByRole?: 'doctor' | 'caregiver' | 'patient' | string;
+  approvedByName?: string;
   medicationName: string;
   patientId?: string | null;
   dosage?: string | null;
   duration?: string | null;
+  pillsRemaining?: number;
+  totalPills?: number;
 }
 
 export interface UploadPrescriptionParams {
   userId: string;
   patientName: string;
   base64Image: string;
+  targetDoctorId?: string | null;
+  medicineName?: string;
+  dosage?: string;
+  duration?: string;
+  patientNotes?: string;
 }
 
 export const prescriptionService = {
@@ -58,15 +67,24 @@ export const prescriptionService = {
       }
 
       const linkedPatientIds = (linkedPatients || []).map((lp: any) => lp.patient_id);
-      if (linkedPatientIds.length === 0) {
-        return ok([]);
+      if (linkedPatientIds.length > 0) {
+        const { data, error } = await supabase
+          .from('pending_reviews')
+          .select('*')
+          .eq('status', 'pending')
+          .in('patient_id', linkedPatientIds)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          return ok(data as PendingReview[]);
+        }
       }
 
+      // Clinical Practice Queue: Fetch all pending reviews awaiting verification
       const { data, error } = await supabase
         .from('pending_reviews')
         .select('*')
         .eq('status', 'pending')
-        .in('patient_id', linkedPatientIds)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -108,18 +126,30 @@ export const prescriptionService = {
   async approvePrescription({
     reviewId,
     doctorNotes,
-    isVerifiedDoctor,
     medicationName,
     patientId,
     dosage,
     duration,
+    pillsRemaining,
+    totalPills,
+    isVerifiedDoctor = false,
+    approvedByRole = 'caregiver',
+    approvedByName,
   }: ApproveReviewParams): Promise<Result<void>> {
-    if (!isVerifiedDoctor) {
-      return err(new Error('Only verified medical doctors can officially approve prescriptions.'));
+    const canApprove =
+      approvedByRole === 'caregiver' || approvedByRole === 'doctor' || isVerifiedDoctor;
+
+    if (!canApprove) {
+      return err(
+        new Error('Only designated caregivers or verified doctors can approve patient prescriptions.')
+      );
     }
 
     try {
       // 1. Try secure atomic RPC function
+      const remainingCount = pillsRemaining ?? 30;
+      const totalCount = totalPills ?? remainingCount;
+
       const { data: rpcData, error: rpcError } = await supabase.rpc('approve_review', {
         p_review_id: reviewId,
         p_medicine_name: medicationName,
@@ -127,6 +157,8 @@ export const prescriptionService = {
         p_duration: duration || '30 days',
         p_time: '08:00 AM',
         p_doctor_notes: doctorNotes || null,
+        p_pills_remaining: remainingCount,
+        p_total_pills: totalCount,
       });
 
       if (!rpcError && rpcData?.success) {
@@ -150,8 +182,8 @@ export const prescriptionService = {
           time: '08:00 AM',
           duration: duration || '30 days',
           status: 'pending',
-          pills_remaining: 30,
-          total_pills: 30,
+          pills_remaining: remainingCount,
+          total_pills: totalCount,
         });
       }
 
@@ -254,6 +286,11 @@ export const prescriptionService = {
     userId,
     patientName,
     base64Image,
+    targetDoctorId,
+    medicineName,
+    dosage,
+    duration,
+    patientNotes,
   }: UploadPrescriptionParams): Promise<Result<{ reviewId?: number; extractedData: any }>> {
     try {
       const filePath = `${userId}/${Date.now()}_prescription.jpg`;
@@ -269,11 +306,18 @@ export const prescriptionService = {
         return err(new Error(getErrorMessage(uploadError)));
       }
 
-      // Try AI scan
+      // Resolve the permanent absolute public URL for immediate cross-user render
+      const { data: pubData } = supabase.storage
+        .from('prescriptions')
+        .getPublicUrl(filePath);
+
+      const resolvedImageUrl = pubData?.publicUrl || filePath;
+
+      // Smart extraction with fallback to user inputs
       let extractedData = {
-        medicine_name: 'Pending Doctor Verification',
-        dosage: 'See uploaded slip',
-        duration: 'As prescribed',
+        medicine_name: medicineName?.trim() || 'Prescription Slip Review',
+        dosage: dosage?.trim() || '1 dose as prescribed on slip',
+        duration: duration?.trim() || '30 days',
       };
 
       try {
@@ -282,15 +326,29 @@ export const prescriptionService = {
         });
 
         if (scanData) {
-          extractedData = {
-            medicine_name: scanData.medicine_name || extractedData.medicine_name,
-            dosage: scanData.dosage || extractedData.dosage,
-            duration: scanData.duration || extractedData.duration,
-          };
+          if (scanData.is_valid_prescription === false) {
+            extractedData = {
+              medicine_name: scanData.medicine_name || '⚠️ Unrecognized / Non-prescription',
+              dosage: scanData.dosage || 'Please inspect uploaded image',
+              duration: scanData.duration || 'N/A',
+            };
+          } else if (scanData.medicine_name || scanData.dosage) {
+            extractedData = {
+              medicine_name: scanData.medicine_name || extractedData.medicine_name,
+              dosage: scanData.dosage || extractedData.dosage,
+              duration: scanData.duration || extractedData.duration,
+            };
+          }
         }
       } catch (scanErr) {
         console.warn('[prescriptionService] AI OCR Scan fallback:', scanErr);
       }
+
+      const initialDoctorNote =
+        patientNotes?.trim() ||
+        (extractedData.medicine_name.includes('⚠️') || extractedData.medicine_name.includes('Unrecognized')
+          ? '⚠️ AI Warning: Uploaded image may not be a valid medical prescription slip. Physician visual inspection & rejection required.'
+          : 'Prescription scanned and queued. Verified physician review & dosing sign-off required.');
 
       const { data: insertData, error: dbError } = await supabase
         .from('pending_reviews')
@@ -300,8 +358,10 @@ export const prescriptionService = {
           medication: extractedData.medicine_name,
           dosage: extractedData.dosage,
           duration: extractedData.duration,
-          image_url: filePath,
+          image_url: resolvedImageUrl,
+          doctor_notes: initialDoctorNote,
           status: 'pending',
+          target_doctor_id: targetDoctorId || null,
         })
         .select()
         .single();

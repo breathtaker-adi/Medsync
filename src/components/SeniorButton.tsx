@@ -144,13 +144,13 @@ export const SeniorButton: React.FC<SeniorButtonProps> = ({
               </View>
             )}
             <Text
+              numberOfLines={1}
               style={[
                 styles.text,
                 size === 'large' ? styles.textLarge : styles.textNormal,
                 { color: getTextColor() },
                 textStyle,
               ]}
-              numberOfLines={1}
             >
               {title}
             </Text>
@@ -173,13 +173,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexWrap: 'nowrap',
   },
   iconWrapper: {
     marginRight: 8,
+    flexShrink: 0,
   },
   text: {
     fontFamily: 'PublicSans-Bold',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
+    textAlignVertical: 'center',
+    paddingHorizontal: 2,
   },
   textNormal: {
     fontSize: 14.5,

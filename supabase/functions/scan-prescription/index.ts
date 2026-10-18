@@ -112,12 +112,12 @@ Deno.serve(async (req: Request) => {
           {
             role: 'system',
             content:
-              'You are an expert pharmacist AI. Read the prescription image. Extract the Medicine Name, Dosage Instructions, and Duration. Respond ONLY in JSON format like: {"medicine_name": "...", "dosage": "...", "duration": "..."}',
+              'You are an expert clinical pharmacist AI. Carefully inspect the uploaded image. Determine if it is an authentic medical prescription, doctor order, hospital slip, or medication packaging. If the image is NOT a medical prescription (e.g. a selfie, person, animal, car, landscape, scenery, receipt, random object, blank paper, or illegible clutter), respond with: {"is_valid_prescription": false, "medicine_name": "⚠️ Unrecognized / Non-prescription", "dosage": "Please inspect uploaded image", "duration": "N/A", "confidence": "low"}. If it IS a medical prescription or medication slip, extract the details: {"is_valid_prescription": true, "medicine_name": "...", "dosage": "...", "duration": "...", "confidence": "high"}. Respond ONLY in valid JSON format.',
           },
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Read this prescription and extract the data.' },
+              { type: 'text', text: 'Analyze this image and extract prescription medication details if valid.' },
               { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } },
             ],
           },
@@ -141,18 +141,34 @@ Deno.serve(async (req: Request) => {
       throw new Error('Empty response from AI service');
     }
 
-    let aiSummary: { medicine_name?: string; dosage?: string; duration?: string } = {};
+    let aiSummary: {
+      is_valid_prescription?: boolean;
+      medicine_name?: string;
+      dosage?: string;
+      duration?: string;
+      confidence?: string;
+    } = {};
     try {
       aiSummary = JSON.parse(rawContent);
     } catch {
       console.warn('Failed to parse AI JSON:', rawContent);
     }
 
+    const isValid = aiSummary.is_valid_prescription !== false;
+
     return new Response(
       JSON.stringify({
-        medicine_name: typeof aiSummary.medicine_name === 'string' ? aiSummary.medicine_name.trim() : 'Unknown Medicine',
-        dosage: typeof aiSummary.dosage === 'string' ? aiSummary.dosage.trim() : 'See prescription',
-        duration: typeof aiSummary.duration === 'string' ? aiSummary.duration.trim() : 'Not specified',
+        is_valid_prescription: isValid,
+        medicine_name: typeof aiSummary.medicine_name === 'string'
+          ? aiSummary.medicine_name.trim()
+          : (isValid ? 'Unknown Medicine' : '⚠️ Unrecognized / Non-prescription'),
+        dosage: typeof aiSummary.dosage === 'string'
+          ? aiSummary.dosage.trim()
+          : (isValid ? 'See prescription' : 'Please inspect uploaded image'),
+        duration: typeof aiSummary.duration === 'string'
+          ? aiSummary.duration.trim()
+          : (isValid ? 'Not specified' : 'N/A'),
+        confidence: aiSummary.confidence || (isValid ? 'medium' : 'low'),
       }),
       {
         status: 200,
