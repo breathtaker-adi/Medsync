@@ -29,10 +29,102 @@ import { Theme } from '../../theme';
 import { avatarHelper } from '../../utils/avatarHelper';
 import { MissedAlertItem, PatientItem } from '../../types/patient';
 import { PendingReview } from '../../types/review';
-import { getPrescriptionPublicUrlSync } from '../../utils/prescriptionHelper';
+import { getPrescriptionPublicUrlSync, usePrescriptionImageUrl } from '../../utils/prescriptionHelper';
+
+
 
 export type PendingReviewItem = PendingReview;
 export type { PatientItem, MissedAlertItem };
+
+function DashboardReviewCard({
+  review,
+  isAccessibilityMode,
+  triggerHaptic,
+  onPress,
+}: {
+  review: PendingReview;
+  isAccessibilityMode: boolean;
+  triggerHaptic: () => void;
+  onPress: () => void;
+}) {
+  const { url: thumbUrl } = usePrescriptionImageUrl(review.image_url);
+  const isSuspectedNonRx =
+    review.ocr_status === 'failed' ||
+    review.medication?.includes('⚠️') ||
+    review.medication?.toLowerCase().includes('unrecognized');
+
+  return (
+    <TouchableOpacity
+      key={review.id}
+      style={[
+        styles.reviewCard,
+        isAccessibilityMode && styles.highContrastCard,
+        isSuspectedNonRx && { borderColor: '#FCA5A5', backgroundColor: '#FFFBFB' },
+      ]}
+      activeOpacity={0.8}
+      onPress={() => {
+        triggerHaptic();
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Review prescription for ${review.patient_name}, medication ${review.medication}`}
+    >
+      <View style={styles.reviewTopRow}>
+        <View style={styles.reviewPatientBadge}>
+          <Ionicons name="person-circle" size={18} color={Theme.colors.primary} />
+          <Text style={styles.reviewPatientText}>{review.patient_name}</Text>
+        </View>
+        {isSuspectedNonRx ? (
+          <View style={[styles.ocrTag, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="warning" size={13} color="#DC2626" />
+            <Text style={[styles.ocrTagText, { color: '#DC2626' }]}>Inspect Photo</Text>
+          </View>
+        ) : (
+          <View style={styles.ocrTag}>
+            <MaterialCommunityIcons name="line-scan" size={14} color="#0D9488" />
+            <Text style={styles.ocrTagText}>OCR Pre-Scanned</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.reviewCardContentRow}>
+        {thumbUrl ? (
+          <View style={styles.reviewThumbWrapper}>
+            <Image
+              source={{ uri: thumbUrl }}
+              style={styles.reviewThumbImage}
+              contentFit="cover"
+            />
+            <View style={styles.reviewThumbBadge}>
+              <Ionicons name="document-text" size={10} color="#FFFFFF" />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.reviewThumbPlaceholder}>
+            <Ionicons name="document-text-outline" size={24} color="#0D9488" />
+          </View>
+        )}
+
+        <View style={styles.reviewBody}>
+          <Text style={[styles.reviewMedTitle, isAccessibilityMode && styles.largeText]} numberOfLines={1}>
+            {review.medication || 'Prescription Slip Review'}
+          </Text>
+          <Text style={styles.reviewDosageText} numberOfLines={1}>
+            Dosage: {review.dosage || 'See uploaded slip'}
+          </Text>
+          <Text style={styles.reviewDurationText} numberOfLines={1}>
+            Course: {review.duration || '30 days supply'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.reviewFooter}>
+        <Text style={styles.reviewTapCta}>Tap to Inspect Photo &amp; Approve</Text>
+        <Ionicons name="arrow-forward-circle" size={22} color={Theme.colors.primary} />
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function CaregiverDashboard() {
   const insets = useSafeAreaInsets();
@@ -498,72 +590,15 @@ export default function CaregiverDashboard() {
           </View>
         ) : (
           <View style={styles.reviewsList}>
-            {reviews.map((review) => {
-              const thumbUrl = getPrescriptionPublicUrlSync(review.image_url);
-              return (
-                <TouchableOpacity
-                  key={review.id}
-                  style={[
-                    styles.reviewCard,
-                    isAccessibilityMode && styles.highContrastCard,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    triggerHaptic();
-                    router.push(`/review-details?id=${review.id}`);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Review prescription for ${review.patient_name}, medication ${review.medication}`}
-                >
-                  <View style={styles.reviewTopRow}>
-                    <View style={styles.reviewPatientBadge}>
-                      <Ionicons name="person-circle" size={18} color={Theme.colors.primary} />
-                      <Text style={styles.reviewPatientText}>{review.patient_name}</Text>
-                    </View>
-                    <View style={styles.ocrTag}>
-                      <MaterialCommunityIcons name="line-scan" size={14} color="#0D9488" />
-                      <Text style={styles.ocrTagText}>OCR Pre-Scanned</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.reviewCardContentRow}>
-                    {thumbUrl ? (
-                      <View style={styles.reviewThumbWrapper}>
-                        <Image
-                          source={{ uri: thumbUrl }}
-                          style={styles.reviewThumbImage}
-                          contentFit="cover"
-                        />
-                        <View style={styles.reviewThumbBadge}>
-                          <Ionicons name="document-text" size={10} color="#FFFFFF" />
-                        </View>
-                      </View>
-                    ) : (
-                      <View style={styles.reviewThumbPlaceholder}>
-                        <Ionicons name="document-text-outline" size={24} color="#0D9488" />
-                      </View>
-                    )}
-
-                    <View style={styles.reviewBody}>
-                      <Text style={[styles.reviewMedTitle, isAccessibilityMode && styles.largeText]} numberOfLines={1}>
-                        {review.medication || 'Prescription Slip Review'}
-                      </Text>
-                      <Text style={styles.reviewDosageText} numberOfLines={1}>
-                        Dosage: {review.dosage || 'See uploaded slip'}
-                      </Text>
-                      <Text style={styles.reviewDurationText} numberOfLines={1}>
-                        Course: {review.duration || '30 days supply'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.reviewFooter}>
-                    <Text style={styles.reviewTapCta}>Tap to Inspect Photo &amp; Approve</Text>
-                    <Ionicons name="arrow-forward-circle" size={22} color={Theme.colors.primary} />
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {reviews.map((review) => (
+              <DashboardReviewCard
+                key={review.id}
+                review={review}
+                isAccessibilityMode={isAccessibilityMode}
+                triggerHaptic={triggerHaptic}
+                onPress={() => router.push(`/review-details?id=${review.id}`)}
+              />
+            ))}
           </View>
         )}
 

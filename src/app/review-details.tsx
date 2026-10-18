@@ -529,8 +529,9 @@ export default function ReviewDetailsScreen() {
           </View>
         </View>
 
-        {/* Suspected Non-Prescription Image Warning */}
-        {(review.medication?.includes('⚠️') ||
+        {/* Suspected Non-Prescription or Unclear Slip Warning */}
+        {(review.ocr_status === 'failed' ||
+          review.medication?.includes('⚠️') ||
           review.medication?.toLowerCase().includes('unrecognized') ||
           review.doctor_notes?.includes('AI Warning')) && (
           <View style={styles.suspectedNonPrescriptionBanner}>
@@ -538,9 +539,9 @@ export default function ReviewDetailsScreen() {
               <Ionicons name="alert-circle" size={22} color="#DC2626" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.suspectedBannerTitle}>Suspected Non-Prescription Image</Text>
+              <Text style={styles.suspectedBannerTitle}>Suspected Non-Prescription or Unclear Slip</Text>
               <Text style={styles.suspectedBannerText}>
-                AI OCR detected that this photo may not be an official prescription slip. Please inspect the photo carefully. If invalid, tap &quot;Reject&quot; below.
+                AI OCR could not verify an official prescription in this photo. Please inspect the image carefully. You can tap &quot;Edit Details&quot; to manually prescribe and approve, or tap &quot;Reject&quot; below.
               </Text>
             </View>
           </View>

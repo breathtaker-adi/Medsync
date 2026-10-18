@@ -386,36 +386,27 @@ export default function DoctorVerificationScreen() {
       specialty === 'Other' && customSpecialty.trim() ? customSpecialty.trim() : specialty;
 
     try {
-      // 1. Try secure RPC first
-      const { error: rpcError } = await supabase.rpc('submit_doctor_verification', {
-        p_license_number: licenseNumber.trim(),
-        p_medical_council: medicalCouncil.trim(),
-        p_specialty: resolvedSpecialty,
-        p_clinic_affiliation: clinicAffiliation.trim(),
-      });
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName.trim(),
+          medical_license_number: licenseNumber.trim(),
+          medical_council: medicalCouncil.trim(),
+          specialty: resolvedSpecialty,
+          clinic_affiliation: clinicAffiliation.trim(),
+          years_of_experience: yearsExperience,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', session.user.id);
 
-      if (rpcError) {
-        // 2. Direct profile fallback
-        const { error: directError } = await supabase
-          .from('profiles')
-          .update({
-            full_name: fullName.trim(),
-            role: 'doctor',
-            is_verified_doctor: true,
-            medical_license_number: licenseNumber.trim(),
-            medical_council: medicalCouncil.trim(),
-            specialty: resolvedSpecialty,
-            clinic_affiliation: clinicAffiliation.trim(),
-            years_of_experience: yearsExperience,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', session.user.id);
-
-        if (directError) throw directError;
-      }
+      if (updateError) throw updateError;
 
       await refreshProfile();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Credentials Submitted for Clinical Verification',
+        'Your registration details have been securely logged. MedSync clinical administration verifies credentials against the State Medical Council / NMC registry before activating full prescription sign-off authority.'
+      );
       setVerifiedSuccess(true);
       setIsEditing(false);
     } catch (err: any) {

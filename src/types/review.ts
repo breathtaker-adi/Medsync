@@ -13,6 +13,8 @@ export interface PendingReview {
   status: ReviewStatus;
   doctor_notes: string | null;
   patient_id: string | null;
+  ocr_status?: 'ok' | 'failed' | 'flagged' | null;
+  target_doctor_id?: string | null;
 }
 
 // Constructor for creating a new Review object

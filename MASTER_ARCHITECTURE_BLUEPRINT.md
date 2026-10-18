@@ -652,7 +652,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.claim_pairing_code(text) TO authenticated;
 ```
 
-#### 6. Physician Approval of Prescription (`approve_review`)
+#### 6. Scoped Physician/Caregiver Approval of Prescription (`approve_review`)
 ```sql
 CREATE OR REPLACE FUNCTION public.approve_review(
     p_review_id bigint,
@@ -677,11 +677,19 @@ DECLARE
     v_remaining int := COALESCE(p_pills_remaining, 30);
     v_total int := COALESCE(p_total_pills, 30);
 BEGIN
-    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
-    IF v_caller_profile IS NULL OR (v_caller_profile.is_verified_doctor = false AND v_caller_profile.role NOT IN ('doctor', 'caregiver')) THEN
-        RAISE EXCEPTION 'Unauthorized: only physicians or authorized caregivers can approve prescriptions';
+    IF v_caller_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: authentication required';
     END IF;
 
+    -- Validate input ranges
+    IF LENGTH(TRIM(COALESCE(p_medicine_name, ''))) = 0 OR LENGTH(p_medicine_name) > 200 THEN
+        RAISE EXCEPTION 'Invalid medicine name: must be between 1 and 200 characters';
+    END IF;
+    IF v_remaining < 0 OR v_remaining > 5000 THEN
+        RAISE EXCEPTION 'Invalid pill count: must be between 0 and 5000';
+    END IF;
+
+    -- Lock the row and verify pending status
     SELECT * INTO v_review 
     FROM pending_reviews 
     WHERE id = p_review_id AND status = 'pending' 
@@ -691,14 +699,30 @@ BEGIN
         RAISE EXCEPTION 'Prescription review not found or already approved/rejected';
     END IF;
 
-    -- Auto-link supervisor to patient roster if not yet present
-    IF NOT EXISTS (
-        SELECT 1 FROM patient_caregivers
-        WHERE patient_id = v_review.patient_id AND caregiver_id = v_caller_id
+    -- Caller must be verified doctor OR active linked caregiver
+    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
+    IF v_caller_profile IS NULL OR (
+        v_caller_profile.is_verified_doctor IS NOT TRUE 
+        AND NOT EXISTS (
+            SELECT 1 FROM patient_caregivers
+            WHERE patient_id = v_review.patient_id
+              AND caregiver_id = v_caller_id
+              AND status = 'active'
+        )
     ) THEN
-        INSERT INTO patient_caregivers (patient_id, caregiver_id, status, created_at)
-        VALUES (v_review.patient_id, v_caller_id, 'active', NOW())
-        ON CONFLICT (patient_id, caregiver_id) DO UPDATE SET status = 'active';
+        RAISE EXCEPTION 'Only verified doctors or active linked caregivers can review prescriptions';
+    END IF;
+
+    -- If a specific target doctor was assigned, prevent unrelated doctors from approving
+    IF v_review.target_doctor_id IS NOT NULL 
+       AND v_review.target_doctor_id IS DISTINCT FROM v_caller_id
+       AND NOT EXISTS (
+           SELECT 1 FROM patient_caregivers
+           WHERE patient_id = v_review.patient_id
+             AND caregiver_id = v_caller_id
+             AND status = 'active'
+       ) THEN
+        RAISE EXCEPTION 'Not your patient: prescription assigned to another physician';
     END IF;
 
     -- Update review status
@@ -707,8 +731,7 @@ BEGIN
         medication = p_medicine_name,
         dosage = p_dosage,
         duration = p_duration,
-        doctor_notes = p_doctor_notes,
-        updated_at = NOW()
+        doctor_notes = p_doctor_notes
     WHERE id = p_review_id;
 
     -- Insert confirmed medication into patient routine
@@ -732,10 +755,11 @@ BEGIN
     );
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.approve_review(bigint, text, text, text, text, text, int, int) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.approve_review(bigint, text, text, text, text, text, int, int) TO authenticated;
 ```
 
-#### 7. Physician Rejection of Prescription (`reject_review`)
+#### 7. Scoped Physician/Caregiver Rejection of Prescription (`reject_review`)
 ```sql
 CREATE OR REPLACE FUNCTION public.reject_review(
     p_review_id bigint,
@@ -751,9 +775,8 @@ DECLARE
     v_caller_profile record;
     v_review record;
 BEGIN
-    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
-    IF v_caller_profile IS NULL OR (v_caller_profile.is_verified_doctor = false AND v_caller_profile.role NOT IN ('doctor', 'caregiver')) THEN
-        RAISE EXCEPTION 'Unauthorized: only physicians or authorized caregivers can reject prescriptions';
+    IF v_caller_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: authentication required';
     END IF;
 
     SELECT * INTO v_review 
@@ -765,57 +788,47 @@ BEGIN
         RAISE EXCEPTION 'Prescription review not found or already approved/rejected';
     END IF;
 
+    -- Caller must be verified doctor OR active linked caregiver
+    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
+    IF v_caller_profile IS NULL OR (
+        v_caller_profile.is_verified_doctor IS NOT TRUE 
+        AND NOT EXISTS (
+            SELECT 1 FROM patient_caregivers
+            WHERE patient_id = v_review.patient_id
+              AND caregiver_id = v_caller_id
+              AND status = 'active'
+        )
+    ) THEN
+        RAISE EXCEPTION 'Only verified doctors or active linked caregivers can review prescriptions';
+    END IF;
+
+    IF v_review.target_doctor_id IS NOT NULL 
+       AND v_review.target_doctor_id IS DISTINCT FROM v_caller_id
+       AND NOT EXISTS (
+           SELECT 1 FROM patient_caregivers
+           WHERE patient_id = v_review.patient_id
+             AND caregiver_id = v_caller_id
+             AND status = 'active'
+       ) THEN
+        RAISE EXCEPTION 'Not your patient: prescription assigned to another physician';
+    END IF;
+
     UPDATE pending_reviews
     SET status = 'rejected',
-        doctor_notes = p_doctor_notes,
-        updated_at = NOW()
+        doctor_notes = p_doctor_notes
     WHERE id = p_review_id;
 
     RETURN jsonb_build_object('success', true, 'review_id', p_review_id, 'status', 'rejected');
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.reject_review(bigint, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.reject_review(bigint, text) TO authenticated;
 ```
 
-#### 8. Doctor Credential Verification (`submit_doctor_verification`)
+#### 8. Clinical Verification Governance (Manual Board Audit)
+Verified physician status (`is_verified_doctor = true`) is protected by database triggers against direct client tampering (`protect_profile_fields`). Self-elevation functions have been eliminated. Credentials submitted by medical practitioners (`medical_license_number`, `medical_council`, `clinic_affiliation`) are audited against State Medical Council or National Medical Commission (NMC) registries before verification is granted via SQL Editor or clinical admin.
 ```sql
-CREATE OR REPLACE FUNCTION public.submit_doctor_verification(
-    p_license_number TEXT,
-    p_medical_council TEXT,
-    p_specialty TEXT,
-    p_clinic_affiliation TEXT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_user_id UUID := auth.uid();
-BEGIN
-    IF v_user_id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized');
-    END IF;
-
-    IF LENGTH(TRIM(p_license_number)) < 4 THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Invalid medical license number: minimum 4 characters required');
-    END IF;
-
-    UPDATE public.profiles
-    SET 
-        role = 'doctor',
-        medical_license_number = TRIM(p_license_number),
-        medical_council = TRIM(p_medical_council),
-        specialty = TRIM(p_specialty),
-        clinic_affiliation = TRIM(p_clinic_affiliation),
-        is_verified_doctor = true,
-        updated_at = NOW()
-    WHERE id = v_user_id;
-
-    RETURN jsonb_build_object('success', true, 'is_verified_doctor', true, 'role', 'doctor');
-END;
-$$;
-GRANT EXECUTE ON FUNCTION public.submit_doctor_verification(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+DROP FUNCTION IF EXISTS public.submit_doctor_verification(TEXT, TEXT, TEXT, TEXT);
 ```
 
 ---

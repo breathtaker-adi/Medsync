@@ -33,7 +33,11 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS blood_group TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS allergies TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS alerts_enabled BOOLEAN DEFAULT true;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
+-- Push tokens are stored exclusively in isolated public.user_push_tokens table (owner-only RLS)
+-- Drop dependent legacy views first before removing profiles.push_token (recreated later with security_invoker = true)
+DROP VIEW IF EXISTS public.doctor_push_tokens CASCADE;
+DROP VIEW IF EXISTS public.patient_push_tokens CASCADE;
+ALTER TABLE public.profiles DROP COLUMN IF EXISTS push_token CASCADE;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_verified_doctor BOOLEAN DEFAULT false;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_license_number TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS medical_council TEXT;
@@ -66,7 +70,7 @@ BEGIN
     VALUES (
         NEW.id,
         COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-        COALESCE(NEW.raw_user_meta_data->>'role', 'patient'),
+        CASE WHEN NEW.raw_user_meta_data->>'role' = 'caregiver' THEN 'caregiver' ELSE 'patient' END,
         false,
         true,
         NOW(),
@@ -146,54 +150,20 @@ FOR EACH ROW EXECUTE FUNCTION public.protect_profile_fields();
 
 
 -- =============================================================================
--- 2. DOCTOR CREDENTIAL VERIFICATION RPC
+-- 2. DOCTOR CREDENTIAL VERIFICATION GOVERNANCE
 -- =============================================================================
-CREATE OR REPLACE FUNCTION public.submit_doctor_verification(
-    p_license_number TEXT,
-    p_medical_council TEXT,
-    p_specialty TEXT,
-    p_clinic_affiliation TEXT
-)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_user_id UUID := auth.uid();
-BEGIN
-    IF v_user_id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Unauthorized');
-    END IF;
-
-    IF LENGTH(TRIM(p_license_number)) < 4 THEN
-        RETURN jsonb_build_object('success', false, 'error', 'Invalid medical license number: minimum 4 characters required');
-    END IF;
-
-    -- Elevate role to doctor and mark verified
-    UPDATE public.profiles
-    SET 
-        role = 'doctor',
-        medical_license_number = TRIM(p_license_number),
-        medical_council = TRIM(p_medical_council),
-        specialty = TRIM(p_specialty),
-        clinic_affiliation = TRIM(p_clinic_affiliation),
-        is_verified_doctor = true,
-        updated_at = NOW()
-    WHERE id = v_user_id;
-
-    RETURN jsonb_build_object('success', true, 'is_verified_doctor', true, 'role', 'doctor');
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.submit_doctor_verification(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+-- Remove unauthenticated/arbitrary self-verification RPC.
+-- Verified physician status is granted exclusively by clinical administrative review
+-- against State Medical Council or National Medical Commission (NMC) registries.
+DROP FUNCTION IF EXISTS public.submit_doctor_verification(TEXT, TEXT, TEXT, TEXT);
 
 
 -- =============================================================================
 -- 3. PENDING REVIEWS TABLE & POLICIES
 -- =============================================================================
--- Ensure pending_reviews has target_doctor_id column
+-- Ensure pending_reviews has target_doctor_id and ocr_status columns
 ALTER TABLE public.pending_reviews ADD COLUMN IF NOT EXISTS target_doctor_id UUID REFERENCES public.profiles(id);
+ALTER TABLE public.pending_reviews ADD COLUMN IF NOT EXISTS ocr_status TEXT DEFAULT 'ok' CHECK (ocr_status IN ('ok', 'failed', 'flagged'));
 
 ALTER TABLE public.pending_reviews ENABLE ROW LEVEL SECURITY;
 
@@ -202,20 +172,31 @@ CREATE POLICY "Patients view own pending reviews" ON public.pending_reviews
 FOR SELECT TO authenticated
 USING (patient_id = auth.uid());
 
+DROP POLICY IF EXISTS "Patients insert own pending reviews" ON public.pending_reviews;
+CREATE POLICY "Patients insert own pending reviews" ON public.pending_reviews
+FOR INSERT TO authenticated
+WITH CHECK (patient_id = auth.uid());
+
 DROP POLICY IF EXISTS "Supervisors view pending reviews" ON public.pending_reviews;
-CREATE POLICY "Supervisors view pending reviews" ON public.pending_reviews
+DROP POLICY IF EXISTS "doctor reads targeted or linked reviews" ON public.pending_reviews;
+CREATE POLICY "doctor reads targeted or linked reviews" ON public.pending_reviews
 FOR SELECT TO authenticated
 USING (
-    target_doctor_id = auth.uid()
+    patient_id = auth.uid()
+    OR target_doctor_id = auth.uid()
+    OR (
+        target_doctor_id IS NULL
+        AND EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND (p.role IN ('doctor', 'caregiver') OR p.is_verified_doctor = true)
+        )
+    )
     OR EXISTS (
         SELECT 1 FROM public.patient_caregivers pc
         WHERE pc.patient_id = pending_reviews.patient_id
           AND pc.caregiver_id = auth.uid()
-    )
-    OR EXISTS (
-        SELECT 1 FROM public.profiles p
-        WHERE p.id = auth.uid()
-          AND p.role IN ('doctor', 'caregiver')
+          AND pc.status = 'active'
     )
 );
 
@@ -223,17 +204,23 @@ DROP POLICY IF EXISTS "Supervisors update pending reviews" ON public.pending_rev
 CREATE POLICY "Supervisors update pending reviews" ON public.pending_reviews
 FOR UPDATE TO authenticated
 USING (
-    EXISTS (
-        SELECT 1 FROM public.profiles p
-        WHERE p.id = auth.uid()
-          AND (p.is_verified_doctor = true OR p.role IN ('doctor', 'caregiver'))
+    target_doctor_id = auth.uid()
+    OR (
+        target_doctor_id IS NULL
+        AND EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid()
+              AND (p.role IN ('doctor', 'caregiver') OR p.is_verified_doctor = true)
+        )
     )
     OR EXISTS (
         SELECT 1 FROM public.patient_caregivers pc
         WHERE pc.patient_id = pending_reviews.patient_id
           AND pc.caregiver_id = auth.uid()
+          AND pc.status = 'active'
     )
 );
+
 
 
 -- =============================================================================
@@ -262,9 +249,16 @@ DECLARE
     v_remaining int := COALESCE(p_pills_remaining, 30);
     v_total int := COALESCE(p_total_pills, 30);
 BEGIN
-    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
-    IF v_caller_profile IS NULL OR (v_caller_profile.is_verified_doctor = false AND v_caller_profile.role NOT IN ('doctor', 'caregiver')) THEN
-        RAISE EXCEPTION 'Unauthorized: only physicians or authorized caregivers can approve prescriptions';
+    IF v_caller_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: authentication required';
+    END IF;
+
+    -- Validate input ranges
+    IF LENGTH(TRIM(COALESCE(p_medicine_name, ''))) = 0 OR LENGTH(p_medicine_name) > 200 THEN
+        RAISE EXCEPTION 'Invalid medicine name: must be between 1 and 200 characters';
+    END IF;
+    IF v_remaining < 0 OR v_remaining > 5000 THEN
+        RAISE EXCEPTION 'Invalid pill count: must be between 0 and 5000';
     END IF;
 
     -- Lock the row and verify pending status
@@ -277,15 +271,30 @@ BEGIN
         RAISE EXCEPTION 'Prescription review not found or already approved/rejected';
     END IF;
 
-    -- Auto-link supervisor to patient roster if not already present
-    IF NOT EXISTS (
-        SELECT 1 FROM patient_caregivers
-        WHERE patient_id = v_review.patient_id
-          AND caregiver_id = v_caller_id
+    -- Caller must be verified doctor OR active linked caregiver
+    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
+    IF v_caller_profile IS NULL OR (
+        v_caller_profile.is_verified_doctor IS NOT TRUE 
+        AND NOT EXISTS (
+            SELECT 1 FROM patient_caregivers
+            WHERE patient_id = v_review.patient_id
+              AND caregiver_id = v_caller_id
+              AND status = 'active'
+        )
     ) THEN
-        INSERT INTO patient_caregivers (patient_id, caregiver_id, status, created_at)
-        VALUES (v_review.patient_id, v_caller_id, 'active', NOW())
-        ON CONFLICT (patient_id, caregiver_id) DO UPDATE SET status = 'active';
+        RAISE EXCEPTION 'Only verified doctors or active linked caregivers can review prescriptions';
+    END IF;
+
+    -- If a specific target doctor was assigned, prevent unrelated doctors from approving
+    IF v_review.target_doctor_id IS NOT NULL 
+       AND v_review.target_doctor_id IS DISTINCT FROM v_caller_id
+       AND NOT EXISTS (
+           SELECT 1 FROM patient_caregivers
+           WHERE patient_id = v_review.patient_id
+             AND caregiver_id = v_caller_id
+             AND status = 'active'
+       ) THEN
+        RAISE EXCEPTION 'Not your patient: prescription assigned to another physician';
     END IF;
 
     -- Update review status
@@ -348,9 +357,8 @@ DECLARE
     v_caller_profile record;
     v_review record;
 BEGIN
-    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
-    IF v_caller_profile IS NULL OR (v_caller_profile.is_verified_doctor = false AND v_caller_profile.role NOT IN ('doctor', 'caregiver')) THEN
-        RAISE EXCEPTION 'Unauthorized: only physicians or authorized caregivers can reject prescriptions';
+    IF v_caller_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: authentication required';
     END IF;
 
     SELECT * INTO v_review 
@@ -360,6 +368,31 @@ BEGIN
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Prescription review not found or already approved/rejected';
+    END IF;
+
+    -- Caller must be verified doctor OR active linked caregiver
+    SELECT * INTO v_caller_profile FROM profiles WHERE id = v_caller_id;
+    IF v_caller_profile IS NULL OR (
+        v_caller_profile.is_verified_doctor IS NOT TRUE 
+        AND NOT EXISTS (
+            SELECT 1 FROM patient_caregivers
+            WHERE patient_id = v_review.patient_id
+              AND caregiver_id = v_caller_id
+              AND status = 'active'
+        )
+    ) THEN
+        RAISE EXCEPTION 'Only verified doctors or active linked caregivers can review prescriptions';
+    END IF;
+
+    IF v_review.target_doctor_id IS NOT NULL 
+       AND v_review.target_doctor_id IS DISTINCT FROM v_caller_id
+       AND NOT EXISTS (
+           SELECT 1 FROM patient_caregivers
+           WHERE patient_id = v_review.patient_id
+             AND caregiver_id = v_caller_id
+             AND status = 'active'
+       ) THEN
+        RAISE EXCEPTION 'Not your patient: prescription assigned to another physician';
     END IF;
 
     UPDATE pending_reviews
@@ -375,41 +408,55 @@ BEGIN
 END;
 $$;
 
+-- Lock execute permissions strictly to authenticated users
+REVOKE EXECUTE ON FUNCTION public.approve_review(bigint, text, text, text, text, text, int, int) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.approve_review(bigint, text, text, text, text, text, int, int) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.reject_review(bigint, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.reject_review(bigint, text) TO authenticated;
 
 
 -- =============================================================================
--- 5. STORAGE BUCKET POLICIES FOR PRESCRIPTIONS
+-- 5. STORAGE BUCKET POLICIES FOR PRESCRIPTIONS (PRIVATE BUCKET)
 -- =============================================================================
--- Ensure prescriptions bucket exists with public read access
+-- Prescriptions storage is strictly confidential under DPDP Act 2023.
+-- Bucket is set to private (public = false); all access requires scoped authenticated RLS or signed HMAC URLs.
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('prescriptions', 'prescriptions', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+VALUES ('prescriptions', 'prescriptions', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
+
+UPDATE storage.buckets SET public = false WHERE id = 'prescriptions';
 
 DROP POLICY IF EXISTS "Public can view prescriptions" ON storage.objects;
-CREATE POLICY "Public can view prescriptions" ON storage.objects
-FOR SELECT TO public
-USING (bucket_id = 'prescriptions');
-
 DROP POLICY IF EXISTS "read own or linked patient or doctor" ON storage.objects;
 DROP POLICY IF EXISTS "read own or linked patient" ON storage.objects;
-CREATE POLICY "read own or linked patient or doctor" ON storage.objects
+DROP POLICY IF EXISTS "read own, targeted or linked" ON storage.objects;
+
+CREATE POLICY "read own, targeted or linked" ON storage.objects
 FOR SELECT TO authenticated
 USING (
     bucket_id = 'prescriptions' 
     AND (
+        -- Patient owns the uploaded folder
         (storage.foldername(name))[1] = auth.uid()::text
-        OR (storage.foldername(name))[1]::uuid IN (
-            SELECT patient_id 
-            FROM public.patient_caregivers 
-            WHERE caregiver_id = auth.uid() 
-              AND status = 'active'
-        )
+        -- Targeted doctor has access to prescription image (handles path variations or unassigned practice queue)
         OR EXISTS (
-            SELECT 1 FROM public.profiles
-            WHERE id = auth.uid()
-              AND (role IN ('doctor', 'caregiver') OR is_verified_doctor = true)
+            SELECT 1 FROM public.pending_reviews r
+            WHERE (r.image_url = name OR r.image_url LIKE '%' || name OR name LIKE '%' || r.image_url)
+              AND (r.target_doctor_id = auth.uid() OR r.target_doctor_id IS NULL)
+        )
+        -- Active linked caregiver or doctor
+        OR EXISTS (
+            SELECT 1 FROM public.patient_caregivers pc
+            WHERE pc.caregiver_id = auth.uid()
+              AND pc.status = 'active'
+              AND pc.patient_id::text = (storage.foldername(name))[1]
+        )
+        -- Verified doctor or clinical caregiver reviewing prescription slips
+        OR EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid() 
+              AND (p.is_verified_doctor = true OR p.role IN ('doctor', 'caregiver'))
         )
     )
 );
@@ -452,28 +499,26 @@ SET file_size_limit = 5242880,
     allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
 WHERE id = 'prescriptions';
 
--- Create views with security_invoker = true
+-- Create views with security_invoker = true (reading exclusively from isolated user_push_tokens)
 DROP VIEW IF EXISTS public.doctor_push_tokens CASCADE;
 CREATE VIEW public.doctor_push_tokens WITH (security_invoker = true) AS
 SELECT 
     pc.patient_id,
-    COALESCE(upt.push_token, p.push_token) AS push_token,
+    upt.push_token,
     pc.caregiver_id
 FROM public.patient_caregivers pc
-JOIN public.profiles p ON pc.caregiver_id = p.id
-LEFT JOIN public.user_push_tokens upt ON pc.caregiver_id = upt.user_id
-WHERE COALESCE(upt.push_token, p.push_token) IS NOT NULL;
+JOIN public.user_push_tokens upt ON pc.caregiver_id = upt.user_id
+WHERE upt.push_token IS NOT NULL;
 
 DROP VIEW IF EXISTS public.patient_push_tokens CASCADE;
 CREATE VIEW public.patient_push_tokens WITH (security_invoker = true) AS
 SELECT 
     pc.caregiver_id,
-    p.id AS patient_id,
-    COALESCE(upt.push_token, p.push_token) AS push_token
+    pc.patient_id,
+    upt.push_token
 FROM public.patient_caregivers pc
-JOIN public.profiles p ON pc.patient_id = p.id
-LEFT JOIN public.user_push_tokens upt ON pc.patient_id = upt.user_id
-WHERE COALESCE(upt.push_token, p.push_token) IS NOT NULL;
+JOIN public.user_push_tokens upt ON pc.patient_id = upt.user_id
+WHERE upt.push_token IS NOT NULL;
 
 REVOKE ALL ON public.doctor_push_tokens FROM anon;
 REVOKE ALL ON public.patient_push_tokens FROM anon;
@@ -554,7 +599,98 @@ GRANT EXECUTE ON FUNCTION public.evaluate_missed_doses() TO service_role;
 
 
 -- =============================================================================
--- 8. REALTIME PUBLICATION SETUP
+-- 8. PATIENT-CAREGIVER LINK INTEGRITY & POLICIES
+-- =============================================================================
+ALTER TABLE public.patient_caregivers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Caregivers view own active links" ON public.patient_caregivers;
+CREATE POLICY "Caregivers view own active links" ON public.patient_caregivers
+FOR SELECT TO authenticated
+USING (caregiver_id = auth.uid() OR patient_id = auth.uid());
+
+DROP POLICY IF EXISTS "Patients create pairing invitations" ON public.patient_caregivers;
+CREATE POLICY "Patients create pairing invitations" ON public.patient_caregivers
+FOR INSERT TO authenticated
+WITH CHECK (
+    patient_id = auth.uid() 
+    AND caregiver_id IS NULL 
+    AND status = 'pending'
+);
+
+DROP POLICY IF EXISTS "Patients revoke links" ON public.patient_caregivers;
+CREATE POLICY "Patients revoke links" ON public.patient_caregivers
+FOR UPDATE TO authenticated
+USING (patient_id = auth.uid())
+WITH CHECK (patient_id = auth.uid() AND status = 'revoked');
+
+-- Protect links from client tampering (cannot rewrite patient_id or caregiver_id)
+REVOKE UPDATE ON public.patient_caregivers FROM authenticated;
+GRANT UPDATE (override_alerts, status) ON public.patient_caregivers TO authenticated;
+
+
+-- =============================================================================
+-- 9. USER CONSENTS AUDIT LOGGING (DPDP ACT 2023)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.user_consents (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    consent_type TEXT NOT NULL DEFAULT 'dpdp_ocr_processing',
+    consent_version TEXT NOT NULL DEFAULT '1.0',
+    consented_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    ip_address TEXT,
+    CONSTRAINT uq_user_consent UNIQUE (user_id, consent_type, consent_version)
+);
+
+ALTER TABLE public.user_consents ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own consents" ON public.user_consents;
+CREATE POLICY "Users can view own consents" ON public.user_consents
+FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can record consent" ON public.user_consents;
+CREATE POLICY "Users can record consent" ON public.user_consents
+FOR INSERT TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+
+-- =============================================================================
+-- 10. USER ACCOUNT & STORAGE DELETION (RIGHT TO ERASURE)
+-- =============================================================================
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, storage
+AS $$
+DECLARE
+    v_user_id uuid := auth.uid();
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: authentication required';
+    END IF;
+
+    -- 1. Remove storage objects in prescriptions bucket for this user
+    DELETE FROM storage.objects
+    WHERE bucket_id = 'prescriptions'
+      AND (storage.foldername(name))[1] = v_user_id::text;
+
+    -- 2. Delete user profile (cascades to medications, medication_logs, pending_reviews)
+    DELETE FROM public.profiles WHERE id = v_user_id;
+
+    -- 3. Delete auth user record
+    DELETE FROM auth.users WHERE id = v_user_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.delete_user_account() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
+
+
+-- =============================================================================
+-- 11. REALTIME PUBLICATION SETUP
 -- =============================================================================
 DO $$
 BEGIN
