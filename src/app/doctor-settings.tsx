@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import * as Haptics from 'expo-haptics';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,16 +22,41 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
+import { avatarHelper } from '../utils/avatarHelper';
+
+const CLINICAL_SOUND_OPTIONS = [
+  {
+    name: 'Urgent Clinical Alert',
+    desc: 'High-priority pulsating alert for critical dose misses',
+  },
+  {
+    name: 'Standard Hospital Chime',
+    desc: 'Crisp medical chime for prescription review notices',
+  },
+  {
+    name: 'Gentle Chime',
+    desc: 'Soft harmonic chime suitable for clinical rounds',
+  },
+  {
+    name: 'Vibrant Pulse',
+    desc: 'Rhythmic tones with strong haptic vibration',
+  },
+  {
+    name: 'Discreet Vibrate',
+    desc: 'Silent mode with double haptic vibration feedback',
+  },
+];
 
 export default function DoctorSettingsScreen() {
   const router = useRouter();
-  const { profile, session } = useAuth();
+  const { profile, session, refreshProfile } = useAuth();
   const {
     isAccessibilityMode,
     isAudioEnabled,
@@ -43,6 +70,8 @@ export default function DoctorSettingsScreen() {
   const [reviewPushEnabled, setReviewPushEnabled] = useState<boolean>(true);
   const [lowAdherenceWarning, setLowAdherenceWarning] = useState<boolean>(true);
   const [dailyDigestEnabled, setDailyDigestEnabled] = useState<boolean>(false);
+  const [alarmModalVisible, setAlarmModalVisible] = useState(false);
+  const [selectedSound, setSelectedSound] = useState('Urgent Clinical Alert');
 
   // Roster Statistics
   const [linkedCount, setLinkedCount] = useState<number>(0);
@@ -53,6 +82,41 @@ export default function DoctorSettingsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [pairingInput, setPairingInput] = useState('');
   const [linking, setLinking] = useState(false);
+
+  // Avatar State
+  const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url || null);
+
+
+
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarUri(profile.avatar_url);
+    } else if (session?.user?.id) {
+      avatarHelper.getLocalAvatar(session.user.id).then((local) => {
+        if (local) setAvatarUri(local);
+      });
+    }
+
+    AsyncStorage.getItem('@medsync_doctor_alarm_sound').then((val) => {
+      if (val) {
+        setSelectedSound(val);
+      } else {
+        AsyncStorage.getItem('@medsync_alarm_sound').then((patientVal) => {
+          if (patientVal) setSelectedSound(patientVal);
+        });
+      }
+    });
+  }, [session?.user?.id, profile?.avatar_url]);
+
+  const handlePickAvatar = async () => {
+    if (!session?.user?.id) return;
+    triggerHaptic();
+    const newAvatar = await avatarHelper.promptPickAvatar(session.user.id);
+    if (newAvatar) {
+      setAvatarUri(newAvatar);
+      await refreshProfile();
+    }
+  };
 
   const isVerifiedDoctor = profile?.role === 'doctor' || profile?.is_verified_doctor === true;
 
@@ -89,6 +153,16 @@ export default function DoctorSettingsScreen() {
       setAlertsEnabled(profile.alerts_enabled);
     }
   }, [profile?.alerts_enabled]);
+
+  // System gesture/hardware back navigation: Always return to clinical dashboard
+  useEffect(() => {
+    const onBackPress = () => {
+      router.replace('/(tabs)/caregiver-dashboard');
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]);
 
   const handleToggleAlerts = async (value: boolean) => {
     triggerHaptic();
@@ -166,32 +240,30 @@ export default function DoctorSettingsScreen() {
     }
   };
 
-  const openAlarmSoundSettings = async () => {
+  const handleSelectSound = async (soundName: string) => {
     triggerHaptic();
-    if (Platform.OS === 'android') {
-      try {
-        await IntentLauncher.startActivityAsync(
-          'android.settings.CHANNEL_NOTIFICATION_SETTINGS',
-          {
-            extra: {
-              'android.provider.extra.APP_PACKAGE': Application.applicationId,
-              'android.provider.extra.CHANNEL_ID': 'medication-alarms-auto',
-            },
-          }
-        );
-      } catch (e) {
-        await IntentLauncher.startActivityAsync(
-          'android.settings.APP_NOTIFICATION_SETTINGS',
-          {
-            extra: {
-              'android.provider.extra.APP_PACKAGE': Application.applicationId,
-            },
-          }
-        );
-      }
+    setSelectedSound(soundName);
+    await AsyncStorage.setItem('@medsync_doctor_alarm_sound', soundName);
+    await AsyncStorage.setItem('@medsync_alarm_sound', soundName);
+
+    // Provide haptic feedback
+    if (soundName === 'Discreet Vibrate') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } else {
-      Linking.openSettings();
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+
+    // Play voice/speech sound preview
+    Speech.stop();
+    Speech.speak(`Alert sound: ${soundName}. Urgent clinical update.`, {
+      pitch: soundName === 'Urgent Clinical Alert' ? 1.3 : soundName === 'Gentle Chime' ? 1.1 : 1.0,
+      rate: 0.95,
+    });
+  };
+
+  const openAlarmSoundSettings = () => {
+    triggerHaptic();
+    setAlarmModalVisible(true);
   };
 
   const openExactAlarmSettings = async () => {
@@ -247,6 +319,7 @@ export default function DoctorSettingsScreen() {
       <ScreenHeader
         title="Doctor Settings"
         subtitle="Clinical preferences & practice management"
+        onBack={() => router.replace('/(tabs)/caregiver-dashboard')}
         fallbackRoute="/(tabs)/caregiver-dashboard"
       />
 
@@ -254,28 +327,85 @@ export default function DoctorSettingsScreen() {
         {/* Physician Profile & Credential Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <View style={styles.avatarPlate}>
-              <Ionicons name="medical" size={32} color={Theme.colors.primary} />
-            </View>
+            <TouchableOpacity
+              style={styles.avatarPlate}
+              onPress={handlePickAvatar}
+              activeOpacity={0.8}
+              accessibilityLabel="Change physician profile picture"
+              accessibilityRole="button"
+            >
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Ionicons name="medical" size={28} color={Theme.colors.primary} />
+              )}
+              <View style={styles.doctorCameraBadge}>
+                <Ionicons name="camera" size={11} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
             <View style={styles.profileInfo}>
               <Text style={styles.doctorName}>
-                {profile?.full_name?.startsWith('Dr.') ? profile.full_name : `Dr. ${profile?.full_name || 'Evelyn Reed, MD'}`}
+                {profile?.full_name?.startsWith('Dr.') ? profile.full_name : `Dr. ${profile?.full_name || 'Physician'}`}
               </Text>
-              <Text style={styles.doctorSpecialty}>Internal Medicine &amp; Geriatrics</Text>
-              <Text style={styles.practiceName}>MedSync Clinical Tele-Health Network</Text>
+              <Text style={styles.doctorSpecialty}>
+                {profile?.specialty || 'Internal Medicine & Geriatrics'}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                <TouchableOpacity
+                  onPress={handlePickAvatar}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                >
+                  <Ionicons name="camera-outline" size={13} color={Theme.colors.primary} />
+                  <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 11.5, color: Theme.colors.primary }}>
+                    Photo
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    triggerHaptic();
+                    router.push('/edit-profile' as any);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: '#CCFBF1',
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                  }}
+                >
+                  <Ionicons name="create-outline" size={12} color="#0D766E" />
+                  <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 11.5, color: '#0D766E' }}>
+                    Edit Clinical Details
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
           {/* Verification Badge */}
-          <View
+          <TouchableOpacity
             style={[
               styles.verificationRow,
               isVerifiedDoctor ? styles.verifiedRowBg : styles.pendingRowBg,
             ]}
+            onPress={() => {
+              triggerHaptic();
+              router.push('/doctor-verification');
+            }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isVerifiedDoctor
+                ? 'Verified Medical Doctor (MD). Tap to view credentials'
+                : 'Clinical Credential Pending. Tap to get verified'
+            }
           >
             <Ionicons
               name={isVerifiedDoctor ? 'shield-checkmark' : 'shield-outline'}
-              size={20}
+              size={22}
               color={isVerifiedDoctor ? Theme.colors.success : Theme.colors.secondary}
             />
             <View style={{ flex: 1 }}>
@@ -290,11 +420,28 @@ export default function DoctorSettingsScreen() {
               <Text style={styles.verificationDesc}>
                 {isVerifiedDoctor
                   ? 'Authorized to approve prescription OCR extractions and schedule medications.'
-                  : 'Credential review required to approve prescription schedules.'}
+                  : 'Submit your license details to earn the verified MD badge & unlock prescription approvals.'}
               </Text>
             </View>
-          </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={isVerifiedDoctor ? Theme.colors.success : Theme.colors.secondary}
+            />
+          </TouchableOpacity>
+
+
         </View>
+
+        {/* Accessibility Status Banner */}
+        {isAccessibilityMode && (
+          <View style={styles.accessibilityActiveBanner}>
+            <Ionicons name="checkmark-circle" size={20} color="#0D7377" />
+            <Text style={styles.accessibilityActiveBannerText}>
+              Accessibility Mode Active • High Contrast &amp; Large Text Enabled
+            </Text>
+          </View>
+        )}
 
         {/* Practice & Roster Quick Overview */}
         <Text style={styles.sectionTitle}>Practice &amp; Patient Roster</Text>
@@ -327,7 +474,7 @@ export default function DoctorSettingsScreen() {
             style={styles.metricCard}
             onPress={() => {
               triggerHaptic();
-              router.push('/(tabs)/caregiver-dashboard');
+              router.push('/pending-reviews' as any);
             }}
             accessibilityRole="button"
             accessibilityLabel={`Pending Reviews: ${pendingReviewsCount}. Tap to review`}
@@ -444,20 +591,25 @@ export default function DoctorSettingsScreen() {
           </View>
         </View>
 
-        {/* Device Notification Channels (Android) */}
-        {Platform.OS === 'android' && (
-          <View style={[styles.card, { marginTop: 12 }]}>
-            <TouchableOpacity style={styles.settingRow} onPress={openAlarmSoundSettings}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="volume-medium-outline" size={22} color={Theme.colors.onSurfaceVariant} />
-                <View style={styles.settingTextContainer}>
-                  <Text style={styles.settingTitle}>Alert Sound &amp; Vibration</Text>
-                  <Text style={styles.settingSubtitle}>Configure clinical alert ringtones</Text>
-                </View>
+        {/* Device Notification Channels & Clinical Alerts */}
+        <View style={[styles.card, { marginTop: 12 }]}>
+          <TouchableOpacity style={styles.settingRow} onPress={openAlarmSoundSettings}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="volume-medium-outline" size={22} color={Theme.colors.primary} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingTitle}>Alert Sound &amp; Vibration</Text>
+                <Text style={styles.settingSubtitle}>Current: {selectedSound} • Tap to choose</Text>
               </View>
-              <Ionicons name="chevron-forward" size={22} color={Theme.colors.outline} />
-            </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={styles.soundBadge}>
+                <Text style={styles.soundBadgeText}>{selectedSound}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Theme.colors.outline} />
+            </View>
+          </TouchableOpacity>
 
+          {Platform.OS === 'android' && (
             <TouchableOpacity
               style={[styles.settingRow, { borderBottomWidth: 0 }]}
               onPress={openExactAlarmSettings}
@@ -471,8 +623,8 @@ export default function DoctorSettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={22} color={Theme.colors.outline} />
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* Accessibility & Voice Settings */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Accessibility &amp; Interface</Text>
@@ -532,7 +684,7 @@ export default function DoctorSettingsScreen() {
             style={[styles.settingRow, { borderBottomWidth: 0, paddingTop: 14 }]}
             onPress={() => {
               triggerHaptic();
-              router.push('/privacy-policy');
+              router.push('/clinical-privacy-policy');
             }}
           >
             <View style={styles.settingInfo}>
@@ -549,39 +701,7 @@ export default function DoctorSettingsScreen() {
         {/* Account & Session Actions */}
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Account &amp; Session</Text>
         <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => {
-              triggerHaptic();
-              router.push('/role-selection');
-            }}
-          >
-            <View style={styles.settingInfo}>
-              <Ionicons name="swap-horizontal-outline" size={22} color={Theme.colors.primary} />
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingTitle}>Switch Persona / Role</Text>
-                <Text style={styles.settingSubtitle}>Switch between Patient and Doctor views</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color={Theme.colors.outline} />
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => {
-              triggerHaptic();
-              Alert.alert('Exit MedSync', 'Are you sure you want to close MedSync?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
-              ]);
-            }}
-          >
-            <View style={styles.settingInfo}>
-              <Ionicons name="exit-outline" size={22} color={Theme.colors.primary} />
-              <Text style={[styles.settingTitle, { color: Theme.colors.onSurface }]}>Exit MedSync</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color={Theme.colors.outline} />
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.settingRow, { borderBottomWidth: 0 }]}
@@ -646,6 +766,119 @@ export default function DoctorSettingsScreen() {
         </View>
       </Modal>
 
+      {/* Alert Sound & Vibration Modal */}
+      <Modal
+        visible={alarmModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          Speech.stop();
+          setAlarmModalVisible(false);
+        }}
+      >
+        <View style={styles.soundModalBackdrop}>
+          <View style={styles.soundModalCard}>
+            <View style={styles.soundModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={styles.soundModalIconWrap}>
+                  <Ionicons name="notifications" size={22} color={Theme.colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.soundModalTitle}>Clinical Alert &amp; Ringtone</Text>
+                  <Text style={styles.soundModalSubtitle}>Tap ringtone to preview audio &amp; vibration</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Speech.stop();
+                  setAlarmModalVisible(false);
+                }}
+                style={styles.soundCloseBtn}
+              >
+                <Ionicons name="close" size={22} color="#475569" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 360, marginTop: 12 }}>
+              {CLINICAL_SOUND_OPTIONS.map((item) => {
+                const isSelected = selectedSound === item.name;
+                return (
+                  <TouchableOpacity
+                    key={item.name}
+                    style={[styles.soundOptionRow, isSelected && styles.soundOptionRowSelected]}
+                    onPress={() => handleSelectSound(item.name)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.soundOptionLeft}>
+                      <View style={[styles.soundRadio, isSelected && styles.soundRadioSelected]}>
+                        {isSelected && <View style={styles.soundRadioInner} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.soundName, isSelected && styles.soundNameSelected]}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.soundDesc}>{item.desc}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.soundPreviewBtn}
+                      onPress={() => handleSelectSound(item.name)}
+                    >
+                      <Ionicons
+                        name={isSelected ? 'volume-high' : 'play-circle-outline'}
+                        size={22}
+                        color={isSelected ? Theme.colors.primary : '#64748B'}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.soundModalFooter}>
+              <TouchableOpacity
+                style={styles.systemSettingsBtn}
+                onPress={async () => {
+                  setAlarmModalVisible(false);
+                  Speech.stop();
+                  if (Platform.OS === 'android') {
+                    try {
+                      await IntentLauncher.startActivityAsync(
+                        'android.settings.APP_NOTIFICATION_SETTINGS',
+                        {
+                          extra: {
+                            'android.provider.extra.APP_PACKAGE': Application.applicationId,
+                          },
+                        }
+                      );
+                    } catch {
+                      Linking.openSettings();
+                    }
+                  } else {
+                    Linking.openSettings();
+                  }
+                }}
+              >
+                <Ionicons name="settings-outline" size={16} color="#64748B" />
+                <Text style={styles.systemSettingsText}>System Notification Settings</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.soundModalDoneBtn}
+                onPress={() => {
+                  Speech.stop();
+                  setAlarmModalVisible(false);
+                }}
+              >
+                <Text style={styles.soundModalDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
+
     </SafeAreaView>
   );
 }
@@ -674,13 +907,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarPlate: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#E6F4F4',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  doctorCameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#0D9488',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   profileInfo: {
     flex: 1,
@@ -728,6 +980,23 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: Theme.colors.onSurfaceVariant,
     marginTop: 1,
+  },
+  verifyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Theme.colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 10,
+    ...Theme.shadows.level1,
+  },
+  verifyActionBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   sectionTitle: {
     fontFamily: 'PublicSans-Bold',
@@ -888,5 +1157,167 @@ const styles = StyleSheet.create({
   },
   footerSpacing: {
     height: 30,
+  },
+  accessibilityActiveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E6FFFA',
+    borderWidth: 1.5,
+    borderColor: '#0D7377',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  accessibilityActiveBannerText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#0D7377',
+    flex: 1,
+  },
+  soundBadge: {
+    backgroundColor: '#E6FFFA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+  },
+  soundBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#0D9488',
+  },
+  soundModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  soundModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '85%',
+  },
+  soundModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  soundModalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E6FFFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  soundModalTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 16,
+    color: '#0F172A',
+  },
+  soundModalSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#64748B',
+  },
+  soundCloseBtn: {
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  soundOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  soundOptionRowSelected: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#0D9488',
+  },
+  soundOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  soundRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#94A3B8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  soundRadioSelected: {
+    borderColor: '#0D9488',
+  },
+  soundRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#0D9488',
+  },
+  soundName: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  soundNameSelected: {
+    color: '#0D9488',
+  },
+  soundDesc: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  soundPreviewBtn: {
+    padding: 6,
+  },
+  soundModalFooter: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  systemSettingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  systemSettingsText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 12,
+    color: '#64748B',
+  },
+  soundModalDoneBtn: {
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  soundModalDoneText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });

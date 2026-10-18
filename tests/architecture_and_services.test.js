@@ -146,20 +146,23 @@ describe('Architecture & Service Layer Test Suite', () => {
   });
 
   describe('Service Domain Invariants', () => {
-    it('should disallow unverified doctor approvals', () => {
-      function canApprovePrescription(isVerifiedDoctor) {
-        if (!isVerifiedDoctor) {
-          return err(new Error('Only verified medical doctors can officially approve prescriptions.'));
+    it('should permit caregiver and doctor approvals while disallowing unauthorized roles', () => {
+      function canApprovePrescription(role, isVerifiedDoctor) {
+        if (role !== 'caregiver' && role !== 'doctor' && !isVerifiedDoctor) {
+          return err(new Error('Only designated caregivers or verified medical doctors can approve prescriptions.'));
         }
         return ok(true);
       }
 
-      const caregiverAttempt = canApprovePrescription(false);
-      assert.strictEqual(caregiverAttempt.success, false);
-      assert.ok(caregiverAttempt.error.message.includes('verified medical doctors'));
+      const caregiverAttempt = canApprovePrescription('caregiver', false);
+      assert.strictEqual(caregiverAttempt.success, true);
 
-      const doctorAttempt = canApprovePrescription(true);
+      const doctorAttempt = canApprovePrescription('doctor', true);
       assert.strictEqual(doctorAttempt.success, true);
+
+      const unauthorizedAttempt = canApprovePrescription('patient', false);
+      assert.strictEqual(unauthorizedAttempt.success, false);
+      assert.ok(unauthorizedAttempt.error.message.includes('caregivers or verified medical doctors'));
     });
 
     it('should validate 6-8 character pairing code format before submission', () => {

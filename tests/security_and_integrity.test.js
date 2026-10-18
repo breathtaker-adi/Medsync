@@ -182,15 +182,17 @@ describe('Security & Integrity Test Suite', () => {
       assert.strictEqual(recordsForB[0].medicine_name, 'Atorvastatin');
     });
 
-    it('should enforce doctor approval authorization: only verified doctors can approve', () => {
-      const unverifiedCaregiver = { id: 'cg-1', role: 'caregiver', is_verified_doctor: false };
+    it('should enforce approval authorization: caregivers and verified doctors can approve', () => {
+      const caregiver = { id: 'cg-1', role: 'caregiver', is_verified_doctor: false };
       const verifiedDoctor = { id: 'doc-1', role: 'doctor', is_verified_doctor: true };
+      const unauthorizedPatient = { id: 'pat-1', role: 'patient', is_verified_doctor: false };
 
       const canApprove = (profile) =>
-        profile.role === 'doctor' || profile.is_verified_doctor === true;
+        profile.role === 'doctor' || profile.role === 'caregiver' || profile.is_verified_doctor === true;
 
-      assert.strictEqual(canApprove(unverifiedCaregiver), false);
+      assert.strictEqual(canApprove(caregiver), true);
       assert.strictEqual(canApprove(verifiedDoctor), true);
+      assert.strictEqual(canApprove(unauthorizedPatient), false);
     });
   });
 

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,12 +9,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { PulseView } from '../../components/PulseView';
 import { SeniorButton } from '../../components/SeniorButton';
 import { useAuth } from '../../context/authcontext';
+import { supabase } from '../../lib/supabase';
 import { prescriptionService } from '../../services/prescriptionService';
 import { Theme } from '../../theme';
 import { showErrorAlert } from '../../utils/errorHandler';
@@ -26,6 +28,55 @@ export default function UploadsScreen() {
   const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'pending' | 'approved'>('idle');
+
+  // Optional manual medication details (allows patient to specify or assist OCR)
+  const [medicineName, setMedicineName] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [duration, setDuration] = useState('');
+  const [patientNotes, setPatientNotes] = useState('');
+
+  // Multi-doctor routing state
+  interface ConnectedDoc {
+    id: string;
+    full_name: string;
+    specialty?: string;
+  }
+  const [connectedDoctors, setConnectedDoctors] = useState<ConnectedDoc[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadDoctors() {
+      if (!session?.user?.id) return;
+      try {
+        const { data: links } = await supabase
+          .from('patient_caregivers')
+          .select('caregiver_id')
+          .eq('patient_id', session.user.id)
+          .not('caregiver_id', 'is', null);
+
+        if (links && links.length > 0) {
+          const cIds = links.map((l: any) => l.caregiver_id);
+          const { data: profs } = await supabase
+            .from('profiles')
+            .select('id, full_name, specialty')
+            .in('id', cIds);
+
+          if (profs) {
+            setConnectedDoctors(
+              profs.map((p: any) => ({
+                id: p.id,
+                full_name: p.full_name?.startsWith('Dr.') ? p.full_name : `Dr. ${p.full_name || 'Physician'}`,
+                specialty: p.specialty || 'General Practice',
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load connected doctors for upload:', err);
+      }
+    }
+    loadDoctors();
+  }, [session?.user?.id]);
 
   const pickImage = async (fromCamera: boolean) => {
     let result;
@@ -65,12 +116,21 @@ export default function UploadsScreen() {
       userId,
       patientName,
       base64Image: base64Image!,
+      targetDoctorId: selectedDoctorId || null,
+      medicineName: medicineName.trim() || undefined,
+      dosage: dosage.trim() || undefined,
+      duration: duration.trim() || undefined,
+      patientNotes: patientNotes.trim() || undefined,
     });
 
     setIsUploading(false);
 
     if (res.success) {
       setUploadStatus('pending');
+      setMedicineName('');
+      setDosage('');
+      setDuration('');
+      setPatientNotes('');
       Alert.alert(
         'Prescription Submitted',
         'Your prescription slip has been uploaded and queued for your supervising caregiver / doctor to review and approve.'
@@ -211,6 +271,113 @@ export default function UploadsScreen() {
         />
 
         {imageUri && (
+          <View style={styles.detailsCard}>
+            <View style={styles.detailsHeader}>
+              <Ionicons name="create-outline" size={18} color={Theme.colors.primary} />
+              <Text style={styles.detailsTitle}>Prescription Details (Optional)</Text>
+            </View>
+            <Text style={styles.detailsSubtitle}>
+              You may specify medication details below, or leave blank to let AI OCR scan the photo for your doctor.
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Medication Name</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g., Metformin 500mg, Amoxicillin"
+                placeholderTextColor="#94A3B8"
+                value={medicineName}
+                onChangeText={setMedicineName}
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={styles.inputLabel}>Dosage / Frequency</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g., 1 tablet twice daily"
+                  placeholderTextColor="#94A3B8"
+                  value={dosage}
+                  onChangeText={setDosage}
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={styles.inputLabel}>Duration</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g., 7 days, 30 days"
+                  placeholderTextColor="#94A3B8"
+                  value={duration}
+                  onChangeText={setDuration}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Notes / Instructions</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                placeholder="e.g., Take after food with water. Prescribed for fever."
+                placeholderTextColor="#94A3B8"
+                value={patientNotes}
+                onChangeText={setPatientNotes}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </View>
+        )}
+
+        {imageUri && connectedDoctors.length > 0 && (
+          <View style={styles.doctorSelectCard}>
+            <View style={styles.doctorSelectHeader}>
+              <Ionicons name="medical" size={18} color={Theme.colors.primary} />
+              <Text style={styles.doctorSelectTitle}>Route Prescription To:</Text>
+            </View>
+
+            {/* Option: Any Supervising Doctor */}
+            <TouchableOpacity
+              style={[
+                styles.doctorOptionChip,
+                selectedDoctorId === null && styles.doctorOptionChipSelected,
+              ]}
+              onPress={() => setSelectedDoctorId(null)}
+            >
+              <Ionicons
+                name={selectedDoctorId === null ? "radio-button-on" : "radio-button-off"}
+                size={18}
+                color={selectedDoctorId === null ? Theme.colors.primary : "#94A3B8"}
+              />
+              <Text style={[styles.doctorOptionText, selectedDoctorId === null && styles.doctorOptionTextSelected]}>
+                Any Connected Doctor (Practice Queue)
+              </Text>
+            </TouchableOpacity>
+
+            {/* Individual Doctor Options */}
+            {connectedDoctors.map((doc) => (
+              <TouchableOpacity
+                key={doc.id}
+                style={[
+                  styles.doctorOptionChip,
+                  selectedDoctorId === doc.id && styles.doctorOptionChipSelected,
+                ]}
+                onPress={() => setSelectedDoctorId(doc.id)}
+              >
+                <Ionicons
+                  name={selectedDoctorId === doc.id ? "radio-button-on" : "radio-button-off"}
+                  size={18}
+                  color={selectedDoctorId === doc.id ? Theme.colors.primary : "#94A3B8"}
+                />
+                <Text style={[styles.doctorOptionText, selectedDoctorId === doc.id && styles.doctorOptionTextSelected]}>
+                  {doc.full_name} ({doc.specialty})
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {imageUri && (
           <PulseView active={!isUploading} minScale={0.98} maxScale={1.02}>
             <SeniorButton
               title="Submit for Doctor Review"
@@ -228,6 +395,106 @@ export default function UploadsScreen() {
 }
 
 const styles = StyleSheet.create({
+  detailsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  detailsTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14.5,
+    color: '#0F172A',
+  },
+  detailsSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 14,
+    lineHeight: 16,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  inputLabel: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 12,
+    color: '#334155',
+    marginBottom: 6,
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 13.5,
+    color: '#0F172A',
+  },
+  textArea: {
+    minHeight: 64,
+    textAlignVertical: 'top',
+  },
+  doctorSelectCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  doctorSelectHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  doctorSelectTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  doctorOptionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  doctorOptionChipSelected: {
+    backgroundColor: '#F0FDFA',
+    borderColor: Theme.colors.primary,
+  },
+  doctorOptionText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 13,
+    color: '#334155',
+  },
+  doctorOptionTextSelected: {
+    fontFamily: 'PublicSans-Bold',
+    color: Theme.colors.primary,
+  },
   container: {
     flex: 1,
     backgroundColor: Theme.colors.surface,

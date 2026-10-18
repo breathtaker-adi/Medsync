@@ -42,6 +42,12 @@ export const authService = {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            role: role || 'patient',
+          },
+        },
       });
 
       if (error) {
@@ -49,16 +55,20 @@ export const authService = {
         return err(new Error(getErrorMessage(error)));
       }
 
-      if (data.user) {
-        // Initialize profile
-        const { error: profileError } = await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: fullName.trim(),
-          role,
-          blood_group: bloodGroup || null,
-          allergies: allergies || null,
-          is_verified_doctor: role === 'doctor',
-        });
+      if (data.session && data.user) {
+        // Initialize profile if active session was established
+        const { error: profileError } = await supabase.from('profiles').upsert(
+          {
+            id: data.user.id,
+            full_name: fullName.trim(),
+            role,
+            blood_group: bloodGroup || null,
+            allergies: allergies || null,
+            is_verified_doctor: role === 'doctor',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
 
         if (profileError) {
           console.warn('[authService] Profile init warning:', profileError);
@@ -96,7 +106,7 @@ export const authService = {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, role, full_name, alerts_enabled, push_token, is_verified_doctor, blood_group, allergies')
+        .select('*')
         .eq('id', userId)
         .maybeSingle();
 
@@ -134,31 +144,5 @@ export const authService = {
     }
   },
 
-  /**
-   * Demo account quick-login with seed initialization
-   */
-  async signInWithDemo(role: 'doctor' | 'patient'): Promise<Result<{ user: any; session: any }>> {
-    if (!__DEV__) {
-      return err(new Error('Demo accounts are disabled in production builds for security.'));
-    }
-    const demoEmail = role === 'doctor' ? 'doctor@medsync.demo' : 'patient@medsync.demo';
-    const demoPassword = 'Password123!';
 
-    const signInRes = await this.signIn({ email: demoEmail, password: demoPassword });
-    if (signInRes.success) {
-      return signInRes;
-    }
-
-    // If account does not exist yet, create it
-    const signUpRes = await this.signUp({
-      email: demoEmail,
-      password: demoPassword,
-      fullName: role === 'doctor' ? 'Dr. Evelyn Reed, MD' : 'Eleanor Vance',
-      role,
-      bloodGroup: role === 'patient' ? 'O+' : undefined,
-      allergies: role === 'patient' ? 'Penicillin, Sulfa drugs' : undefined,
-    });
-
-    return signUpRes;
-  },
 };

@@ -1,8 +1,11 @@
 // src/hooks/useCaregiverRoster.ts
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { medicationService } from '../services/medicationService';
+import { notificationService } from '../services/notificationService';
 import { patientService } from '../services/patientService';
 import { prescriptionService } from '../services/prescriptionService';
+import { Medication } from '../types/medication';
 import { MissedAlertItem, PatientItem } from '../types/patient';
 import { PendingReview } from '../types/review';
 import { showErrorAlert } from '../utils/errorHandler';
@@ -11,6 +14,7 @@ export function useCaregiverRoster(caregiverId?: string | null) {
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [reviews, setReviews] = useState<PendingReview[]>([]);
   const [missedAlerts, setMissedAlerts] = useState<MissedAlertItem[]>([]);
+  const [personalMeds, setPersonalMeds] = useState<Medication[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [linking, setLinking] = useState<boolean>(false);
@@ -21,15 +25,22 @@ export function useCaregiverRoster(caregiverId?: string | null) {
       return;
     }
 
-    const [patientsRes, reviewsRes, alertsRes] = await Promise.all([
+    const [patientsRes, reviewsRes, alertsRes, personalMedsRes] = await Promise.all([
       patientService.fetchLinkedPatients(caregiverId),
       prescriptionService.fetchPendingReviewsForCaregiver(caregiverId),
       patientService.checkMissedDoses(caregiverId),
+      medicationService.fetchMedications(caregiverId),
     ]);
 
     if (patientsRes.success) setPatients(patientsRes.data || []);
     if (reviewsRes.success) setReviews(reviewsRes.data || []);
     if (alertsRes.success) setMissedAlerts(alertsRes.data || []);
+
+    if (personalMedsRes.success && personalMedsRes.data) {
+      setPersonalMeds(personalMedsRes.data);
+      // Automatically arm alarms for caregiver's personal medications
+      notificationService.scheduleAllAlarms(personalMedsRes.data).catch(() => {});
+    }
 
     setLoading(false);
   }, [caregiverId]);
@@ -39,6 +50,23 @@ export function useCaregiverRoster(caregiverId?: string | null) {
     await fetchRosterData();
     setRefreshing(false);
   }, [fetchRosterData]);
+
+  const takePersonalDose = async (med: Medication): Promise<boolean> => {
+    if (!caregiverId) return false;
+    const res = await medicationService.recordDoseAction({
+      medication: med,
+      patientId: caregiverId,
+      status: 'taken',
+      scheduledTime: med.time || '08:00',
+    });
+    if (res.success) {
+      await fetchRosterData();
+      return true;
+    } else {
+      showErrorAlert(res.error, 'Dose Log Error');
+      return false;
+    }
+  };
 
   const linkPatientWithCode = async (code: string): Promise<boolean> => {
     if (!caregiverId) return false;
@@ -102,8 +130,20 @@ export function useCaregiverRoster(caregiverId?: string | null) {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'medication_logs' },
           () => {
-            patientService.checkMissedDoses(caregiverId).then((res) => {
+            patientService.checkMissedDoses(caregiverId).then((res: any) => {
               if (res.success) setMissedAlerts(res.data || []);
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'medications', filter: `patient_id=eq.${caregiverId}` },
+          () => {
+            medicationService.fetchMedications(caregiverId).then((res) => {
+              if (res.success && res.data) {
+                setPersonalMeds(res.data);
+                notificationService.scheduleAllAlarms(res.data).catch(() => {});
+              }
             });
           }
         )
@@ -125,6 +165,8 @@ export function useCaregiverRoster(caregiverId?: string | null) {
     patients,
     reviews,
     missedAlerts,
+    personalMeds,
+    takePersonalDose,
     loading,
     refreshing,
     linking,

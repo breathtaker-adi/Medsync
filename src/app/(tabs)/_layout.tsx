@@ -14,20 +14,29 @@ export default function TabsLayout() {
 
   useEffect(() => {
     const onBackPress = () => {
-      // 1. If there's a screen in the stack history to pop, navigate back
-      if (router.canGoBack()) {
-        router.back();
-        return true;
-      }
-
-      // 2. If user is on a secondary tab (like uploads), return to the main home dashboard tab
       const isHomeTab =
         pathname === '/(tabs)/patient-dashboard' ||
         pathname === '/(tabs)/caregiver-dashboard' ||
         pathname === '/patient-dashboard' ||
         pathname === '/caregiver-dashboard';
 
-      if (!isHomeTab) {
+      // 1. Root home screen reached: Enforce double-back press within 2000ms to exit (never pop to role-selection)
+      if (isHomeTab) {
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+
+        lastBackPressRef.current = now;
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+        }
+        return true;
+      }
+
+      // 2. If user is on a secondary tab (like uploads), return to the main home dashboard tab
+      if (pathname === '/(tabs)/uploads' || pathname === '/uploads') {
         if (isCaregiverOrDoctor) {
           router.navigate('/(tabs)/caregiver-dashboard');
         } else {
@@ -36,18 +45,13 @@ export default function TabsLayout() {
         return true;
       }
 
-      // 3. Root screen reached: Require double-back press within 2000ms to exit
-      const now = Date.now();
-      if (now - lastBackPressRef.current < 2000) {
-        BackHandler.exitApp();
+      // 3. If there is a subscreen in the stack history to pop, navigate back
+      if (router.canGoBack()) {
+        router.back();
         return true;
       }
 
-      lastBackPressRef.current = now;
-      if (Platform.OS === 'android') {
-        ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
-      }
-      return true;
+      return false;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);

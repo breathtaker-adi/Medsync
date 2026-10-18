@@ -1,12 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
+import { Image } from 'expo-image';
+import * as IntentLauncher from 'expo-intent-launcher';
 import * as Print from 'expo-print';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
+import * as Speech from 'expo-speech';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  BackHandler,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,15 +22,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MedSyncLogo } from '../components/MedSyncLogo';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { useAuth } from '../context/authcontext';
 import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as Application from 'expo-application';
-import { MedSyncLogo } from '../components/MedSyncLogo';
-import { SeniorButton } from '../components/SeniorButton';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { avatarHelper } from '../utils/avatarHelper';
 
 function escapeHtml(str: string | null | undefined): string {
   if (!str) return '';
@@ -45,8 +50,17 @@ const generateRandomPairingCode = () => {
   return result;
 };
 
+const SOUND_OPTIONS = [
+  { id: 'gentle_chime', name: 'Gentle Chime', desc: 'Soft harmonious bell for calm morning waking', icon: 'musical-notes' },
+  { id: 'medical_pulse', name: 'Medical Pulse', desc: 'Clinical rhythm telemetry alert', icon: 'pulse' },
+  { id: 'classic_bell', name: 'Classic Bell', desc: 'Resonant brass bell reminder', icon: 'notifications' },
+  { id: 'urgent_alert', name: 'Urgent Alert', desc: 'High-visibility dual alert tone', icon: 'warning' },
+  { id: 'calm_marimba', name: 'Calm Marimba', desc: 'Acoustic wooden mallet melody', icon: 'volume-medium' },
+  { id: 'system_default', name: 'System Default', desc: 'Device default notification sound', icon: 'phone-portrait' },
+];
+
 export default function SettingsScreen() {
-  const { profile, session } = useAuth();
+  const { profile, session, refreshProfile } = useAuth();
   const {
     isAccessibilityMode,
     isAudioEnabled,
@@ -55,10 +69,47 @@ export default function SettingsScreen() {
     triggerHaptic,
   } = useAccessibility();
 
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [alarmModalVisible, setAlarmModalVisible] = useState(false);
+  const [selectedSound, setSelectedSound] = useState('Gentle Chime');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [loadingCode, setLoadingCode] = useState(false);
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(profile?.alerts_enabled ?? true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // Load avatar and selected sound from storage on mount
+  useEffect(() => {
+    if (session?.user?.id) {
+      avatarHelper.getLocalAvatar(session.user.id).then((stored) => {
+        if (stored) setAvatarUri(stored);
+        else if (profile?.avatar_url) setAvatarUri(profile.avatar_url);
+      });
+    }
+    AsyncStorage.getItem('@medsync_alarm_sound').then((val) => {
+      if (val) setSelectedSound(val);
+    });
+  }, [session?.user?.id, profile?.avatar_url]);
+
+  const handlePickAvatar = async () => {
+    if (!session?.user?.id) return;
+    triggerHaptic();
+    const newAvatar = await avatarHelper.promptPickAvatar(session.user.id);
+    if (newAvatar) {
+      setAvatarUri(newAvatar);
+      await refreshProfile();
+    }
+  };
+
+  const handleSelectSound = async (soundName: string) => {
+    triggerHaptic();
+    setSelectedSound(soundName);
+    await AsyncStorage.setItem('@medsync_alarm_sound', soundName);
+    Speech.stop();
+    Speech.speak(`Alert sound: ${soundName}. It is time for your medication.`, {
+      pitch: soundName === 'Urgent Alert' ? 1.3 : soundName === 'Gentle Chime' ? 1.1 : 1.0,
+      rate: 0.95,
+    });
+  };
 
   // Sync state if profile changes
   useEffect(() => {
@@ -295,36 +346,9 @@ export default function SettingsScreen() {
     );
   };
 
-  const openAlarmSoundSettings = async () => {
+  const openAlarmSoundSettings = () => {
     triggerHaptic();
-    if (Platform.OS === 'android') {
-      try {
-        // Try to open the specific channel settings directly
-        await IntentLauncher.startActivityAsync(
-          'android.settings.CHANNEL_NOTIFICATION_SETTINGS',
-          {
-            extra: {
-              'android.provider.extra.APP_PACKAGE': Application.applicationId,
-              'android.provider.extra.CHANNEL_ID': 'medication-alarms-auto',
-            },
-          }
-        );
-      } catch (e) {
-        // Fallback: If the channel doesn't exist yet, just open general app settings
-        console.log('Could not open channel settings, opening general settings', e);
-        await IntentLauncher.startActivityAsync(
-          'android.settings.APP_NOTIFICATION_SETTINGS',
-          {
-            extra: {
-              'android.provider.extra.APP_PACKAGE': Application.applicationId,
-            },
-          }
-        );
-      }
-    } else {
-      // iOS fallback
-      Linking.openSettings();
-    }
+    setAlarmModalVisible(true);
   };
 
   const openExactAlarmSettings = async () => {
@@ -364,17 +388,64 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 14 }}>
         {/* Profile Section */}
-        <View style={styles.profileCard}>
-          <Ionicons name="person-circle" size={48} color={Theme.colors.primary} />
+        <View style={[styles.profileCard, isAccessibilityMode && styles.highContrastCard]}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handlePickAvatar}
+            activeOpacity={0.8}
+            accessibilityLabel="Change profile picture"
+            accessibilityRole="button"
+          >
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.profileAvatarImage} />
+            ) : (
+              <View style={styles.profileAvatarPlaceholder}>
+                <Ionicons name="person" size={28} color="#FFFFFF" />
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={13} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{profile?.full_name || 'Guest User'}</Text>
-            <Text style={styles.profileRole}>
+            <Text style={[styles.profileName, isAccessibilityMode && styles.largeProfileName]}>
+              {profile?.full_name || 'Guest User'}
+            </Text>
+            <Text style={[styles.profileRole, isAccessibilityMode && styles.largeProfileRole]}>
               {profile?.role
                 ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1)
                 : 'Not set'}
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <TouchableOpacity onPress={handlePickAvatar} style={styles.changePhotoBtn}>
+                <Ionicons name="image-outline" size={13} color={Theme.colors.primary} />
+                <Text style={styles.changePhotoText}>Photo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  triggerHaptic();
+                  router.push('/edit-profile' as any);
+                }}
+                style={[styles.changePhotoBtn, { backgroundColor: '#E0F2FE' }]}
+              >
+                <Ionicons name="create-outline" size={13} color="#0284C7" />
+                <Text style={[styles.changePhotoText, { color: '#0284C7' }]}>Edit Info</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
+
+        {/* Accessibility Status Banner */}
+        {isAccessibilityMode && (
+          <View style={styles.accessibilityActiveBanner}>
+            <Ionicons name="checkmark-circle" size={20} color="#0D7377" />
+            <Text style={styles.accessibilityActiveBannerText}>
+              Accessibility Mode Active • High-Contrast &amp; Large Text Enabled
+            </Text>
+          </View>
+        )}
 
         {/* Doctor Clinical Settings Banner */}
         {isDoctor && (
@@ -431,7 +502,12 @@ export default function SettingsScreen() {
 
             {pairingCode ? (
               <View style={styles.codeDisplay}>
+                <View style={styles.codePlateHeader}>
+                  <Ionicons name="key" size={18} color="#2DD4BF" />
+                  <Text style={styles.codePlateLabel}>ACTIVE PAIRING CODE</Text>
+                </View>
                 <Text style={styles.codeText}>{pairingCode}</Text>
+                <Text style={styles.codeHintText}>Valid for 15 minutes • Share with your doctor</Text>
               </View>
             ) : (
               <SeniorButton
@@ -443,6 +519,30 @@ export default function SettingsScreen() {
                 icon={<Ionicons name="key-outline" size={20} color="#FFFFFF" />}
               />
             )}
+
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#F1F5F9',
+                borderRadius: 12,
+                padding: 12,
+                marginTop: 12,
+              }}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/doctor-link');
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="medical" size={20} color={Theme.colors.primary} />
+                <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 13, color: '#0F172A' }}>
+                  View Connected Doctors &amp; Roster
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Theme.colors.primary} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -467,10 +567,13 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, isAccessibilityMode && styles.accessibilityRow]}>
           <View style={styles.settingInfo}>
-            <Ionicons name="accessibility" size={24} color={Theme.colors.onSurfaceVariant} />
-            <Text style={styles.settingText}>Accessibility Mode</Text>
+            <Ionicons name="accessibility" size={isAccessibilityMode ? 28 : 24} color={Theme.colors.primary} />
+            <View style={styles.settingTextContainer}>
+              <Text style={[styles.settingTitle, isAccessibilityMode && styles.largeSettingText]}>Accessibility Mode</Text>
+              <Text style={[styles.settingSubtitle, isAccessibilityMode && styles.largeSubtitle]}>Large high-contrast text &amp; senior buttons</Text>
+            </View>
           </View>
           <Switch
             value={isAccessibilityMode}
@@ -482,10 +585,13 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, isAccessibilityMode && styles.accessibilityRow]}>
           <View style={styles.settingInfo}>
-            <Ionicons name="volume-high" size={24} color={Theme.colors.onSurfaceVariant} />
-            <Text style={styles.settingText}>Read Aloud (Audio)</Text>
+            <Ionicons name="volume-high" size={isAccessibilityMode ? 28 : 24} color={Theme.colors.primary} />
+            <View style={styles.settingTextContainer}>
+              <Text style={[styles.settingTitle, isAccessibilityMode && styles.largeSettingText]}>Read Aloud (Voice Guidance)</Text>
+              <Text style={[styles.settingSubtitle, isAccessibilityMode && styles.largeSubtitle]}>Enable voice speech synthesis on home screen</Text>
+            </View>
           </View>
           <Switch
             value={isAudioEnabled}
@@ -499,13 +605,18 @@ export default function SettingsScreen() {
 
         <TouchableOpacity style={styles.settingRow} onPress={openAlarmSoundSettings}>
           <View style={styles.settingInfo}>
-            <Ionicons name="notifications-outline" size={24} color={Theme.colors.onSurfaceVariant} />
+            <Ionicons name="notifications-outline" size={24} color={Theme.colors.primary} />
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingTitle}>Alarm & Ringtone</Text>
-              <Text style={styles.settingSubtitle}>Change the medication alarm sound</Text>
+              <Text style={styles.settingSubtitle}>Current: {selectedSound} • Tap to choose</Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={styles.soundBadge}>
+              <Text style={styles.soundBadgeText}>{selectedSound}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Theme.colors.onSurfaceVariant} />
+          </View>
         </TouchableOpacity>
 
         {Platform.OS === 'android' && (
@@ -513,8 +624,8 @@ export default function SettingsScreen() {
             <View style={styles.settingInfo}>
               <Ionicons name="time-outline" size={24} color={Theme.colors.onSurfaceVariant} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingTitle}>Exact Alarms (Android 14+)</Text>
-                <Text style={styles.settingSubtitle}>Permit exact timing even in low battery mode</Text>
+                <Text style={styles.settingTitle}>Exact Alarms</Text>
+                <Text style={styles.settingSubtitle}>Allow alarms to ring at the precise scheduled time</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
@@ -541,26 +652,29 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
         </TouchableOpacity>
 
-        {/* Account Section */}
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Account</Text>
-
-        {/* Exit Application */}
+        {/* Paused Medications Section */}
         <TouchableOpacity
           style={styles.settingRow}
           onPress={() => {
             triggerHaptic();
-            Alert.alert('Exit MedSync', 'Are you sure you want to close MedSync?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Exit', style: 'destructive', onPress: () => BackHandler.exitApp() },
-            ]);
+            router.push('/paused-medications' as any);
           }}
         >
           <View style={styles.settingInfo}>
-            <Ionicons name="exit-outline" size={24} color={Theme.colors.primary} />
-            <Text style={[styles.settingText, { color: Theme.colors.onSurface }]}>Exit MedSync</Text>
+            <Ionicons name="pause-circle-outline" size={24} color="#D97706" />
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingTitle}>Paused Medications</Text>
+              <Text style={styles.settingSubtitle}>Manage &amp; resume held medication routines</Text>
+            </View>
           </View>
-          <Ionicons name="chevron-forward" size={24} color={Theme.colors.outline} />
+          <Ionicons name="chevron-forward" size={24} color={Theme.colors.onSurfaceVariant} />
         </TouchableOpacity>
+
+        {/* Account Section */}
+        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Account</Text>
+
+
+
 
         <TouchableOpacity style={styles.settingRow} onPress={handleLogout}>
           <View style={styles.settingInfo}>
@@ -618,6 +732,119 @@ export default function SettingsScreen() {
           <Text style={styles.appMissionText}>Accessible & Secure Healthcare Companion</Text>
         </View>
       </ScrollView>
+
+      {/* Alarm Sound Picker Modal */}
+      <Modal
+        visible={alarmModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          Speech.stop();
+          setAlarmModalVisible(false);
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={styles.modalIconWrap}>
+                  <Ionicons name="musical-notes" size={22} color={Theme.colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Medicine Alarm Sound</Text>
+                  <Text style={styles.modalSubtitle}>Tap sound to preview tone & speech</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Speech.stop();
+                  setAlarmModalVisible(false);
+                }}
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={22} color="#475569" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 360, marginTop: 12 }}>
+              {SOUND_OPTIONS.map((item) => {
+                const isSelected = selectedSound === item.name;
+                return (
+                  <TouchableOpacity
+                    key={item.name}
+                    style={[styles.soundOptionRow, isSelected && styles.soundOptionRowSelected]}
+                    onPress={() => handleSelectSound(item.name)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.soundOptionLeft}>
+                      <View style={[styles.soundRadio, isSelected && styles.soundRadioSelected]}>
+                        {isSelected && <View style={styles.soundRadioInner} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.soundName, isSelected && styles.soundNameSelected]}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.soundDesc}>{item.desc}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.soundPreviewBtn}
+                      onPress={() => handleSelectSound(item.name)}
+                    >
+                      <Ionicons
+                        name={isSelected ? 'volume-high' : 'play-circle-outline'}
+                        size={22}
+                        color={isSelected ? Theme.colors.primary : '#64748B'}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.systemSettingsBtn}
+                onPress={async () => {
+                  setAlarmModalVisible(false);
+                  Speech.stop();
+                  if (Platform.OS === 'android') {
+                    try {
+                      await IntentLauncher.startActivityAsync(
+                        'android.settings.APP_NOTIFICATION_SETTINGS',
+                        {
+                          extra: {
+                            'android.provider.extra.APP_PACKAGE': Application.applicationId,
+                          },
+                        }
+                      );
+                    } catch {
+                      Linking.openSettings();
+                    }
+                  } else {
+                    Linking.openSettings();
+                  }
+                }}
+              >
+                <Ionicons name="settings-outline" size={16} color="#64748B" />
+                <Text style={styles.systemSettingsText}>System Notification Settings</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalDoneBtn}
+                onPress={() => {
+                  Speech.stop();
+                  setAlarmModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
     </SafeAreaView>
   );
 }
@@ -746,16 +973,41 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   codeDisplay: {
-    backgroundColor: Theme.colors.primaryContainer,
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: '#042F2E',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0D9488',
+    ...Theme.shadows.cardElevated,
+  },
+  codePlateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  codePlateLabel: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: '#2DD4BF',
+    letterSpacing: 1.2,
   },
   codeText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 24,
-    color: Theme.colors.primary,
-    letterSpacing: 3,
+    fontSize: 28,
+    color: '#FFFFFF',
+    letterSpacing: 5,
+    marginVertical: 4,
+    textAlign: 'center',
+  },
+  codeHintText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#CCFBF1',
+    marginTop: 4,
   },
   generateButton: {
     backgroundColor: Theme.colors.primary,
@@ -831,5 +1083,239 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Theme.colors.onSurfaceVariant,
     marginTop: 3,
+  },
+  accessibilityActiveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E6FFFA',
+    borderWidth: 1.5,
+    borderColor: '#0D7377',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  accessibilityActiveBannerText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#0D7377',
+    flex: 1,
+  },
+  highContrastCard: {
+    borderWidth: 2,
+    borderColor: '#000000',
+    backgroundColor: '#FFFFFF',
+  },
+  accessibilityRow: {
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: '#000000',
+    backgroundColor: '#FFFFFF',
+  },
+  largeSettingText: {
+    fontSize: 17,
+    fontFamily: 'PublicSans-Bold',
+    color: '#000000',
+  },
+  largeSubtitle: {
+    fontSize: 13.5,
+    color: '#1E293B',
+    marginTop: 2,
+  },
+  largeProfileName: {
+    fontSize: 20,
+    color: '#000000',
+  },
+  largeProfileRole: {
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  avatarContainer: {
+    position: 'relative',
+    width: 60,
+    height: 60,
+  },
+  profileAvatarImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E2E8F0',
+  },
+  profileAvatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#0D9488',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  changePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  changePhotoText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: Theme.colors.primary,
+  },
+  soundBadge: {
+    backgroundColor: '#E6FFFA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+  },
+  soundBadgeText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#0D9488',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E6FFFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 16,
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#64748B',
+  },
+  closeBtn: {
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  soundOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  soundOptionRowSelected: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#0D9488',
+  },
+  soundOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  soundRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#94A3B8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  soundRadioSelected: {
+    borderColor: '#0D9488',
+  },
+  soundRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#0D9488',
+  },
+  soundName: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  soundNameSelected: {
+    color: '#0D9488',
+  },
+  soundDesc: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  soundPreviewBtn: {
+    padding: 6,
+  },
+  modalFooter: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  systemSettingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  systemSettingsText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 12,
+    color: '#64748B',
+  },
+  modalDoneBtn: {
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  modalDoneText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });

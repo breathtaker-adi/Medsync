@@ -17,8 +17,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PulseView } from '../../components/PulseView';
 import { SeniorButton } from '../../components/SeniorButton';
+import { MedSyncLogo } from '../../components/MedSyncLogo';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { useAuth } from '../../context/authcontext';
 import { supabase } from '../../lib/supabase';
@@ -26,15 +29,42 @@ import { medicationService } from '../../services/medicationService';
 import { notificationService } from '../../services/notificationService';
 import { Theme } from '../../theme';
 import { Medication } from '../../types/medication';
+import { avatarHelper } from '../../utils/avatarHelper';
 import { showErrorAlert } from '../../utils/errorHandler';
 import { checkIfOverdue, getTimeSlot, parseTimeToMinutes, TimeSlot } from '../../utils/timeUtils';
 
 export type { Medication };
 
 export default function PatientDashboard() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session, profile } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
   const { isAccessibilityMode, isAudioEnabled, triggerHaptic } = useAccessibility();
+
+  // Avatar state
+  const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url || null);
+
+
+
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarUri(profile.avatar_url);
+    } else if (session?.user?.id) {
+      avatarHelper.getLocalAvatar(session.user.id).then((local) => {
+        if (local) setAvatarUri(local);
+      });
+    }
+  }, [session?.user?.id, profile?.avatar_url]);
+
+  const handlePickAvatar = async () => {
+    if (!session?.user?.id) return;
+    triggerHaptic();
+    const newAvatar = await avatarHelper.promptPickAvatar(session.user.id);
+    if (newAvatar) {
+      setAvatarUri(newAvatar);
+      await refreshProfile();
+    }
+  };
 
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,8 +85,11 @@ export default function PatientDashboard() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [newMedName, setNewMedName] = useState('');
   const [newMedDosage, setNewMedDosage] = useState('');
-  const [newMedTime, setNewMedTime] = useState('');
+  const [newMedTime, setNewMedTime] = useState('08:00 AM');
+  const [newMedQuantity, setNewMedQuantity] = useState('30');
+  const [newMedUnit, setNewMedUnit] = useState('Tablets');
   const [newMedWarning, setNewMedWarning] = useState('');
+  const [timeError, setTimeError] = useState('');
 
   const fetchMedications = useCallback(async () => {
     if (!session?.user?.id) {
@@ -81,7 +114,12 @@ export default function PatientDashboard() {
   useFocusEffect(
     useCallback(() => {
       fetchMedications();
-    }, [fetchMedications])
+      if (session?.user?.id) {
+        avatarHelper.getLocalAvatar(session.user.id).then((local) => {
+          if (local) setAvatarUri(local);
+        });
+      }
+    }, [fetchMedications, session?.user?.id])
   );
 
   // Realtime subscription with unique channel name and try/catch guard
@@ -133,30 +171,52 @@ export default function PatientDashboard() {
   }, [session?.user?.id, fetchMedications]);
 
   const handleAddMedication = async () => {
-    if (!newMedName || !newMedDosage || !newMedTime || !session?.user?.id) {
+    if (!newMedName.trim() || !newMedDosage.trim() || !newMedTime.trim() || !session?.user?.id) {
       Alert.alert('Missing Info', 'Please fill out all required fields.');
       return;
     }
 
+    // Strict 12-hour time regex validation (HH:MM AM/PM)
+    const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM|am|pm)$/i;
+    if (!timeRegex.test(newMedTime.trim())) {
+      setTimeError('Enter a valid time (e.g., 08:00 AM or 07:30 PM)');
+      Alert.alert(
+        'Invalid Time Format',
+        'Please enter a valid scheduled time in 12-hour format, e.g., 08:00 AM or 07:30 PM.'
+      );
+      return;
+    }
+    setTimeError('');
+
+    const parsedQty = parseInt(newMedQuantity, 10);
+    const validQty = !isNaN(parsedQty) && parsedQty > 0 ? parsedQty : 30;
+    const formattedDosage = `${newMedDosage.trim()} (${validQty} ${newMedUnit})`;
+
     const res = await medicationService.createMedication({
       patientId: session.user.id,
-      medicineName: newMedName,
-      dosage: newMedDosage,
-      time: newMedTime,
-      warning: newMedWarning || null,
-      pillsRemaining: 30,
+      medicineName: newMedName.trim(),
+      dosage: formattedDosage,
+      time: newMedTime.trim().toUpperCase(),
+      warning: newMedWarning.trim() || null,
+      pillsRemaining: validQty,
     });
 
     if (res.success) {
       triggerHaptic();
       setNewMedName('');
       setNewMedDosage('');
-      setNewMedTime('');
+      setNewMedTime('08:00 AM');
+      setNewMedQuantity('30');
+      setNewMedUnit('Tablets');
       setNewMedWarning('');
+      setTimeError('');
       setAddModalVisible(false);
 
       await fetchMedications();
-      Alert.alert('Success', 'Medication added to your schedule!');
+      Alert.alert(
+        'Success',
+        `${newMedName} added with ${validQty} ${newMedUnit} scheduled at ${newMedTime.trim().toUpperCase()}!`
+      );
     } else {
       showErrorAlert(res.error, 'Could Not Add Medication');
     }
@@ -299,10 +359,18 @@ export default function PatientDashboard() {
 
   const handleReadAloudMed = (med: Medication) => {
     triggerHaptic();
-    const spoken = notificationService.speakMedication(med, true);
-    if (!spoken && !isAudioEnabled) {
-      Alert.alert('Audio Disabled', "Turn on 'Read Aloud' in Settings to hear dosage instructions.");
+    if (!isAudioEnabled) {
+      Alert.alert(
+        'Read Aloud Disabled',
+        "Voice guidance is currently off. You can enable 'Read Aloud (Audio)' in Settings.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Settings', onPress: () => router.push('/settings') },
+        ]
+      );
+      return;
     }
+    notificationService.speakMedication(med, isAudioEnabled);
   };
 
   // Hands-free Daily Routine Audio Overview
@@ -311,6 +379,18 @@ export default function PatientDashboard() {
     if (isSpeakingDailyBrief) {
       notificationService.stopSpeaking();
       setIsSpeakingDailyBrief(false);
+      return;
+    }
+
+    if (!isAudioEnabled) {
+      Alert.alert(
+        'Read Aloud Disabled',
+        "Voice guidance is currently off. You can enable 'Read Aloud (Audio)' in Settings.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Settings', onPress: () => router.push('/settings') },
+        ]
+      );
       return;
     }
 
@@ -333,7 +413,7 @@ export default function PatientDashboard() {
       text += 'You have no scheduled doses for today.';
     }
 
-    const spoken = notificationService.speakText(text, true);
+    const spoken = notificationService.speakText(text, isAudioEnabled);
     if (spoken) {
       setIsSpeakingDailyBrief(true);
       setTimeout(() => setIsSpeakingDailyBrief(false), 8000);
@@ -455,15 +535,6 @@ export default function PatientDashboard() {
           {/* Top Right Actions */}
           <View style={styles.cardHeaderActions}>
             <TouchableOpacity
-              style={styles.cardAudioBtn}
-              onPress={() => handleReadAloudMed(med)}
-              accessibilityRole="button"
-              accessibilityLabel={`Read aloud ${med.medicine_name}`}
-            >
-              <Ionicons name="volume-medium" size={20} color={Theme.colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
               onPress={() => router.push(`/medication-details?id=${med.id}`)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={styles.cardMoreBtn}
@@ -476,14 +547,6 @@ export default function PatientDashboard() {
 
         {/* Medication Info Section */}
         <View style={styles.cardBodyRow}>
-          <View style={[styles.pillIconPlate, isTaken && styles.pillIconPlateTaken]}>
-            <Ionicons
-              name={isTaken ? 'checkmark-circle' : 'medkit'}
-              size={28}
-              color={isTaken ? '#059669' : Theme.colors.primary}
-            />
-          </View>
-
           <View style={styles.medTextCol}>
             <Text
               style={[
@@ -618,7 +681,11 @@ export default function PatientDashboard() {
     <View style={styles.wrapper}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ padding: 14, paddingTop: Platform.OS === 'android' ? 36 : 48, paddingBottom: 72 }}
+        contentContainerStyle={{
+          padding: 14,
+          paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 8 : 12),
+          paddingBottom: 72,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -628,6 +695,52 @@ export default function PatientDashboard() {
           />
         }
       >
+        {/* Top App Bar: Brand Logo on Left, Avatar & Settings on Right */}
+        <View style={styles.topAppBar}>
+          <MedSyncLogo size={40} variant="horizontal" />
+          <View style={styles.headerActionCluster}>
+            <TouchableOpacity
+              style={styles.avatarButton}
+              onPress={handlePickAvatar}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile picture"
+            >
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.headerAvatarImage} />
+              ) : (
+                <View style={styles.headerAvatarPlaceholder}>
+                  <Text style={styles.headerAvatarInitial}>
+                    {(patientFirstName?.[0] || 'U').toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.headerCameraBadge}>
+                <Ionicons name="camera" size={10} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingsIconButton}
+              onPress={() => {
+                triggerHaptic();
+                router.push('/settings');
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Open Settings"
+            >
+              <Ionicons
+                name="settings-outline"
+                size={21}
+                color={Theme.colors.onSurface}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+
+
         {/* Header Greeting Row */}
         <View style={styles.headerRow}>
           <View style={styles.headerGreetingCol}>
@@ -639,58 +752,6 @@ export default function PatientDashboard() {
             >
               {greeting}, {patientFirstName}
             </Text>
-          </View>
-
-          {/* Header Action Buttons */}
-          <View style={styles.headerIconsGroup}>
-            <TouchableOpacity
-              style={[
-                styles.headerActionBtn,
-                isSpeakingDailyBrief && styles.headerActionBtnActive,
-                isAccessibilityMode && styles.largeActionBtn,
-              ]}
-              onPress={handleReadAloudDay}
-              accessibilityRole="button"
-              accessibilityLabel="Listen to daily schedule read aloud"
-            >
-              <Ionicons
-                name={isSpeakingDailyBrief ? 'volume-high' : 'volume-medium-outline'}
-                size={isAccessibilityMode ? 20 : 17}
-                color={isSpeakingDailyBrief ? '#FFFFFF' : Theme.colors.primary}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.headerActionBtn, isAccessibilityMode && styles.largeActionBtn]}
-              onPress={() => {
-                triggerHaptic();
-                router.push('/medication-history');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="View Medication Adherence History"
-            >
-              <Ionicons
-                name="stats-chart"
-                size={isAccessibilityMode ? 20 : 17}
-                color={Theme.colors.primary}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.headerActionBtn, isAccessibilityMode && styles.largeActionBtn]}
-              onPress={() => {
-                triggerHaptic();
-                router.push('/settings');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Open Settings"
-            >
-              <Ionicons
-                name="settings-outline"
-                size={isAccessibilityMode ? 20 : 17}
-                color="#0F172A"
-              />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -925,26 +986,26 @@ export default function PatientDashboard() {
               style={styles.quickActionTile}
               onPress={() => {
                 triggerHaptic();
-                router.push('/medication-history');
+                router.push('/paused-medications' as any);
               }}
             >
-              <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
-                <Ionicons name="calendar" size={20} color="#0284C7" />
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="pause-circle" size={20} color="#D97706" />
               </View>
-              <Text style={styles.quickActionLabel}>Log History</Text>
+              <Text style={styles.quickActionLabel}>Paused Meds</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.quickActionTile}
               onPress={() => {
                 triggerHaptic();
-                router.push('/settings');
+                router.push('/doctor-link');
               }}
             >
-              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="key" size={20} color="#B45309" />
+              <View style={[styles.quickActionIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="people" size={20} color="#6D28D9" />
               </View>
-              <Text style={styles.quickActionLabel}>Doctor Link</Text>
+              <Text style={styles.quickActionLabel}>My Doctors</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1000,22 +1061,113 @@ export default function PatientDashboard() {
               <Text style={styles.inputLabel}>Dosage *</Text>
               <TextInput
                 style={[styles.textInput, isAccessibilityMode && styles.largeTextInput]}
-                placeholder="e.g., 500mg (1 tablet)"
+                placeholder="e.g., 500mg"
                 placeholderTextColor="#94A3B8"
                 value={newMedDosage}
                 onChangeText={setNewMedDosage}
               />
             </View>
 
+            {/* Restricted Time Input with Presets */}
             <View style={styles.inputBlock}>
-              <Text style={styles.inputLabel}>Scheduled Time *</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={styles.inputLabel}>Scheduled Time *</Text>
+                <Text style={styles.inputHelpText}>12-hr format (e.g. 08:00 AM)</Text>
+              </View>
+
+              {/* Quick Time Presets */}
+              <View style={styles.timePresetRow}>
+                {['08:00 AM', '01:00 PM', '07:00 PM', '10:00 PM'].map((preset) => (
+                  <TouchableOpacity
+                    key={preset}
+                    style={[
+                      styles.timePresetBtn,
+                      newMedTime === preset && styles.timePresetBtnActive,
+                    ]}
+                    onPress={() => {
+                      triggerHaptic();
+                      setNewMedTime(preset);
+                      setTimeError('');
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.timePresetText,
+                        newMedTime === preset && styles.timePresetTextActive,
+                      ]}
+                    >
+                      {preset}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <TextInput
-                style={[styles.textInput, isAccessibilityMode && styles.largeTextInput]}
-                placeholder="e.g., 08:00 AM"
+                style={[
+                  styles.textInput,
+                  timeError ? styles.textInputError : undefined,
+                  isAccessibilityMode && styles.largeTextInput,
+                ]}
+                placeholder="08:00 AM"
                 placeholderTextColor="#94A3B8"
                 value={newMedTime}
-                onChangeText={setNewMedTime}
+                maxLength={8}
+                onChangeText={(text) => {
+                  // Allow only digits, colon, spaces, and A/P/M
+                  const cleaned = text.replace(/[^0-9: apmAPM]/g, '').slice(0, 8);
+                  setNewMedTime(cleaned);
+                  if (timeError) setTimeError('');
+                }}
               />
+              {timeError ? <Text style={styles.errorText}>{timeError}</Text> : null}
+            </View>
+
+            {/* Supply Quantity & Units */}
+            <View style={styles.inputBlock}>
+              <Text style={styles.inputLabel}>Supply Quantity & Units *</Text>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { width: 90, textAlign: 'center' },
+                    isAccessibilityMode && styles.largeTextInput,
+                  ]}
+                  placeholder="30"
+                  placeholderTextColor="#94A3B8"
+                  value={newMedQuantity}
+                  keyboardType="numeric"
+                  onChangeText={(text) => setNewMedQuantity(text.replace(/[^0-9]/g, ''))}
+                />
+                <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 13, color: '#475569' }}>
+                  {newMedUnit}
+                </Text>
+              </View>
+
+              {/* Unit Selector Chips */}
+              <View style={styles.unitChipsRow}>
+                {['Tablets', 'Capsules', 'ml (Liquid)', 'Grams', 'Units'].map((unit) => (
+                  <TouchableOpacity
+                    key={unit}
+                    style={[
+                      styles.unitChip,
+                      newMedUnit === unit && styles.unitChipActive,
+                    ]}
+                    onPress={() => {
+                      triggerHaptic();
+                      setNewMedUnit(unit);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.unitChipText,
+                        newMedUnit === unit && styles.unitChipTextActive,
+                      ]}
+                    >
+                      {unit}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
             <View style={styles.inputBlock}>
@@ -1089,6 +1241,75 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  topAppBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  headerActionCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatarButton: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+  },
+  headerAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E2E8F0',
+    borderWidth: 1.5,
+    borderColor: '#0D9488',
+  },
+  headerAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    ...Theme.shadows.card,
+  },
+  headerAvatarInitial: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  headerCameraBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  settingsIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Theme.shadows.card,
+  },
+  brandBar: {
+    marginBottom: 10,
+    alignItems: 'flex-start',
   },
   // Header
   headerRow: {
@@ -1630,6 +1851,39 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 3,
   },
+  inputHelpText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#64748B',
+  },
+  timePresetRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+  },
+  timePresetBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timePresetBtnActive: {
+    backgroundColor: '#CCFBF1',
+    borderColor: '#0D9488',
+  },
+  timePresetText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 10.5,
+    color: '#475569',
+  },
+  timePresetTextActive: {
+    color: '#0F766E',
+  },
   textInput: {
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
@@ -1640,6 +1894,43 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-Regular',
     fontSize: 13.5,
     color: '#0F172A',
+  },
+  textInputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: '#DC2626',
+    marginTop: 3,
+  },
+  unitChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  unitChip: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  unitChipActive: {
+    backgroundColor: '#CCFBF1',
+    borderColor: '#0D9488',
+  },
+  unitChipText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11.5,
+    color: '#475569',
+  },
+  unitChipTextActive: {
+    fontFamily: 'PublicSans-Bold',
+    color: '#0F766E',
   },
   largeTextInput: {
     fontSize: 15,

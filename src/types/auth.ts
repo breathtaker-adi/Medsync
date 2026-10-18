@@ -10,7 +10,14 @@ export interface UserProfile {
   push_token?: string | null;
   is_verified_doctor?: boolean | null;
   blood_group?: string | null;
+  age?: number | string | null;
   allergies?: string | null;
+  medical_license_number?: string | null;
+  medical_council?: string | null;
+  specialty?: string | null;
+  clinic_affiliation?: string | null;
+  years_of_experience?: string | null;
+  avatar_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }
