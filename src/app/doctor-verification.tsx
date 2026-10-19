@@ -608,12 +608,11 @@ export default function DoctorVerificationScreen() {
                     </Text>
                   </View>
                   <View style={styles.govBadgeSandbox}>
-                    <Text style={styles.govBadgeSandboxText}>SANDBOX MODE</Text>
+                    <Text style={styles.govBadgeSandboxText}>OFFICIAL REGISTRY</Text>
                   </View>
                 </View>
                 <Text style={styles.governanceExpl}>
-                  • <Text style={{ fontFamily: 'PublicSans-Bold' }}>Production Environment:</Text> Credentials submitted by doctors are placed in a compliance review queue and verified against official registries (NMC India, GMC UK, NPI US) by the MedSync Compliance Officer before the verified seal is granted.{'\n'}
-                  • <Text style={{ fontFamily: 'PublicSans-Bold' }}>Active Sandbox:</Text> To facilitate seamless testing of prescription OCR verification and dosing approvals, submitted credentials receive instant attestation.
+                  Submitted credentials are professionally verified against statutory medical registers (State Medical Council, NMC, GMC, AMA) by the MedSync Compliance Administration before granting the verified physician digital seal and prescription sign-off authority.
                 </Text>
               </View>
 
@@ -1305,15 +1304,15 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   govBadgeSandbox: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   govBadgeSandboxText: {
     fontFamily: 'PublicSans-Bold',
     fontSize: 9,
-    color: '#B45309',
+    color: '#0369A1',
     letterSpacing: 0.5,
   },
   governanceExpl: {
