@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
 // ── Dimensions & Physics Constants ──────────────────────────────
@@ -197,8 +197,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       g.rotation.x = tilt.current.x;
       g.rotation.z = tilt.current.z;
 
-      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 14, 0.16);
-      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 14, 0.16);
+      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 5.5, 0.14);
+      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 5.5, 0.14);
     }
 
     // ── Free Particle Physics Step with Fast Spatial Grid Collisions ──
@@ -212,24 +212,27 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       const subDt = dt / subSteps;
 
       // Local gravity vector inside rotating capsule frame
-      const gx = -13.0 * Math.sin(rotZ) + mouseImpulse.current.x;
-      const gy = -13.0 * Math.cos(rotX) * Math.cos(rotZ);
-      const gz = 13.0 * Math.sin(rotX) + mouseImpulse.current.y;
+      const gx = -10.5 * Math.sin(rotZ) + mouseImpulse.current.x * 0.5;
+      const gy = -10.5 * Math.cos(rotX) * Math.cos(rotZ);
+      const gz = 10.5 * Math.sin(rotX) + mouseImpulse.current.y * 0.5;
 
       const N = beads.length;
 
       for (let s = 0; s < subSteps; s++) {
-        // 1. Apply gravity, inertia, and position integration (heavy damping, very low kinetic energy)
+        // 1. Position integration with depth-dependent damping
+        // (Surface beads roll freely; bottom beads are calm and settled)
         for (let i = 0; i < N; i++) {
           const b = beads[i];
           b.vx += gx * subDt;
           b.vy += gy * subDt;
           b.vz += gz * subDt;
 
-          // Rolling and air friction - heavily damped, low kinetic energy
-          b.vx *= 0.90;
-          b.vy *= 0.90;
-          b.vz *= 0.90;
+          // Depth factor: 0 near upper surface, 1 at bottom cup
+          const depthFactor = Math.max(0, Math.min(1, (-b.y - 0.2) / 0.9));
+          const damp = 0.94 - depthFactor * 0.12; // 0.94 at top, 0.82 deep at bottom
+          b.vx *= damp;
+          b.vy *= damp;
+          b.vz *= damp;
 
           // Integrate position
           b.x += b.vx * subDt;
@@ -249,7 +252,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           gridHead[cell] = i;
         }
 
-        // 3. Resolve inter-bead collisions via spatial grid
+        // 3. Resolve inter-bead collisions: complete separation & elastic bounce (no sticking!)
         for (let i = 0; i < N; i++) {
           const bi = beads[i];
           const cx = Math.max(0, Math.min(11, Math.floor((bi.x + 0.6) * 10)));
@@ -286,8 +289,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             const ny = dy / dist;
                             const nz = dz / dist;
 
-                            // Softened relaxation to prevent shockwave constraint fighting
-                            const sep = overlap * 0.28;
+                            // 100% full geometric separation: each bead moves 50% of overlap away
+                            const sep = overlap * 0.5;
                             bi.x += nx * sep;
                             bi.y += ny * sep;
                             bi.z += nz * sep;
@@ -296,21 +299,22 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             bj.y -= ny * sep;
                             bj.z -= nz * sep;
 
-                            // Velocity exchange: absorb approaching normal velocity completely
+                            // Elastic bounce: beads rebound off each other (never stick like molecules)
                             const relVx = bi.vx - bj.vx;
                             const relVy = bi.vy - bj.vy;
                             const relVz = bi.vz - bj.vz;
                             const normalVel = relVx * nx + relVy * ny + relVz * nz;
 
                             if (normalVel < 0) {
-                              const cancel = normalVel * 0.5;
-                              bi.vx -= nx * cancel;
-                              bi.vy -= ny * cancel;
-                              bi.vz -= nz * cancel;
+                              const restitution = 0.32;
+                              const impulse = -(1 + restitution) * normalVel * 0.5;
+                              bi.vx += nx * impulse;
+                              bi.vy += ny * impulse;
+                              bi.vz += nz * impulse;
 
-                              bj.vx += nx * cancel;
-                              bj.vy += ny * cancel;
-                              bj.vz += nz * cancel;
+                              bj.vx -= nx * impulse;
+                              bj.vy -= ny * impulse;
+                              bj.vz -= nz * impulse;
                             }
                           }
                         }
@@ -324,7 +328,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           }
         }
 
-        // 4. Zero-rebound wall containment clamp with contact friction
+        // 4. Wall containment with strong floor dampening for down capsule
         for (let i = 0; i < N; i++) {
           const b = beads[i];
           const effR = CAPSULE_RADIUS - b.radius - 0.002;
@@ -342,15 +346,13 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                // Kill normal velocity into wall completely (no bouncing)
                 b.vx -= vDotN * nx;
                 b.vy -= vDotN * ny;
                 b.vz -= vDotN * nz;
-                // Strong wall surface friction to arrest sliding unrest
-                b.vx *= 0.65;
-                b.vy *= 0.65;
-                b.vz *= 0.65;
               }
+              // Strong bottom cup friction to calm down capsule activity
+              b.vx *= 0.55;
+              b.vz *= 0.55;
             }
           } else if (b.y > CYLINDER_HALF_HEIGHT) {
             const capCenterY = CYLINDER_HALF_HEIGHT;
@@ -369,10 +371,10 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                 b.vx -= vDotN * nx;
                 b.vy -= vDotN * ny;
                 b.vz -= vDotN * nz;
-                b.vx *= 0.65;
-                b.vy *= 0.65;
-                b.vz *= 0.65;
               }
+              b.vx *= 0.70;
+              b.vy *= 0.70;
+              b.vz *= 0.70;
             }
           } else {
             const rCyl = Math.hypot(b.x, b.z);
@@ -386,18 +388,17 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
               if (vDotN > 0) {
                 b.vx -= vDotN * nx;
                 b.vz -= vDotN * nz;
-                b.vx *= 0.65;
-                b.vy *= 0.65;
-                b.vz *= 0.65;
               }
+              b.vx *= 0.70;
+              b.vz *= 0.70;
             }
           }
         }
 
-        // 5. Resting contact deadband: freeze micro-jitter for settled beads
+        // 5. Rest threshold: calm down beads settled in lower capsule
         for (let i = 0; i < N; i++) {
           const b = beads[i];
-          if (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz < 0.0004) {
+          if (b.y < -0.45 && b.vx * b.vx + b.vy * b.vy + b.vz * b.vz < 0.0006) {
             b.vx = 0;
             b.vy = 0;
             b.vz = 0;
