@@ -3,4 +3,4 @@
 :HL["/Medsync/_next/static/media/fba5a26ea33df6a3-s.p.18rizl4rsrl42.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 2:[["children",{"s":"__PAGE__","h":160}]]
 1:[["children",{"s":"faq","h":96,"c":"$Q2"}]]
-0:{"b":"AbEcOE4ZTyMMwzaVWUSRc","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"h5RifMZYblMEmPL_hsHFT","t":{"t":{"s":"","h":80,"c":"$Q1"}}}

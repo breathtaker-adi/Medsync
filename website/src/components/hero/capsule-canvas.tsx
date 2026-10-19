@@ -207,8 +207,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       const rotX = g ? g.rotation.x : 0;
       const rotZ = g ? g.rotation.z : 0;
 
-      // 2 sub-steps per frame for rock-solid stability and crisp collisions
-      const subSteps = 2;
+      // 3 sub-steps per frame for rock-solid stability and zero-jitter granular packing
+      const subSteps = 3;
       const subDt = dt / subSteps;
 
       // Local gravity vector inside rotating capsule frame
@@ -227,9 +227,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           b.vz += gz * subDt;
 
           // Rolling and air friction - heavily damped, low kinetic energy
-          b.vx *= 0.92;
-          b.vy *= 0.92;
-          b.vz *= 0.92;
+          b.vx *= 0.90;
+          b.vy *= 0.90;
+          b.vz *= 0.90;
 
           // Integrate position
           b.x += b.vx * subDt;
@@ -286,8 +286,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             const ny = dy / dist;
                             const nz = dz / dist;
 
-                            // Push apart along contact normal
-                            const sep = overlap * 0.5;
+                            // Softened relaxation to prevent shockwave constraint fighting
+                            const sep = overlap * 0.28;
                             bi.x += nx * sep;
                             bi.y += ny * sep;
                             bi.z += nz * sep;
@@ -296,21 +296,21 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             bj.y -= ny * sep;
                             bj.z -= nz * sep;
 
-                            // Velocity exchange along collision normal
+                            // Velocity exchange: absorb approaching normal velocity completely
                             const relVx = bi.vx - bj.vx;
                             const relVy = bi.vy - bj.vy;
                             const relVz = bi.vz - bj.vz;
                             const normalVel = relVx * nx + relVy * ny + relVz * nz;
 
                             if (normalVel < 0) {
-                              const impulse = -0.25 * normalVel * 0.5;
-                              bi.vx += nx * impulse;
-                              bi.vy += ny * impulse;
-                              bi.vz += nz * impulse;
+                              const cancel = normalVel * 0.5;
+                              bi.vx -= nx * cancel;
+                              bi.vy -= ny * cancel;
+                              bi.vz -= nz * cancel;
 
-                              bj.vx -= nx * impulse;
-                              bj.vy -= ny * impulse;
-                              bj.vz -= nz * impulse;
+                              bj.vx += nx * cancel;
+                              bj.vy += ny * cancel;
+                              bj.vz += nz * cancel;
                             }
                           }
                         }
@@ -324,7 +324,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           }
         }
 
-        // 4. FINAL RIGOROUS WALL CONTAINMENT CLAMP (Executed AFTER inter-bead relaxation)
+        // 4. Zero-rebound wall containment clamp with contact friction
         for (let i = 0; i < N; i++) {
           const b = beads[i];
           const effR = CAPSULE_RADIUS - b.radius - 0.002;
@@ -342,9 +342,14 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.2 * vDotN * nx) * 0.18;
-                b.vy = (b.vy - 1.2 * vDotN * ny) * 0.18;
-                b.vz = (b.vz - 1.2 * vDotN * nz) * 0.18;
+                // Kill normal velocity into wall completely (no bouncing)
+                b.vx -= vDotN * nx;
+                b.vy -= vDotN * ny;
+                b.vz -= vDotN * nz;
+                // Strong wall surface friction to arrest sliding unrest
+                b.vx *= 0.65;
+                b.vy *= 0.65;
+                b.vz *= 0.65;
               }
             }
           } else if (b.y > CYLINDER_HALF_HEIGHT) {
@@ -361,9 +366,12 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.2 * vDotN * nx) * 0.18;
-                b.vy = (b.vy - 1.2 * vDotN * ny) * 0.18;
-                b.vz = (b.vz - 1.2 * vDotN * nz) * 0.18;
+                b.vx -= vDotN * nx;
+                b.vy -= vDotN * ny;
+                b.vz -= vDotN * nz;
+                b.vx *= 0.65;
+                b.vy *= 0.65;
+                b.vz *= 0.65;
               }
             }
           } else {
@@ -376,10 +384,23 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.2 * vDotN * nx) * 0.18;
-                b.vz = (b.vz - 1.2 * vDotN * nz) * 0.18;
+                b.vx -= vDotN * nx;
+                b.vz -= vDotN * nz;
+                b.vx *= 0.65;
+                b.vy *= 0.65;
+                b.vz *= 0.65;
               }
             }
+          }
+        }
+
+        // 5. Resting contact deadband: freeze micro-jitter for settled beads
+        for (let i = 0; i < N; i++) {
+          const b = beads[i];
+          if (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz < 0.0004) {
+            b.vx = 0;
+            b.vy = 0;
+            b.vz = 0;
           }
         }
       }
