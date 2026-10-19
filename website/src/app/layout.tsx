@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://breathtaker-adi.github.io/Medsync/",
   },
+  verification: {
+    google: "cijZUqVXSewGSRzBuGO07uehW-a3QU3TtkRFOJ96ewY",
+  },
   title: "Medsync: Medicine in Sync. Life on Schedule.",
   description:
     "Medsync is an open-source prescription adherence platform connecting patients, doctors and caregivers in real time. One living timeline. Zero dropped doses.",
