@@ -98,7 +98,6 @@ export default function LoginScreen() {
     setLoading(false);
   };
 
-
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: Theme.colors.surface }}
@@ -119,7 +118,7 @@ export default function LoginScreen() {
           <Text style={styles.headerText}>
             {isSignUp ? 'Create Account' : 'Welcome Back'}
           </Text>
-          <Text style={styles.subHeaderText}>
+          <Text style={styles.subHeaderText} textBreakStrategy="simple">
             {isSignUp
               ? 'Join MedSync for safe, synchronized medication care.'
               : 'Sign in to access your doses and caregiver network.'}
@@ -188,13 +187,15 @@ export default function LoginScreen() {
               accessibilityLabel="Forgot Password? Reset your credentials"
               activeOpacity={0.7}
             >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={styles.forgotPasswordText} numberOfLines={1}>
+                Forgot Password?
+              </Text>
             </TouchableOpacity>
           )}
 
           {isSignUp && (
             <View style={styles.consentContainer}>
-              <Text style={styles.consentText}>
+              <Text style={styles.consentText} textBreakStrategy="simple">
                 By signing up, you agree to MedSync’s{' '}
                 <Text
                   style={styles.consentLink}
@@ -229,17 +230,19 @@ export default function LoginScreen() {
           onPress={() => setIsSignUp(!isSignUp)}
           activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+          accessibilityLabel={
+            isSignUp
+              ? 'Already have an account? Sign In'
+              : "Don't have an account? Sign Up"
+          }
         >
-          <Text style={styles.toggleText}>
+          <Text style={styles.toggleText} numberOfLines={1}>
             {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
             <Text style={styles.toggleLink}>
               {isSignUp ? 'Sign In' : 'Sign Up'}
             </Text>
           </Text>
         </TouchableOpacity>
-
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -254,6 +257,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   logoWrapper: {
+    width: '100%',
     alignItems: 'center',
     marginBottom: 16,
   },
@@ -266,22 +270,26 @@ const styles = StyleSheet.create({
     ...Theme.shadows.cardElevated,
   },
   headerText: {
+    width: '100%',
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 22,
     color: Theme.colors.onSurface,
     marginBottom: 4,
   },
   subHeaderText: {
+    width: '100%',
     fontFamily: 'PublicSans-Regular',
-    fontSize: 13.5,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 20,
     color: Theme.colors.onSurfaceVariant,
     marginBottom: 16,
+    paddingRight: 4,
   },
   inputContainer: {
     marginBottom: 12,
   },
   label: {
+    width: '100%',
     fontFamily: 'PublicSans-Bold',
     fontSize: 13.5,
     color: Theme.colors.onSurface,
@@ -311,15 +319,15 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   forgotPasswordContainer: {
-    alignSelf: 'center',
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 20,
     marginTop: 6,
     marginBottom: 16,
   },
   forgotPasswordText: {
+    width: '100%',
     fontFamily: 'PublicSans-Bold',
     fontSize: 14,
     color: Theme.colors.primary,
@@ -327,14 +335,16 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   consentContainer: {
+    width: '100%',
     marginBottom: 14,
     paddingHorizontal: 2,
   },
   consentText: {
+    width: '100%',
     fontFamily: 'PublicSans-Regular',
     fontSize: 11.5,
     color: Theme.colors.onSurfaceVariant,
-    lineHeight: 16,
+    lineHeight: 17,
   },
   consentLink: {
     fontFamily: 'PublicSans-Bold',
@@ -342,13 +352,14 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   signUpToggle: {
+    width: '100%',
     marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 16,
   },
   toggleText: {
+    width: '100%',
     fontFamily: 'PublicSans-Regular',
     fontSize: 14,
     color: '#64748B',

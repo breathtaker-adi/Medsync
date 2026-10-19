@@ -88,10 +88,15 @@ export const MedSyncLogo: React.FC<MedSyncLogoProps> = ({
       <View style={[styles.horizontalContainer, style]}>
         {renderEmblem()}
         <View style={styles.horizontalTextContainer}>
-          <View style={styles.brandTitleHorizontal}>
+          <Text
+            style={{
+              includeFontPadding: false,
+            }}
+            numberOfLines={1}
+          >
             <Text style={[styles.medText, isLight && styles.textLight]}>Med</Text>
             <Text style={[styles.syncText, isLight && styles.textLightSync]}>Sync</Text>
-          </View>
+          </Text>
           <Text style={[styles.subText, isLight && styles.subTextLight]}>
             DAILY HEALTH COMPANION
           </Text>
@@ -104,10 +109,18 @@ export const MedSyncLogo: React.FC<MedSyncLogoProps> = ({
   return (
     <View style={[styles.stackedContainer, style]}>
       {renderEmblem()}
-      <View style={styles.brandTitleStackedRow}>
+      <Text
+        style={{
+          width: '100%',
+          textAlign: 'center',
+          includeFontPadding: false,
+          marginTop: 8,
+        }}
+        numberOfLines={1}
+      >
         <Text style={[styles.medTextStacked, isLight && styles.textLight]}>Med</Text>
         <Text style={[styles.syncTextStacked, isLight && styles.textLightSync]}>Sync</Text>
-      </View>
+      </Text>
       <Text style={[styles.subTextStacked, isLight && styles.subTextLight]}>
         DAILY MEDICATION CARE
       </Text>
@@ -180,6 +193,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   subTextStacked: {
+    width: '100%',
     fontFamily: 'PublicSans-Bold',
     fontSize: 10.5,
     color: Theme.colors.onSurfaceVariant,

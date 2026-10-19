@@ -147,9 +147,15 @@ export const SeniorButton: React.FC<SeniorButtonProps> = ({
               style={[
                 styles.text,
                 size === 'large' ? styles.textLarge : styles.textNormal,
-                { color: getTextColor() },
+                {
+                  color: getTextColor(),
+                  paddingHorizontal: 6,
+                  flexShrink: 0,
+                  includeFontPadding: false,
+                },
                 textStyle,
               ]}
+              numberOfLines={1}
             >
               {title}
             </Text>
