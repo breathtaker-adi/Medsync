@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Image } from 'expo-image';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Print from 'expo-print';
@@ -233,16 +234,58 @@ export default function SettingsScreen() {
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html });
+      let sharedSuccessfully = false;
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-      } else {
-        Alert.alert('Sharing Unavailable', 'Sharing is not supported on this device.');
+      // 4. Try generating file and sharing via FileSystem sandbox
+      try {
+        const { uri } = await Print.printToFileAsync({ html });
+        let targetUri = uri;
+
+        // Ensure file is inside document/cache directory with a clean filename so Android FileProvider grants full read access
+        const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+        if (baseDir) {
+          const destination = `${baseDir}MedSync_Health_Report.pdf`;
+          try {
+            await FileSystem.deleteAsync(destination, { idempotent: true });
+            await FileSystem.copyAsync({
+              from: uri,
+              to: destination,
+            });
+            targetUri = destination;
+          } catch (copyErr) {
+            console.warn('Could not copy PDF to document directory, falling back to original uri:', copyErr);
+          }
+        }
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(targetUri, {
+            UTI: 'com.adobe.pdf',
+            mimeType: 'application/pdf',
+            dialogTitle: 'MedSync Health Report',
+          });
+          sharedSuccessfully = true;
+        }
+      } catch (shareErr) {
+        console.warn('Direct file sharing rejected or unavailable, falling back to system Print/Save as PDF:', shareErr);
       }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      Alert.alert('Error', 'Could not generate health report PDF.');
+
+      // 5. Bulletproof Fallback: Open native system Print / Save as PDF dialog directly
+      if (!sharedSuccessfully) {
+        try {
+          await Print.printAsync({ html });
+        } catch (printErr: any) {
+          const msg = printErr?.message?.toLowerCase() || '';
+          if (!msg.includes('cancel') && !msg.includes('dismiss')) {
+            throw printErr;
+          }
+        }
+      }
+    } catch (error: any) {
+      const msg = error?.message?.toLowerCase() || '';
+      if (!msg.includes('cancel') && !msg.includes('dismiss')) {
+        console.error('Error generating PDF:', error);
+        Alert.alert('Error', 'Could not generate health report PDF.');
+      }
     } finally {
       setGeneratingPdf(false);
     }
