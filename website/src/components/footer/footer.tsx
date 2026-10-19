@@ -5,47 +5,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight, ArrowUp, Check, Github } from "lucide-react";
 import { Magnetic } from "@/components/fx/magnetic";
 import { scrollToTop } from "@/lib/scroll";
-import { useReducedMotion } from "@/hooks/use-motion-prefs";
-
-/* ── giant kinetic type ─────────────────────────────────────── */
-
-function GiantLine({
-  text,
-  outlined = false,
-  delay = 0,
-}: {
-  text: string;
-  outlined?: boolean;
-  delay?: number;
-}) {
-  const reduced = useReducedMotion();
-  return (
-    <motion.div
-      className="overflow-hidden"
-      initial={{ y: reduced ? 0 : "110%" }}
-      whileInView={{ y: 0 }}
-      viewport={{ once: true, margin: "-18%" }}
-      transition={{ duration: 1.1, delay, ease: [0.16, 1, 0.3, 1] }}
-    >
-      <div
-        className={`footer-giant-line flex justify-center text-[clamp(3.2rem,12.5vw,11rem)] leading-[0.94] font-extrabold tracking-[-0.04em] ${
-          outlined ? "footer-line-outline" : "footer-line-solid"
-        }`}
-        aria-label={text}
-      >
-        {Array.from(text).map((c, i) => (
-          <span
-            key={i}
-            className="footer-char inline-block"
-            style={{ transitionDelay: `${i * 26}ms` }}
-          >
-            {c === " " ? "\u00A0" : c}
-          </span>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
 
 /* ── early access intake ────────────────────────────────────── */
 
@@ -78,7 +37,7 @@ function Intake() {
               key="done"
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-4 rounded-2xl border border-pulse/30 bg-pulse/[0.07] px-6 py-5"
+              className="flex items-center gap-4 rounded-2xl border border-pulse/30 bg-pulse/[0.07] px-6 py-5 backdrop-blur-md"
               role="status"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pulse/20 text-pulse-bright">
@@ -101,7 +60,7 @@ function Intake() {
               className="relative"
             >
               <div
-                className={`relative flex items-center gap-2 rounded-2xl border bg-white/[0.03] px-5 py-5 backdrop-blur-md transition-colors duration-400 ${
+                className={`relative flex items-center gap-2 rounded-2xl border bg-white/[0.03] px-5 py-4 backdrop-blur-md transition-colors duration-400 ${
                   state === "error"
                     ? "border-coral/50"
                     : "border-white/10 focus-within:border-bio/50"
@@ -127,7 +86,7 @@ function Intake() {
                   }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
-                  className="w-full bg-transparent pt-3 font-telemetry text-sm text-white outline-none placeholder:text-transparent"
+                  className="w-full bg-transparent pt-3.5 font-telemetry text-sm text-white outline-none placeholder:text-transparent"
                   autoComplete="email"
                   aria-invalid={state === "error"}
                   aria-describedby="intake-hint"
@@ -146,7 +105,7 @@ function Intake() {
               <div
                 id="intake-hint"
                 className={`mt-2.5 px-1 font-telemetry text-[9px] tracking-[0.16em] uppercase transition-colors ${
-                  state === "error" ? "text-coral" : "text-slate-600"
+                  state === "error" ? "text-coral" : "text-slate-500"
                 }`}
               >
                 {state === "error"
@@ -177,14 +136,14 @@ export function Footer() {
   return (
     <footer
       id="access"
-      className="relative mt-12 flex flex-col overflow-clip border-t border-white/6"
+      className="relative mt-8 flex flex-col overflow-clip border-t border-white/6"
       aria-label="Early access and footer"
     >
       {/* ambient mesh */}
       <div
         ref={meshRef}
         onMouseMove={meshMove}
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         aria-hidden
       >
         <div className="anim-mesh absolute -top-[10%] left-[8%] h-[46vh] w-[46vw] rounded-full bg-bio/[0.06] blur-[120px]" />
@@ -200,13 +159,13 @@ export function Footer() {
       </div>
 
       {/* intake */}
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pt-24 md:px-8 md:pt-32">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pt-20 md:px-8 md:pt-28">
         <motion.div
-          className="flex flex-col items-center gap-5 text-center"
-          initial={{ opacity: 0, y: 26 }}
+          className="flex flex-col items-center gap-4 text-center"
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15%" }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-center gap-3 font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase">
             <span className="inline-block h-px w-8 bg-gradient-to-r from-transparent to-bio" />
@@ -216,42 +175,61 @@ export function Footer() {
           <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] text-white text-balance md:text-5xl">
             The next 500 patients sync this quarter.
           </h2>
-          <p className="max-w-md text-slate-400">
+          <p className="max-w-md text-sm leading-relaxed text-slate-400 md:text-base">
             Caregivers first, then their people. One email, one invite, zero
             spam — the sync matrix does the rest.
           </p>
         </motion.div>
 
         <motion.div
-          className="mt-10"
-          initial={{ opacity: 0, y: 26 }}
+          className="mt-8"
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-12%" }}
-          transition={{ duration: 0.9, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
           <Intake />
         </motion.div>
       </div>
 
-      {/* giant type */}
-      <div className="relative z-10 mt-16 flex flex-col pb-10 md:mt-24">
-        <GiantLine text="RECLAIM" delay={0} />
-        <GiantLine text="YOUR" outlined delay={0.08} />
-        <GiantLine text="RHYTHM." delay={0.16} />
+      {/* refined brand statement */}
+      <div className="relative z-10 my-16 flex flex-col items-center justify-center px-4 text-center md:my-20">
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10%" }}
+          transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center"
+        >
+          <div className="text-[clamp(2.4rem,6.8vw,5.8rem)] font-extrabold tracking-[-0.035em] leading-[1.08]">
+            <span className="footer-line-solid footer-char inline-block mr-2 sm:mr-3">RECLAIM</span>
+            <span className="footer-line-outline footer-char inline-block mr-2 sm:mr-3">YOUR</span>
+            <span className="text-gradient-sync inline-block drop-shadow-[0_0_24px_rgba(0,240,255,0.4)]">
+              RHYTHM.
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 font-telemetry text-[9.5px] tracking-[0.22em] text-slate-500 uppercase">
+            <span>PATIENT-FIRST</span>
+            <span className="text-bio">·</span>
+            <span>FHIR R4 COMPLIANT</span>
+            <span className="text-bio">·</span>
+            <span>ZERO-KNOWLEDGE VAULT</span>
+          </div>
+        </motion.div>
       </div>
 
       {/* bottom bar */}
-      <div className="relative z-10 mt-auto">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 border-t border-white/6 px-5 py-6 md:flex-row md:px-8">
-          <div className="font-telemetry text-[9px] tracking-[0.2em] text-slate-600 uppercase">
-            © 2026 medsync — open source · built with obsession
+      <div className="relative z-10 mt-auto border-t border-white/8 bg-obsidian/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 px-5 py-6 sm:flex-row md:px-8 md:pr-48">
+          <div className="font-telemetry text-[10px] tracking-[0.2em] text-slate-500 uppercase">
+            © 2026 MEDSYNC — OPEN SOURCE (MIT) · BUILT WITH OBSESSION
           </div>
           <div className="flex items-center gap-6">
             <a
               href="https://github.com/breathtaker-adi/Medsync"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 font-telemetry text-[9px] tracking-[0.2em] text-slate-500 uppercase transition-colors hover:text-bio"
+              className="flex items-center gap-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase transition-colors hover:text-bio"
               data-cursor="hover"
             >
               <Github size={13} />
@@ -259,7 +237,7 @@ export function Footer() {
             </a>
             <button
               onClick={scrollToTop}
-              className="group flex items-center gap-2 font-telemetry text-[9px] tracking-[0.2em] text-slate-500 uppercase transition-colors hover:text-white"
+              className="group flex items-center gap-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase transition-colors hover:text-white"
               aria-label="Back to top"
               data-cursor="hover"
             >
@@ -274,20 +252,20 @@ export function Footer() {
 
       {/* giant type hover styles */}
       <style>{`
-        .footer-line-solid .footer-char {
-          color: rgba(230, 237, 247, 0.92);
+        .footer-line-solid.footer-char {
+          color: rgba(230, 237, 247, 0.95);
           transition: color 0.5s var(--ease-observe), text-shadow 0.5s var(--ease-observe);
         }
-        .footer-line-solid:hover .footer-char {
+        .footer-line-solid.footer-char:hover {
           color: #eafcff;
           text-shadow: 0 0 22px rgba(0, 240, 255, 0.5);
         }
-        .footer-line-outline .footer-char {
+        .footer-line-outline.footer-char {
           color: transparent;
-          -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.22);
+          -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.3);
           transition: color 0.55s var(--ease-observe), -webkit-text-stroke-color 0.55s var(--ease-observe);
         }
-        .footer-line-outline:hover .footer-char {
+        .footer-line-outline.footer-char:hover {
           color: rgba(0, 240, 255, 0.16);
           -webkit-text-stroke-color: rgba(0, 240, 255, 0.85);
         }

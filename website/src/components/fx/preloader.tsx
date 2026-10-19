@@ -35,11 +35,19 @@ export function Preloader() {
 
   useEffect(() => {
     if (reduced) return;
+    // If already booted in this session, skip immediately
+    if (typeof window !== "undefined" && sessionStorage.getItem("medsync_booted") === "true") {
+      markReady();
+      emit(BUS.ready);
+      setPhase("gone");
+      return;
+    }
+
     const lenis = getLenis();
     lenis?.stop();
     document.body.style.overflow = "hidden";
 
-    const DURATION = 2000;
+    const DURATION = 700;
     const t0 = performance.now();
     let raf = 0;
     let finished = false;
@@ -52,34 +60,42 @@ export function Preloader() {
     const finish = () => {
       if (finished) return;
       finished = true;
+      try {
+        sessionStorage.setItem("medsync_booted", "true");
+      } catch {}
       setProgress(100);
-      // hero starts entering while the wipe is still lifting
       markReady();
       emit(BUS.ready);
-      window.setTimeout(() => setPhase("exit"), 420);
+      unlock();
+      setPhase("exit");
       window.setTimeout(() => {
         setPhase("gone");
-        unlock();
-      }, 1500);
+      }, 500);
     };
 
     const tick = (t: number) => {
       const k = Math.min(1, (t - t0) / DURATION);
-      const eased = 1 - Math.pow(1 - k, 2.6);
+      const eased = 1 - Math.pow(1 - k, 2.4);
       progressRef.current = Math.round(eased * 100);
       setProgress(progressRef.current);
       if (k < 1) {
         raf = requestAnimationFrame(tick);
-      } else if (document.fonts?.ready) {
-        document.fonts.ready.then(finish).catch(finish);
       } else {
         finish();
       }
     };
     raf = requestAnimationFrame(tick);
 
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === " " || e.key === "Enter") {
+        finish();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKeyDown);
       unlock();
     };
   }, [reduced]);
@@ -89,20 +105,32 @@ export function Preloader() {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-obsidian"
+        className="fixed inset-0 z-[90] flex cursor-pointer flex-col items-center justify-center bg-obsidian select-none"
         initial={{ y: 0 }}
         animate={phase === "exit" ? { y: "-100%" } : { y: 0 }}
-        transition={{ duration: 1.05, ease: [0.83, 0, 0.17, 1] }}
-        aria-hidden
+        transition={{ duration: 0.55, ease: [0.83, 0, 0.17, 1] }}
+        onClick={() => {
+          try {
+            sessionStorage.setItem("medsync_booted", "true");
+          } catch {}
+          setProgress(100);
+          markReady();
+          emit(BUS.ready);
+          document.body.style.overflow = "";
+          getLenis()?.start();
+          setPhase("exit");
+          window.setTimeout(() => setPhase("gone"), 450);
+        }}
+        aria-label="Click to skip preloader"
       >
           {/* faint grid backdrop */}
-          <div className="blueprint-grid absolute inset-0 opacity-60" />
-          <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_50%,rgba(0,240,255,0.05),transparent_70%)]" />
+          <div className="blueprint-grid absolute inset-0 opacity-60 pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_50%,rgba(0,240,255,0.05),transparent_70%)] pointer-events-none" />
 
           <motion.div
             className="relative flex flex-col items-center"
-            animate={phase === "exit" ? { opacity: 0, y: -34 } : { opacity: 1 }}
-            transition={{ duration: 0.45, ease: "easeIn" }}
+            animate={phase === "exit" ? { opacity: 0, y: -24 } : { opacity: 1 }}
+            transition={{ duration: 0.35, ease: "easeIn" }}
           >
             {/* capsule mark */}
             <div className="relative mb-8">
@@ -173,6 +201,11 @@ export function Preloader() {
                 className="h-full bg-gradient-to-r from-bio to-pulse transition-[width] duration-150 ease-out"
                 style={{ width: `${progress}%` }}
               />
+            </div>
+
+            {/* skip prompt */}
+            <div className="mt-5 font-telemetry text-[9px] tracking-[0.25em] text-slate-500 hover:text-bio transition-colors uppercase">
+              [ CLICK OR PRESS ESC TO ENTER ]
             </div>
           </motion.div>
 
