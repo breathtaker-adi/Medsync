@@ -111,7 +111,7 @@ export default function LoginScreen() {
       >
         {/* Animated Vector Logo Header */}
         <View style={styles.logoWrapper}>
-          <MedSyncLogo size={58} variant="stacked" animated={true} />
+          <MedSyncLogo size={58} variant="stacked" animated={false} />
         </View>
 
         {/* Auth Card */}
@@ -188,12 +188,6 @@ export default function LoginScreen() {
               accessibilityLabel="Forgot Password? Reset your credentials"
               activeOpacity={0.7}
             >
-              <Ionicons
-                name="key-outline"
-                size={14}
-                color={Theme.colors.primary}
-                style={styles.forgotPasswordIcon}
-              />
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           )}
@@ -237,14 +231,12 @@ export default function LoginScreen() {
           accessibilityRole="button"
           accessibilityLabel={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
         >
-          <View style={styles.toggleRow}>
-            <Text style={styles.toggleTextMuted}>
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-            </Text>
-            <Text style={styles.toggleTextAction}>
+          <Text style={styles.toggleText}>
+            {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+            <Text style={styles.toggleLink}>
               {isSignUp ? 'Sign In' : 'Sign Up'}
             </Text>
-          </View>
+          </Text>
         </TouchableOpacity>
 
 
@@ -320,21 +312,19 @@ const styles = StyleSheet.create({
   },
   forgotPasswordContainer: {
     alignSelf: 'center',
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 6,
     marginBottom: 16,
-  },
-  forgotPasswordIcon: {
-    marginRight: 6,
   },
   forgotPasswordText: {
     fontFamily: 'PublicSans-Bold',
     fontSize: 14,
     color: Theme.colors.primary,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   consentContainer: {
     marginBottom: 14,
@@ -355,24 +345,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
   },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  toggleTextMuted: {
+  toggleText: {
     fontFamily: 'PublicSans-Regular',
     fontSize: 14,
     color: '#64748B',
+    textAlign: 'center',
+    includeFontPadding: false,
   },
-  toggleTextAction: {
+  toggleLink: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 14,
     color: Theme.colors.primary,
     textDecorationLine: 'underline',
   },

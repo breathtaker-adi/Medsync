@@ -144,7 +144,6 @@ export const SeniorButton: React.FC<SeniorButtonProps> = ({
               </View>
             )}
             <Text
-              numberOfLines={1}
               style={[
                 styles.text,
                 size === 'large' ? styles.textLarge : styles.textNormal,
@@ -173,7 +172,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    width: '100%',
+    paddingHorizontal: 12,
   },
   iconWrapper: {
     marginRight: 8,
@@ -184,7 +184,8 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-Bold',
     textAlignVertical: 'center',
     textAlign: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
+    includeFontPadding: false,
   },
   textNormal: {
     fontSize: 14.5,

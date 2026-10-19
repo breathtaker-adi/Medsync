@@ -55,7 +55,7 @@ google-services.json
 *.mobileprovision
 
 # Supabase Local Backups & Sensitive Database Exports
-supabase_backup/
+supabase/
 supabase/.temp/
 *.csv
 
@@ -70,3 +70,8 @@ supabase/.temp/
 med sync ui/
 graphify-out/
 un-used files/
+security/
+test/
+scripts/
+docs/
+assets/
