@@ -64,6 +64,8 @@ supabase_backup/
 # Media & Temporary Asset Scratchpads
 *.mp4
 *.mov
+*.zip
+!docs/medsync-film.mp4
 med sync ui/
 graphify-out/
 un-used files/

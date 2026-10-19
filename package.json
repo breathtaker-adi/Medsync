@@ -59,6 +59,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "node --test tests/*.test.js",
+    "site:dev": "npm --prefix website run dev",
+    "site:build": "npm --prefix website run export:docs",
     "postinstall": "node ./scripts/patch-expo-notifications.js"
   },
   "private": true
