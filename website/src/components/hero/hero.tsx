@@ -147,12 +147,6 @@ export function Hero() {
           animate={ready || reduced ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 1.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* subtle ambient focal ring behind the 3D capsule */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-[340px] w-[340px] sm:h-[440px] sm:w-[440px] rounded-full border border-bio/15 bg-bio/[0.02] blur-[1px]" />
-            <div className="absolute h-[260px] w-[260px] sm:h-[320px] sm:w-[320px] rounded-full border border-dashed border-white/10 animate-[spin_60s_linear_infinite]" />
-          </div>
-
           <CapsuleScene />
         </motion.div>
       </div>

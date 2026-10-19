@@ -7,6 +7,8 @@ export const BUS = {
   ready: "medsync:ready",
   /** request the sync console to open */
   consoleOpen: "medsync:console:open",
+  /** dispatch custom frame to sync console */
+  consoleLog: "medsync:console:log",
 } as const;
 
 export function emit(name: string, detail?: unknown) {
