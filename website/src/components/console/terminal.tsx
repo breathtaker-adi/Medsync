@@ -18,14 +18,14 @@ interface Frame {
 }
 
 const EVENT_POOL: Array<{ event: string; detail: () => string; tone: Frame["tone"] }> = [
-  { event: "PRESCRIPTION_SYNCED", detail: () => `rx:#${randHex(4)} → fhir_bundle 1.2kb`, tone: "info" },
-  { event: "EHR_FHIR_BUNDLE", detail: () => `provider:${["atrius", "ohc", "kp-nw"][rnd(3)]} · r4 · ok`, tone: "info" },
-  { event: "DOSE_REMINDER_DISPATCH", detail: () => `patient:#${randHex(4)} · channel:watch+lock`, tone: "ok" },
-  { event: "VITALS_STREAM_TICK", detail: () => `hr:${88 + rnd(30)}bpm · spo2:${96 + rnd(4)}%`, tone: "info" },
-  { event: "REFILL_APPROVED", detail: () => `pharmacy:${["crescent", "medplus", "northside"][rnd(3)]} · 30d supply`, tone: "ok" },
-  { event: "PHARMACY_INVENTORY_DELTA", detail: () => `sku:${randHex(6)} · Δ${-rnd(4) + 1} units`, tone: "info" },
+  { event: "PRESCRIPTION_SYNCED", detail: () => `rx:#${randHex(4)} → local_vault 1.2kb`, tone: "info" },
+  { event: "OCR_VISION_PARSE", detail: () => `med:metformin 500mg · conf:99.2%`, tone: "ok" },
+  { event: "DOSE_REMINDER_DISPATCH", detail: () => `patient:#${randHex(4)} · channel:push+alarm`, tone: "ok" },
+  { event: "DOCTOR_REVIEW_STATUS", detail: () => `clinician:verified · schedule:active`, tone: "info" },
+  { event: "VAULT_LOCAL_ENCRYPT", detail: () => `sqlite:ok · 0 pending ops`, tone: "ok" },
+  { event: "CAREGIVER_NOTIFICATION", detail: () => `recipient:daughter · status:delivered`, tone: "ok" },
   { event: "INTERACTION_CHECK", detail: () => `pairs:34 scanned · 0 conflicts`, tone: "ok" },
-  { event: "CAREGIVER_DIGEST", detail: () => `streak:18d · adherence:98%`, tone: "info" },
+  { event: "CAREGIVER_DIGEST", detail: () => `streak:18d · adherence:100%`, tone: "info" },
   { event: "WS_HEARTBEAT", detail: () => `ping 11ms · connection stable`, tone: "info" },
   { event: "RECONNECT_BACKOFF", detail: () => `attempt:${1 + rnd(3)} · waiting ${80 + rnd(140)}ms`, tone: "warn" },
 ];
@@ -168,7 +168,7 @@ export function TerminalDrawer() {
                 </span>
                 <span className="flex items-center gap-2 font-telemetry text-[10px] tracking-[0.14em] text-slate-400">
                   <Radio size={11} className="text-bio" aria-hidden="true" focusable="false" />
-                  medsync://sync-protocol — wss://live.medsync.health/v3
+                  medsync://sync-protocol: wss://live.medsync.health/v3
                 </span>
                 <span className="ml-auto flex items-center gap-1">
                   <button

@@ -209,7 +209,7 @@ html.lenis body {
 /* shimmering sweep across text (for revealed headlines) */
 .shimmer-line {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .shimmer-line::after {
   content: "";

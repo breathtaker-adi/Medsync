@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { MotionConfig, motion, useScroll, useSpring } from "motion/react";
 import { SmoothScrollProvider } from "./fx/smooth-scroll";
-import { Cursor } from "./fx/cursor";
 import { Preloader } from "./fx/preloader";
 import { Grain } from "./fx/grain";
 import { ScrollTrigger } from "@/lib/gsap";
@@ -37,7 +36,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <MotionConfig reducedMotion="user">
       <SmoothScrollProvider>
         <ScrollProgress />
-        <Cursor />
         <Grain />
         {children}
       </SmoothScrollProvider>

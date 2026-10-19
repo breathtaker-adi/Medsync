@@ -63,7 +63,7 @@ export function KineticHeadline({ lines, play }: KineticHeadlineProps) {
   return (
     <h1
       ref={actualRef}
-      className="shimmer-line text-[clamp(2.9rem,7.2vw,6.4rem)] leading-[0.98] font-extrabold tracking-[-0.035em] text-white"
+      className="shimmer-line text-[clamp(2.9rem,7.2vw,6.4rem)] leading-[1.06] font-extrabold tracking-[-0.035em] text-white"
       aria-label={lines
         .map((l) => l.map((w) => w.text).join(" "))
         .join(" ")}
@@ -74,7 +74,7 @@ export function KineticHeadline({ lines, play }: KineticHeadlineProps) {
           {line.map((word) => (
             <span
               key={word.key}
-              className="mr-[0.24em] inline-flex overflow-hidden pb-[0.12em] -mb-[0.12em] align-bottom"
+              className="mr-[0.24em] inline-flex overflow-hidden pb-[0.34em] -mb-[0.34em] pt-[0.1em] align-bottom"
             >
               {word.chars.map((c, ci) => (
                 <span

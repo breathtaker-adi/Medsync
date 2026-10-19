@@ -24,28 +24,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://breathtaker-adi.github.io/Medsync/",
   },
-  title: "Medsync — Medicine in Sync. Life on Schedule.",
+  title: "Medsync: Medicine in Sync. Life on Schedule.",
   description:
-    "Medsync is an intelligent medical synchronization and prescription adherence ecosystem connecting patients, doctors and pharmacies in real time. One living timeline. Zero dropped doses.",
+    "Medsync is an open-source prescription adherence platform connecting patients, doctors and caregivers in real time. One living timeline. Zero dropped doses.",
   keywords: [
     "Medsync",
     "medication adherence",
     "prescription sync",
-    "EHR",
-    "FHIR",
-    "pharmacy",
+    "AI prescription OCR",
+    "caregiver alerts",
     "digital health",
-    "caregiver",
+    "offline-first",
+    "DPDP Act",
   ],
   authors: [{ name: "Medsync" }],
   icons: {
-    icon: "https://breathtaker-adi.github.io/Medsync/medsync-mark.svg",
-    apple: "https://breathtaker-adi.github.io/Medsync/medsync-mark.svg",
+    icon: "https://breathtaker-adi.github.io/Medsync/medsync-logo.png",
+    apple: "https://breathtaker-adi.github.io/Medsync/medsync-logo.png",
   },
   openGraph: {
-    title: "Medsync — Medicine in Sync. Life on Schedule.",
+    title: "Medsync: Medicine in Sync. Life on Schedule.",
     description:
-      "An intelligent prescription adherence ecosystem connecting patients, doctors and pharmacies in real time.",
+      "An open-source prescription adherence platform connecting patients, doctors and caregivers in real time.",
     url: "https://breathtaker-adi.github.io/Medsync/",
     siteName: "Medsync",
     images: [
@@ -53,16 +53,16 @@ export const metadata: Metadata = {
         url: "https://breathtaker-adi.github.io/Medsync/film-poster.jpg",
         width: 1200,
         height: 630,
-        alt: "Medsync — Medicine in Sync. Life on Schedule.",
+        alt: "Medsync: Medicine in Sync. Life on Schedule.",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Medsync — Medicine in Sync. Life on Schedule.",
+    title: "Medsync: Medicine in Sync. Life on Schedule.",
     description:
-      "An intelligent prescription adherence ecosystem connecting patients, doctors and pharmacies in real time.",
+      "An open-source prescription adherence platform connecting patients, doctors and caregivers in real time.",
     images: ["https://breathtaker-adi.github.io/Medsync/film-poster.jpg"],
   },
 };
@@ -81,7 +81,7 @@ const jsonLd = {
       "@id": "https://breathtaker-adi.github.io/Medsync/#org",
       "name": "Medsync",
       "url": "https://breathtaker-adi.github.io/Medsync/",
-      "logo": "https://breathtaker-adi.github.io/Medsync/medsync-mark.svg",
+      "logo": "https://breathtaker-adi.github.io/Medsync/medsync-logo.png",
       "description": "Smart Medication Adherence, AI Prescription OCR & Caregiver Platform",
       "sameAs": ["https://github.com/breathtaker-adi/Medsync"],
     },
@@ -89,7 +89,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       "name": "Medsync",
       "applicationCategory": "HealthApplication",
-      "operatingSystem": "ANDROID, iOS",
+      "operatingSystem": "ANDROID",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "publisher": { "@id": "https://breathtaker-adi.github.io/Medsync/#org" },
     },
@@ -141,10 +141,10 @@ export default function RootLayout({
         <noscript>
           <div className="noscript-fallback">
             <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
-              Medsync — Medicine in Sync. Life on Schedule.
+              Medsync: Medicine in Sync. Life on Schedule.
             </h1>
             <p style={{ maxWidth: "32rem", color: "#90989f", marginBottom: "1.5rem" }}>
-              Medsync is an intelligent prescription adherence ecosystem connecting patients, doctors, and pharmacies in real time. This interactive marketing site requires JavaScript. You can still read the project documentation on GitHub.
+              Medsync is an open-source prescription adherence platform connecting patients, doctors, and family caregivers in real time. This interactive marketing site requires JavaScript. You can read the project documentation and download releases on GitHub.
             </p>
             <a
               href="https://github.com/breathtaker-adi/Medsync"

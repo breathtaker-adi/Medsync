@@ -1,20 +1,20 @@
 WEBVTT
 
 00:00.000 --> 00:03.000
-[THE CRISIS] 50% of patients miss doses.
-Half of all prescriptions are never filled.
+[THE CHALLENGE] 50% of patients miss doses.
+Half of all chronic prescriptions lapse.
 
 00:03.000 --> 00:07.000
-[AI INTAKE] Medsync OCR reads any prescription in 2 seconds.
-Structured. Validated. FHIR-native.
+[AI INTAKE] Medsync reads your prescription photo.
+Doctor checks and confirms before anything starts.
 
 00:07.000 --> 00:12.000
-[THE ECOSYSTEM] Patient, doctor, pharmacy — one timeline.
-Live sync. No dropped doses.
+[THE ECOSYSTEM] Patient, doctor, caregiver in one timeline.
+Live sync. Zero dropped doses.
 
 00:12.000 --> 00:16.000
-[ARCHITECTURE] AES-256 local-first vault.
-Zero-knowledge. HIPAA + SOC 2 Type II.
+[ARCHITECTURE] Encrypted on-device local storage.
+Designed around India's DPDP Act 2023.
 
 00:16.000 --> 00:20.000
 [MEDSYNC] Medicine in sync. Life on schedule.
