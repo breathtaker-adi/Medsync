@@ -1,3 +1,3 @@
 // src/context/index.ts
-export * from './authcontext';
+export * from './AuthContext';
 export * from './AccessibilityContext';

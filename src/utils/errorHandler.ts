@@ -29,6 +29,9 @@ export function getErrorMessage(error: unknown, fallbackMessage = 'An unexpected
       if (err.message.includes('JWT expired') || err.message.includes('invalid claim')) {
         return 'Your session has expired. Please log in again.';
       }
+      if (err.message.includes('JWT issued at future') || err.code === 'PGRST303') {
+        return 'Device clock discrepancy detected. Please ensure your phone date & time is set to "Set Automatically".';
+      }
       if (err.message.includes('Network request failed')) {
         return 'Network connection issue. Please check your internet connection.';
       }

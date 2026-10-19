@@ -37,14 +37,14 @@ export const patientService = {
 
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
-        .select('id, full_name, blood_group, allergies')
+        .select('id, full_name, blood_group, allergies, phone, email, emergency_contact_name, emergency_contact_phone, age')
         .in('id', patientIds);
 
       if (profErr) {
         return err(new Error(getErrorMessage(profErr)));
       }
 
-      const roster: PatientItem[] = (profiles || []).map((prof) => {
+      const roster: PatientItem[] = (profiles || []).map((prof: any) => {
         const link = links.find((l) => l.patient_id === prof.id);
         const name = prof.full_name || 'Anonymous Patient';
         return {
@@ -57,6 +57,11 @@ export const patientService = {
           override_alerts: link?.override_alerts ?? false,
           blood_group: prof.blood_group,
           allergies: prof.allergies,
+          phone: prof.phone || null,
+          email: prof.email || null,
+          emergency_contact_name: prof.emergency_contact_name || null,
+          emergency_contact_phone: prof.emergency_contact_phone || null,
+          age: prof.age || null,
         };
       });
 
@@ -194,13 +199,29 @@ export const patientService = {
    */
   async revokeCaregiverLink(linkId: number): Promise<Result<void>> {
     try {
-      const { error } = await supabase
+      // 1. Attempt atomic disconnect RPC first
+      const { error: rpcError } = await supabase.rpc('disconnect_doctor', {
+        p_link_id: linkId,
+      });
+
+      if (!rpcError) {
+        return ok(undefined);
+      }
+
+      // 2. Direct fallback: update status to 'revoked'
+      const { error: updateError } = await supabase
         .from('patient_caregivers')
         .update({ status: 'revoked' })
         .eq('id', linkId);
 
-      if (error) {
-        return err(new Error(getErrorMessage(error)));
+      // 3. Attempt physical delete if permitted by RLS
+      await supabase
+        .from('patient_caregivers')
+        .delete()
+        .eq('id', linkId);
+
+      if (updateError) {
+        return err(new Error(getErrorMessage(updateError)));
       }
 
       return ok(undefined);
@@ -327,6 +348,148 @@ export const patientService = {
       return ok(alerts);
     } catch (caught: any) {
       handleAppError(caught, { action: 'checkMissedDoses' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Fetch active, non-expired pairing code for patient if one exists
+   */
+  async getActivePairingCode(patientId: string): Promise<Result<string | null>> {
+    try {
+      const { data, error } = await supabase
+        .from('patient_caregivers')
+        .select('pairing_code, created_at, caregiver_id')
+        .eq('patient_id', patientId)
+        .is('caregiver_id', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        return err(new Error(getErrorMessage(error)));
+      }
+
+      if (data?.pairing_code && data?.created_at) {
+        const isExpired = Date.now() - new Date(data.created_at).getTime() > 15 * 60 * 1000;
+        if (!isExpired) {
+          return ok(data.pairing_code);
+        }
+      }
+
+      return ok(null);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'getActivePairingCode' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Fetch practice roster metrics for doctor dashboard & settings
+   */
+  async getDoctorRosterStats(caregiverId: string): Promise<Result<{ patientCount: number; pendingReviewCount: number }>> {
+    try {
+      const [patientRes, reviewRes] = await Promise.all([
+        supabase
+          .from('patient_caregivers')
+          .select('id', { count: 'exact', head: true })
+          .eq('caregiver_id', caregiverId),
+        supabase
+          .from('pending_reviews')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+      ]);
+
+      const patientCount = patientRes.count || 0;
+      const pendingReviewCount = reviewRes.count || 0;
+
+      return ok({ patientCount, pendingReviewCount });
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'getDoctorRosterStats' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Fetch 30-day health report logs and medications for PDF generation
+   */
+  async fetchHealthReportData(
+    patientId: string,
+    days: number = 30
+  ): Promise<Result<{ logs: any[]; medications: any[] }>> {
+    try {
+      const boundaryDate = new Date();
+      boundaryDate.setDate(boundaryDate.getDate() - days);
+      const boundaryDateStr = boundaryDate.toISOString().split('T')[0];
+
+      const [logsRes, medsRes] = await Promise.all([
+        supabase
+          .from('medication_logs')
+          .select('medication_id, log_date, scheduled_time, status, notes')
+          .eq('patient_id', patientId)
+          .gte('log_date', boundaryDateStr)
+          .order('log_date', { ascending: false }),
+        supabase
+          .from('medications')
+          .select('id, medicine_name')
+          .eq('patient_id', patientId),
+      ]);
+
+      if (logsRes.error) {
+        return err(new Error(getErrorMessage(logsRes.error)));
+      }
+      if (medsRes.error) {
+        return err(new Error(getErrorMessage(medsRes.error)));
+      }
+
+      return ok({
+        logs: logsRes.data || [],
+        medications: medsRes.data || [],
+      });
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'fetchHealthReportData' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Fetch linked and verified doctors available for prescription review targeting
+   */
+  async fetchAvailableDoctors(
+    patientId: string
+  ): Promise<Result<Array<{ id: string; full_name: string; specialty?: string; clinic_affiliation?: string; isLinked: boolean }>>> {
+    try {
+      const { data: links } = await supabase
+        .from('patient_caregivers')
+        .select('caregiver_id')
+        .eq('patient_id', patientId)
+        .eq('status', 'active');
+
+      const linkedIds = new Set((links || []).map((l: any) => l.caregiver_id).filter(Boolean));
+
+      const { data: doctors, error: docErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, specialty, clinic_affiliation, role, is_verified_doctor')
+        .or('role.eq.doctor,is_verified_doctor.eq.true');
+
+      if (docErr) {
+        return err(new Error(getErrorMessage(docErr)));
+      }
+
+      const formatted = (doctors || []).map((d: any) => ({
+        id: d.id,
+        full_name: d.full_name || 'Medical Doctor',
+        specialty: d.specialty || 'General Practice',
+        clinic_affiliation: d.clinic_affiliation || 'Verified Clinic',
+        isLinked: linkedIds.has(d.id),
+      }));
+
+      // Sort linked doctors first
+      formatted.sort((a, b) => (b.isLinked ? 1 : 0) - (a.isLinked ? 1 : 0));
+
+      return ok(formatted);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'fetchAvailableDoctors' });
       return err(new Error(getErrorMessage(caught)));
     }
   },

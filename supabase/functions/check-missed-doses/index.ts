@@ -25,7 +25,15 @@ Deno.serve(async (req: Request) => {
     // 0. Security Verification: Ensure caller provided the service-role key
     const authHeader = req.headers.get('Authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-    if (!token || token !== supabaseServiceKey) {
+    
+    // Constant-time comparison to prevent timing attacks
+    const isLengthMatch = token.length === supabaseServiceKey.length;
+    let mismatch = isLengthMatch ? 0 : 1;
+    for (let i = 0; i < token.length && i < supabaseServiceKey.length; i++) {
+      mismatch |= token.charCodeAt(i) ^ supabaseServiceKey.charCodeAt(i);
+    }
+
+    if (!token || mismatch !== 0) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Service role key required' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -171,8 +179,8 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (err: any) {
-    console.error('check-missed-doses error:', err);
-    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+    console.error('check-missed-doses internal error:', err);
+    return new Response(JSON.stringify({ error: 'Internal server error processing missed doses' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

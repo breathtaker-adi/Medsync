@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   StyleSheet,
   Text,
   TextInput,
@@ -12,8 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { patientService } from '../services/patientService';
@@ -154,6 +154,45 @@ export default function PatientDirectory() {
                     </View>
                   )}
                 </View>
+
+                {/* Contact numbers and actions */}
+                {item.phone || item.email || item.emergency_contact_phone ? (
+                  <View style={styles.directoryContactRow}>
+                    {item.phone ? (
+                      <TouchableOpacity
+                        style={styles.directoryContactPill}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          Linking.openURL(`tel:${item.phone}`);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Call ${item.phone}`}
+                      >
+                        <Ionicons name="call" size={10} color="#0284C7" />
+                        <Text style={styles.directoryContactText}>{item.phone}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {item.emergency_contact_phone ? (
+                      <TouchableOpacity
+                        style={[styles.directoryContactPill, styles.directoryEmergencyPill]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          Linking.openURL(`tel:${item.emergency_contact_phone}`);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Emergency call ${item.emergency_contact_phone}`}
+                      >
+                        <Ionicons name="alert-circle" size={10} color="#DC2626" />
+                        <Text style={[styles.directoryContactText, { color: '#DC2626' }]}>
+                          SOS: {item.emergency_contact_phone}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
 
               <View style={styles.chevronPlate}>
@@ -299,6 +338,32 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-Bold',
     fontSize: 11,
     color: '#D32F2F',
+  },
+  directoryContactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  directoryContactPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  directoryEmergencyPill: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  directoryContactText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 10,
+    color: '#0284C7',
   },
   chevronPlate: {
     width: 30,

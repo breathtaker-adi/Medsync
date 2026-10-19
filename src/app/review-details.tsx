@@ -16,8 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme';
 import { SeniorButton } from '../components/SeniorButton';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -109,19 +108,16 @@ export default function ReviewDetailsScreen() {
   const handleSaveEdits = async () => {
     if (!review) return;
 
-    const { error } = await supabase
-      .from('pending_reviews')
-      .update({
-        medication: editedMedicine,
-        dosage: editedDosage,
-        duration: editedDuration,
-        doctor_notes: doctorNote, // Save the note!
-      })
-      .eq('id', review.id);
+    const res = await prescriptionService.updatePendingReview(review.id, {
+      medication: editedMedicine,
+      dosage: editedDosage,
+      duration: editedDuration,
+      doctor_notes: doctorNote,
+    });
 
-    if (error) {
+    if (!res.success) {
       Alert.alert('Error', 'Could not save corrections.');
-      console.error(error);
+      console.error(res.error);
       return;
     }
 
@@ -166,98 +162,35 @@ export default function ReviewDetailsScreen() {
       ? `${doctorNote}\n[Approved by ${approverTitle}]`
       : `Approved by ${approverTitle}`;
 
-    // 1. Attempt Atomic RPC Approval (single transactional execution)
-    let approved = false;
-    const { data: rpcData, error: rpcError } = await supabase.rpc('approve_review', {
-      p_review_id: review.id,
-      p_medicine_name: medName,
-      p_dosage: formattedDosage,
-      p_duration: editedDuration,
-      p_time: review.time || '08:00',
-      p_doctor_notes: notesWithAttestation,
-      p_pills_remaining: supplyCount,
-      p_total_pills: supplyCount,
+    // Execute approval via prescriptionService
+    const approveRes = await prescriptionService.approvePrescription({
+      reviewId: review.id,
+      medicationName: medName,
+      patientId: review.patient_id,
+      dosage: formattedDosage,
+      duration: editedDuration,
+      doctorNotes: notesWithAttestation,
+      pillsRemaining: supplyCount,
+      totalPills: supplyCount,
+      isVerifiedDoctor: Boolean(isDoctor && profile?.is_verified_doctor),
+      approvedByRole: isDoctor ? 'doctor' : 'caregiver',
+      approvedByName: profile?.full_name,
     });
 
-    if (!rpcError && rpcData?.success) {
-      approved = true;
-    } else {
-      console.warn('approve_review RPC fallback:', rpcError?.message);
-      // Fallback: update review status then insert medication with rollback safety
-      const { error: reviewError } = await supabase
-        .from('pending_reviews')
-        .update({
-          status: 'approved',
-          medication: medName,
-          dosage: formattedDosage,
-          duration: editedDuration,
-          doctor_notes: notesWithAttestation,
-        })
-        .eq('id', review.id);
-
-      if (reviewError) {
-        Alert.alert('Error', 'Failed to update review status.');
-        console.error(reviewError);
-        return;
-      }
-
-      const { error: medError } = await supabase.from('medications').insert({
-        medicine_name: medName,
-        dosage: formattedDosage,
-        time: review.time || '08:00',
-        status: 'pending',
-        patient_id: review.patient_id,
-        pills_remaining: supplyCount,
-        total_pills: supplyCount,
-      });
-
-      if (medError) {
-        await supabase
-          .from('pending_reviews')
-          .update({ status: 'pending' })
-          .eq('id', review.id);
-        Alert.alert('Error', 'Failed to create medication schedule. Review has been reverted to pending.');
-        console.error(medError);
-        return;
-      }
-      approved = true;
+    if (!approveRes.success) {
+      Alert.alert('Error', approveRes.error.message || 'Failed to approve prescription.');
+      return;
     }
 
-    // --- PUSH NOTIFICATION TO PATIENT ---
-    try {
-      // Get the patient's push token using the secure view
-      const { data: patientData } = await supabase
-        .from('patient_push_tokens')
-        .select('push_token')
-        .eq('patient_id', review.patient_id)
-        .eq('caregiver_id', session?.user?.id); // Ensure doctor is authorized
-
-      if (patientData && patientData.length > 0) {
-        const patientToken = patientData[0].push_token;
-
-        // Send notification via Expo's Push API
-        if (patientToken) {
-          await fetch('https://exp.host/--/api/v2/push/send', {
-            method: 'POST',
-            headers: {
-              Accept: 'application/json',
-              'Accept-encoding': 'gzip, deflate',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              to: patientToken,
-              title: '✅ Prescription Approved',
-              body: `Your doctor approved ${medName}. It has been added to your dashboard!`,
-              priority: 'high',
-              sound: 'default',
-            }),
-          });
-        }
-      }
-    } catch (notifError) {
-      console.error('Failed to send push notification to patient:', notifError);
+    // Push notification to patient
+    if (review.patient_id) {
+      await notificationService.sendPushNotificationToPatient(
+        review.patient_id,
+        '✅ Prescription Approved',
+        `Your doctor approved ${medName}. It has been added to your dashboard!`,
+        session?.user?.id
+      );
     }
-    // --- END PUSH NOTIFICATION ---
 
     Alert.alert('Success', 'Prescription approved and sent to patient!');
     router.back();
@@ -273,32 +206,15 @@ export default function ReviewDetailsScreen() {
     }
 
     // Push notification to patient that prescription was rejected
-    try {
-      const { data: patientData } = await supabase
-        .from('patient_push_tokens')
-        .select('push_token')
-        .eq('patient_id', review.patient_id);
-
-      if (patientData && patientData.length > 0 && patientData[0].push_token) {
-        await fetch('https://exp.host/--/api/v2/push/send', {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            to: patientData[0].push_token,
-            title: '❌ Prescription Requires Resubmission',
-            body: doctorNote
-              ? `Doctor note: ${doctorNote}`
-              : 'Your uploaded prescription could not be verified. Tap to view and re-upload.',
-            priority: 'high',
-            sound: 'default',
-          }),
-        });
-      }
-    } catch (e) {
-      console.warn('[review-details] Push error on rejection:', e);
+    if (review.patient_id) {
+      await notificationService.sendPushNotificationToPatient(
+        review.patient_id,
+        '❌ Prescription Requires Resubmission',
+        doctorNote
+          ? `Doctor note: ${doctorNote}`
+          : 'Your uploaded prescription could not be verified. Tap to view and re-upload.',
+        session?.user?.id
+      );
     }
 
     Alert.alert('Rejected', 'Prescription has been rejected and the patient has been notified.');
@@ -458,10 +374,6 @@ export default function ReviewDetailsScreen() {
                 contentFit="contain"
                 onError={() => setImageLoadError(true)}
               />
-              <View style={styles.zoomBadge}>
-                <Ionicons name="search" size={12} color="#FFFFFF" />
-                <Text style={styles.zoomBadgeText}>Tap to Zoom / Inspect</Text>
-              </View>
             </TouchableOpacity>
           ) : (
             <View style={styles.imagePlaceholderBox}>
@@ -705,6 +617,35 @@ export default function ReviewDetailsScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Fullscreen Image Preview Modal */}
+      <Modal
+        visible={fullscreenImageVisible}
+        transparent={false}
+        animationType="fade"
+        onRequestClose={() => setFullscreenImageVisible(false)}
+      >
+        <SafeAreaView style={styles.fullscreenModalBg}>
+          <View style={styles.fullscreenModalTop}>
+            <Text style={styles.fullscreenModalTitle}>Prescription Document</Text>
+            <TouchableOpacity
+              style={styles.fullscreenCloseBtn}
+              onPress={() => setFullscreenImageVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close full screen viewer"
+            >
+              <Ionicons name="close" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+          {resolvedImageUrl ? (
+            <Image
+              source={{ uri: resolvedImageUrl }}
+              style={styles.fullscreenImage}
+              contentFit="contain"
+            />
+          ) : null}
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );

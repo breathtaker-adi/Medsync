@@ -2,6 +2,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Speech from 'expo-speech';
 import { Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { Medication } from '../types/medication';
 import { getNextDateForTime } from '../utils/timeUtils';
 
@@ -168,6 +169,56 @@ export const notificationService = {
     } catch (err) {
       // Non-fatal warning
       console.warn('[notificationService] Failed to schedule alarms:', err);
+    }
+  },
+
+  /**
+   * Send a high-priority push notification to a linked patient via Expo Push Service
+   */
+  async sendPushNotificationToPatient(
+    patientId: string,
+    title: string,
+    body: string,
+    caregiverId?: string
+  ): Promise<boolean> {
+    try {
+      let query = supabase
+        .from('patient_push_tokens')
+        .select('push_token')
+        .eq('patient_id', patientId);
+
+      if (caregiverId) {
+        query = query.eq('caregiver_id', caregiverId);
+      }
+
+      const { data: patientData, error } = await query;
+      if (error || !patientData || patientData.length === 0) {
+        return false;
+      }
+
+      const token = patientData[0]?.push_token;
+      if (!token) return false;
+
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Accept-encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: token,
+          title,
+          body,
+          sound: 'default',
+          priority: 'high',
+        }),
+      });
+
+      return response.ok;
+    } catch (err) {
+      console.warn('[notificationService] Failed to send push notification:', err);
+      return false;
     }
   },
 };

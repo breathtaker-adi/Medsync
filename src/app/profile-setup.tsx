@@ -17,8 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { SeniorButton } from '../components/SeniorButton';
 import { BackButton } from '../components/BackButton';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { Theme } from '../theme';
 
 export default function ProfileSetupScreen() {
@@ -60,25 +60,13 @@ export default function ProfileSetupScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('profiles').upsert(
-        {
-          id: session.user.id,
-          full_name: fullName.trim(),
-          role: role,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      );
-
-      await supabase.auth.updateUser({
-        data: {
-          full_name: fullName.trim(),
-          role: role,
-        },
+      const result = await authService.setupProfile(session.user.id, {
+        fullName: fullName.trim(),
+        role,
       });
 
-      if (error) {
-        Alert.alert('Error saving profile', error.message);
+      if (!result.success) {
+        Alert.alert('Error saving profile', result.error.message);
       } else {
         await refreshProfile();
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

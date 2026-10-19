@@ -23,7 +23,7 @@ import { PulseView } from '../../components/PulseView';
 import { SeniorButton } from '../../components/SeniorButton';
 import { MedSyncLogo } from '../../components/MedSyncLogo';
 import { useAccessibility } from '../../context/AccessibilityContext';
-import { useAuth } from '../../context/authcontext';
+import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { medicationService } from '../../services/medicationService';
 import { notificationService } from '../../services/notificationService';

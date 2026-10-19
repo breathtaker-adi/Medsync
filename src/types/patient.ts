@@ -35,4 +35,9 @@ export interface PatientItem {
   override_alerts?: boolean;
   blood_group?: string | null;
   allergies?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  age?: number | null;
 }

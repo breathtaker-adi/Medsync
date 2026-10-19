@@ -10,7 +10,7 @@ export interface ApproveReviewParams {
   doctorNotes?: string;
   isVerifiedDoctor?: boolean;
   approvedByRole?: 'doctor' | 'caregiver' | 'patient' | string;
-  approvedByName?: string;
+  approvedByName?: string | null;
   medicationName: string;
   patientId?: string | null;
   dosage?: string | null;
@@ -57,6 +57,11 @@ export const prescriptionService = {
    * Fetch pending reviews scoped to the caregiver's linked patients or targeted doctor reviews
    */
   async fetchPendingReviewsForCaregiver(caregiverId: string): Promise<Result<PendingReview[]>> {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!caregiverId || !UUID_REGEX.test(caregiverId)) {
+      return err(new Error('Invalid caregiver ID format'));
+    }
+
     try {
       const { data: linkedPatients } = await supabase
         .from('patient_caregivers')
@@ -66,7 +71,7 @@ export const prescriptionService = {
 
       const linkedPatientIds = (linkedPatients || [])
         .map((lp: any) => lp.patient_id)
-        .filter(Boolean);
+        .filter((id: any) => typeof id === 'string' && UUID_REGEX.test(id));
 
       // Fetch reviews explicitly targeted to this physician OR belonging to active linked patients
       let query = supabase
@@ -206,26 +211,8 @@ export const prescriptionService = {
         return ok(undefined);
       }
 
-      // 2. Direct fallback update if RPC is missing
-      await supabase
-        .from('pending_reviews')
-        .update({
-          status: 'approved',
-          doctor_notes: doctorNotes || null,
-        })
-        .eq('id', reviewId);
-
-      if (patientId) {
-        await supabase.from('medications').insert({
-          patient_id: patientId,
-          medicine_name: medicationName,
-          dosage: dosage || 'As prescribed',
-          time: '08:00 AM',
-          duration: duration || '30 days',
-          status: 'pending',
-          pills_remaining: remainingCount,
-          total_pills: totalCount,
-        });
+      if (rpcError) {
+        return err(new Error(getErrorMessage(rpcError)));
       }
 
       return ok(undefined);
@@ -243,7 +230,7 @@ export const prescriptionService = {
     doctorNotes: string
   ): Promise<Result<void>> {
     try {
-      // 1. Try secure RPC function
+      // 1. Execute secure RPC function
       const { data: rpcData, error: rpcError } = await supabase.rpc('reject_review', {
         p_review_id: reviewId,
         p_doctor_notes: doctorNotes || null,
@@ -253,10 +240,28 @@ export const prescriptionService = {
         return ok(undefined);
       }
 
-      // 2. Direct fallback update
+      if (rpcError) {
+        return err(new Error(getErrorMessage(rpcError)));
+      }
+
+      return ok(undefined);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'rejectPrescription' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Update pending review fields (e.g. physician corrections to medication name, dosage, notes)
+   */
+  async updatePendingReview(
+    reviewId: number | string,
+    updates: Partial<PendingReview>
+  ): Promise<Result<void>> {
+    try {
       const { error } = await supabase
         .from('pending_reviews')
-        .update({ status: 'rejected', doctor_notes: doctorNotes || null })
+        .update(updates)
         .eq('id', reviewId);
 
       if (error) {
@@ -265,7 +270,7 @@ export const prescriptionService = {
 
       return ok(undefined);
     } catch (caught: any) {
-      handleAppError(caught, { action: 'rejectPrescription' });
+      handleAppError(caught, { action: 'updatePendingReview' });
       return err(new Error(getErrorMessage(caught)));
     }
   },

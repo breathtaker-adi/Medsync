@@ -18,152 +18,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme';
-
-interface ConnectedDoctor {
-  link_id: number;
-  doctor_id: string;
-  full_name: string;
-  specialty?: string;
-  clinic_affiliation?: string;
-  medical_license_number?: string;
-  medical_council?: string;
-  is_verified_doctor?: boolean;
-  status: string;
-  created_at: string;
-}
+import { useDoctorLink, ConnectedDoctor } from '../hooks/useDoctorLink';
 
 export default function DoctorLinkScreen() {
   const router = useRouter();
-  const { session, profile } = useAuth();
+  const { session } = useAuth();
   const { isAccessibilityMode, triggerHaptic } = useAccessibility();
 
-  const [doctors, setDoctors] = useState<ConnectedDoctor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [generatingCode, setGeneratingCode] = useState(false);
-
-  const fetchConnectedDoctors = useCallback(async () => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // 1. Fetch active links from patient_caregivers
-      const { data: links, error: linkErr } = await supabase
-        .from('patient_caregivers')
-        .select('id, caregiver_id, status, created_at')
-        .eq('patient_id', session.user.id)
-        .not('caregiver_id', 'is', null);
-
-      if (linkErr) {
-        console.error('Error fetching doctor links:', linkErr);
-      }
-
-      const activeLinks = links || [];
-      const doctorIds = activeLinks.map((l: any) => l.caregiver_id);
-
-      if (doctorIds.length === 0) {
-        setDoctors([]);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Fetch doctor profiles
-      const { data: profiles, error: profErr } = await supabase
-        .from('profiles')
-        .select('id, full_name, specialty, clinic_affiliation, medical_license_number, medical_council, is_verified_doctor, role')
-        .in('id', doctorIds);
-
-      if (profErr) {
-        console.error('Error fetching doctor profiles:', profErr);
-      }
-
-      const doctorList: ConnectedDoctor[] = activeLinks.map((link: any) => {
-        const prof = (profiles || []).find((p: any) => p.id === link.caregiver_id);
-        const name = prof?.full_name ? (prof.full_name.startsWith('Dr.') ? prof.full_name : `Dr. ${prof.full_name}`) : 'Supervising Physician';
-        return {
-          link_id: link.id,
-          doctor_id: link.caregiver_id,
-          full_name: name,
-          specialty: prof?.specialty || 'General Practice',
-          clinic_affiliation: prof?.clinic_affiliation || 'Clinical Practice',
-          medical_license_number: prof?.medical_license_number,
-          medical_council: prof?.medical_council,
-          is_verified_doctor: prof?.is_verified_doctor ?? false,
-          status: link.status || 'active',
-          created_at: link.created_at,
-        };
-      });
-
-      setDoctors(doctorList);
-    } catch (err) {
-      console.error('Doctor link fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.id]);
-
-  const fetchExistingPairingCode = useCallback(async () => {
-    if (!session?.user?.id) return;
-
-    const { data } = await supabase
-      .from('patient_caregivers')
-      .select('pairing_code, created_at')
-      .eq('patient_id', session.user.id)
-      .is('caregiver_id', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (data?.pairing_code && data?.created_at) {
-      const isExpired = Date.now() - new Date(data.created_at).getTime() > 15 * 60 * 1000;
-      if (!isExpired) {
-        setPairingCode(data.pairing_code);
-      }
-    }
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    fetchConnectedDoctors();
-    fetchExistingPairingCode();
-  }, [fetchConnectedDoctors, fetchExistingPairingCode]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([fetchConnectedDoctors(), fetchExistingPairingCode()]);
-    setRefreshing(false);
-  };
+  const {
+    doctors,
+    loading,
+    refreshing,
+    pairingCode,
+    generatingCode,
+    refresh,
+    generateCode,
+    disconnectDoctor,
+  } = useDoctorLink();
 
   const handleGenerateCode = async () => {
-    if (!session?.user?.id) return;
     triggerHaptic();
-    setGeneratingCode(true);
-
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let newCode = '';
-    for (let i = 0; i < 8; i++) {
-      newCode += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    const { error } = await supabase.from('patient_caregivers').insert({
-      patient_id: session.user.id,
-      caregiver_id: null,
-      pairing_code: newCode,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-    });
-
-    setGeneratingCode(false);
-
-    if (error) {
+    const newCode = await generateCode();
+    if (!newCode) {
       Alert.alert('Error', 'Could not generate pairing code. Please try again.');
     } else {
-      setPairingCode(newCode);
       Alert.alert('New Code Generated', `Give this code to your doctor: ${newCode}\nValid for 15 minutes.`);
     }
   };
@@ -179,16 +59,11 @@ export default function DoctorLinkScreen() {
           text: 'Disconnect',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase
-              .from('patient_caregivers')
-              .delete()
-              .eq('id', doctor.link_id);
-
-            if (error) {
-              Alert.alert('Error', 'Could not disconnect doctor.');
+            const success = await disconnectDoctor(doctor);
+            if (!success) {
+              Alert.alert('Error', 'Could not disconnect doctor. Please try again.');
             } else {
               Alert.alert('Disconnected', `${doctor.full_name} has been unlinked from your account.`);
-              fetchConnectedDoctors();
             }
           },
         },
@@ -209,7 +84,7 @@ export default function DoctorLinkScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
+            onRefresh={refresh}
             colors={[Theme.colors.primary]}
             tintColor={Theme.colors.primary}
           />

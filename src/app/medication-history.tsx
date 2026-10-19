@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { medicationService } from '../services/medicationService';

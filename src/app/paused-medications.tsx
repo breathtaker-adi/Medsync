@@ -18,8 +18,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { medicationService } from '../services/medicationService';
 import { notificationService } from '../services/notificationService';
 import { Theme } from '../theme';
 import { Medication } from '../types/medication';
@@ -41,17 +41,11 @@ export default function PausedMedicationsScreen() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('medications')
-        .select('*')
-        .eq('patient_id', session.user.id)
-        .eq('is_active', false)
-        .order('time', { ascending: true });
-
-      if (error) {
-        console.warn('Error fetching paused medications:', error);
+      const res = await medicationService.fetchPausedMedications(session.user.id);
+      if (res.success) {
+        setPausedMeds(res.data);
       } else {
-        setPausedMeds((data as Medication[]) || []);
+        console.warn('Error fetching paused medications:', res.error.message);
       }
     } catch (err) {
       console.warn('Error fetching paused medications:', err);
@@ -83,12 +77,9 @@ export default function PausedMedicationsScreen() {
           onPress: async () => {
             setResumingId(med.id);
             try {
-              const { error } = await supabase
-                .from('medications')
-                .update({ is_active: true })
-                .eq('id', med.id);
+              const res = await medicationService.setMedicationActive(med.id, true);
 
-              if (error) {
+              if (!res.success) {
                 Alert.alert('Error', 'Could not resume medication. Please try again.');
               } else {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

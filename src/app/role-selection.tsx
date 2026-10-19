@@ -16,8 +16,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '../components/BackButton';
 import { MedSyncLogo } from '../components/MedSyncLogo';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { Theme } from '../theme';
 
 const RoleOptionCard = ({
@@ -103,27 +103,14 @@ export default function RoleSelectionScreen() {
     setSavingRole(true);
     try {
       if (session?.user?.id) {
-        const { error } = await supabase.from('profiles').upsert(
-          {
-            id: session.user.id,
-            role: chosenRole,
-            full_name:
-              profile?.full_name ||
-              session.user.user_metadata?.full_name ||
-              (chosenRole === 'caregiver' ? 'Caregiver' : 'User'),
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' }
-        );
+        const fullName =
+          profile?.full_name ||
+          session.user.user_metadata?.full_name ||
+          (chosenRole === 'caregiver' ? 'Caregiver' : 'User');
 
-        await supabase.auth.updateUser({
-          data: {
-            role: chosenRole,
-          },
-        });
-
-        if (error) {
-          console.warn('[role-selection] Profile upsert error:', error);
+        const result = await authService.setRole(session.user.id, chosenRole, fullName);
+        if (!result.success) {
+          console.warn('[role-selection] Profile setRole warning:', result.error.message);
         }
         await refreshProfile();
       }
@@ -144,8 +131,8 @@ export default function RoleSelectionScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    const res = await authService.signOut();
+    if (!res.success) {
       Alert.alert('Error', 'Failed to log out.');
     } else {
       router.replace('/login');

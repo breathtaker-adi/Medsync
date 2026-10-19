@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { useAuth } from '../context/authcontext';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme';
 
 export default function PrivacyPolicyScreen() {
@@ -48,8 +48,8 @@ export default function PrivacyPolicyScreen() {
           </View>
           <Text style={styles.charterTitle}>Patient Data Protection &amp; Informed Health Consent</Text>
           <Text style={styles.charterSub}>
-            Governed under the Digital Personal Data Protection (DPDP) Act 2023, HIPAA Privacy Standards, and
-            National Telemedicine Practice Guidelines.
+            Governed under the Digital Personal Data Protection (DPDP) Act 2023, DISHA Standards, and
+            National Telemedicine Practice Guidelines of India.
           </Text>
           <View style={styles.charterMetaRow}>
             <Text style={styles.charterMeta}>Doc Ref: MEDSYNC-PDP-2026-V3</Text>

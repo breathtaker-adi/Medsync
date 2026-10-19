@@ -14,7 +14,6 @@ import {
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
 import { Theme } from '../theme';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { SeniorButton } from '../components/SeniorButton';
@@ -81,11 +80,8 @@ export default function LoginScreen() {
       } else {
         const userId = res.data?.user?.id;
         if (userId) {
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', userId)
-            .maybeSingle();
+          const profRes = await authService.fetchProfile(userId);
+          const prof = profRes.success ? profRes.data : null;
 
           if (prof?.role === 'doctor' || prof?.role === 'caregiver') {
             router.replace('/(tabs)/caregiver-dashboard');
@@ -194,7 +190,7 @@ export default function LoginScreen() {
             >
               <Ionicons
                 name="key-outline"
-                size={16}
+                size={14}
                 color={Theme.colors.primary}
                 style={styles.forgotPasswordIcon}
               />
@@ -219,7 +215,7 @@ export default function LoginScreen() {
 
           {/* Senior Accessible Action Button */}
           <SeniorButton
-            title={isSignUp ? 'Create Account' : 'Sign\u00A0In'}
+            title={isSignUp ? 'Create Account' : 'Sign In'}
             onPress={handleAuth}
             loading={loading}
             size="large"
@@ -237,10 +233,18 @@ export default function LoginScreen() {
         <TouchableOpacity
           style={styles.signUpToggle}
           onPress={() => setIsSignUp(!isSignUp)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
         >
-          <Text style={styles.toggleText}>
-            {isSignUp ? 'Already have an account? Sign\u00A0In' : "Don't have an account? Sign\u00A0Up"}
-          </Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleTextMuted}>
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+            </Text>
+            <Text style={styles.toggleTextAction}>
+              {isSignUp ? 'Sign In' : 'Sign Up'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
 
@@ -319,22 +323,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F0FDFA',
-    borderWidth: 1,
-    borderColor: '#CCFBF1',
-    borderRadius: 20,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     marginTop: 4,
     marginBottom: 16,
-    minHeight: 38,
   },
   forgotPasswordIcon: {
     marginRight: 6,
   },
   forgotPasswordText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 13.5,
+    fontSize: 14,
     color: Theme.colors.primary,
   },
   consentContainer: {
@@ -353,13 +352,28 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   signUpToggle: {
-    marginTop: 14,
+    marginTop: 20,
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
-  toggleText: {
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  toggleTextMuted: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 14,
+    color: '#64748B',
+  },
+  toggleTextAction: {
     fontFamily: 'PublicSans-Bold',
     fontSize: 14,
     color: Theme.colors.primary,
+    textDecorationLine: 'underline',
   },
 });

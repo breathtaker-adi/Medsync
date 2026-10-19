@@ -26,8 +26,9 @@ import { MedSyncLogo } from '../components/MedSyncLogo';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
+import { patientService } from '../services/patientService';
 import { Theme } from '../theme';
 import { avatarHelper } from '../utils/avatarHelper';
 
@@ -40,15 +41,6 @@ function escapeHtml(str: string | null | undefined): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
-
-const generateRandomPairingCode = () => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
 
 const SOUND_OPTIONS = [
   { id: 'gentle_chime', name: 'Gentle Chime', desc: 'Soft harmonious bell for calm morning waking', icon: 'musical-notes' },
@@ -76,6 +68,7 @@ export default function SettingsScreen() {
   const [loadingCode, setLoadingCode] = useState(false);
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(profile?.alerts_enabled ?? true);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Load avatar and selected sound from storage on mount
   useEffect(() => {
@@ -123,20 +116,9 @@ export default function SettingsScreen() {
     const fetchExistingCode = async () => {
       if (!session?.user?.id || profile?.role !== 'patient') return;
 
-      const { data } = await supabase
-        .from('patient_caregivers')
-        .select('pairing_code, created_at, caregiver_id')
-        .eq('patient_id', session.user.id)
-        .is('caregiver_id', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (data?.pairing_code && data?.created_at) {
-        const isExpired = Date.now() - new Date(data.created_at).getTime() > 15 * 60 * 1000;
-        if (!isExpired) {
-          setPairingCode(data.pairing_code);
-        }
+      const res = await patientService.getActivePairingCode(session.user.id);
+      if (res.success && res.data) {
+        setPairingCode(res.data);
       }
     };
 
@@ -148,39 +130,11 @@ export default function SettingsScreen() {
     triggerHaptic();
     setLoadingCode(true);
 
-    // Check for an existing unexpired code
-    const { data: existingConnection } = await supabase
-      .from('patient_caregivers')
-      .select('pairing_code, created_at, caregiver_id')
-      .eq('patient_id', session.user.id)
-      .is('caregiver_id', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingConnection?.pairing_code && existingConnection?.created_at) {
-      const isExpired = Date.now() - new Date(existingConnection.created_at).getTime() > 15 * 60 * 1000;
-      if (!isExpired) {
-        setPairingCode(existingConnection.pairing_code);
-        setLoadingCode(false);
-        return;
-      }
-    }
-
-    // 8-character random pairing code
-    const newCode = generateRandomPairingCode();
-
-    const { error } = await supabase.from('patient_caregivers').insert({
-      patient_id: session.user.id,
-      pairing_code: newCode,
-      status: 'pending',
-    });
-
-    if (!error) {
-      setPairingCode(newCode);
+    const res = await patientService.generatePairingCode(session.user.id);
+    if (res.success) {
+      setPairingCode(res.data);
     } else {
-      console.error('Error generating pairing code:', error);
-      Alert.alert('Error', 'Could not generate pairing code.');
+      Alert.alert('Error', res.error.message || 'Could not generate pairing code.');
     }
     setLoadingCode(false);
   };
@@ -191,28 +145,17 @@ export default function SettingsScreen() {
     setGeneratingPdf(true);
 
     try {
-      // 1. Calculate date 30 days ago
+      // 1. Calculate date window
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // 2. Fetch logs and medications (include medication_id so names can be mapped)
-      const { data: logs, error: logsError } = await supabase
-        .from('medication_logs')
-        .select('medication_id, log_date, scheduled_time, status, notes')
-        .eq('patient_id', session.user.id)
-        .gte('log_date', thirtyDaysAgoStr)
-        .order('log_date', { ascending: false });
+      // 2. Fetch logs and medications via patientService
+      const reportRes = await patientService.fetchHealthReportData(session.user.id, 30);
+      if (!reportRes.success) throw reportRes.error;
 
-      if (logsError) throw logsError;
-
-      const { data: meds, error: medsError } = await supabase
-        .from('medications')
-        .select('id, medicine_name')
-        .eq('patient_id', session.user.id);
-
-      if (medsError) throw medsError;
+      const { logs, medications: meds } = reportRes.data;
 
       // 3. Format HTML for the PDF with strict character escaping
       const safePatientName = escapeHtml(profile?.full_name || 'Patient');
@@ -306,16 +249,14 @@ export default function SettingsScreen() {
   };
 
   const handleToggleAlerts = async (value: boolean) => {
+    if (!session?.user?.id) return;
     triggerHaptic();
     setAlertsEnabled(value);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ alerts_enabled: value })
-      .eq('id', session?.user?.id);
+    const res = await authService.updateProfile(session.user.id, { alerts_enabled: value });
 
-    if (error) {
-      console.error('Error updating alert preferences:', error);
+    if (!res.success) {
+      console.error('Error updating alert preferences:', res.error);
       Alert.alert('Error', 'Could not update alert preferences.');
       setAlertsEnabled(!value);
     } else {
@@ -334,11 +275,49 @@ export default function SettingsScreen() {
           text: 'Log Out',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
+            const res = await authService.signOut();
+            if (!res.success) {
               Alert.alert('Error', 'Failed to log out.');
             } else {
               router.replace('/login');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    triggerHaptic();
+    Alert.alert(
+      'Delete Account & Health Data',
+      'Are you sure you want to delete your account? All medication schedules, adherence logs, uploaded prescriptions, and caregiver connections will be permanently purged in accordance with data erasure standards. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingAccount(true);
+              const result = await authService.deleteAccount();
+              setDeletingAccount(false);
+
+              if (!result.success) {
+                Alert.alert('Deletion Failed', result.error.message || 'Failed to delete account. Please try again.');
+                return;
+              }
+
+              Alert.alert('Account Deleted', 'Your account and personal health data have been completely deleted.', [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/login'),
+                },
+              ]);
+            } catch (err: any) {
+              setDeletingAccount(false);
+              console.error('Account deletion error:', err);
+              Alert.alert('Error', err?.message || 'Failed to delete account. Please try again.');
             }
           },
         },
@@ -418,11 +397,6 @@ export default function SettingsScreen() {
                 : 'Not set'}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-              <TouchableOpacity onPress={handlePickAvatar} style={styles.changePhotoBtn}>
-                <Ionicons name="image-outline" size={13} color={Theme.colors.primary} />
-                <Text style={styles.changePhotoText}>Photo</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={() => {
                   triggerHaptic();
@@ -686,41 +660,22 @@ export default function SettingsScreen() {
 
         <TouchableOpacity
           style={[styles.settingRow, { borderBottomWidth: 0 }]}
-          onPress={() => {
-            triggerHaptic();
-            Alert.alert(
-              'Delete Account & Data',
-              'Are you sure you want to delete your account? All medication logs, active schedules, and caregiver links will be deleted. This cannot be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete Everything',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      if (session?.user?.id) {
-                        await supabase.from('medication_logs').delete().eq('patient_id', session.user.id);
-                        await supabase.from('medications').delete().eq('patient_id', session.user.id);
-                        await supabase.from('patient_caregivers').delete().or(`patient_id.eq.${session.user.id},caregiver_id.eq.${session.user.id}`);
-                        await supabase.from('profiles').delete().eq('id', session.user.id);
-                      }
-                      await supabase.auth.signOut();
-                      router.replace('/login');
-                    } catch (err) {
-                      console.error('Account deletion error:', err);
-                      Alert.alert('Error', 'Failed to delete account. Please try again.');
-                    }
-                  },
-                },
-              ]
-            );
-          }}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+          accessibilityRole="button"
+          accessibilityLabel="Delete Account & Data"
         >
           <View style={styles.settingInfo}>
-            <Ionicons name="trash-outline" size={24} color={Theme.colors.error} />
+            {deletingAccount ? (
+              <ActivityIndicator size="small" color={Theme.colors.error} />
+            ) : (
+              <Ionicons name="trash-outline" size={24} color={Theme.colors.error} />
+            )}
             <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, { color: Theme.colors.error }]}>Delete Account & Data</Text>
-              <Text style={styles.settingSubtitle}>Permanently erase all health records</Text>
+              <Text style={[styles.settingTitle, { color: Theme.colors.error }]}>
+                {deletingAccount ? 'Deleting Account...' : 'Delete Account & Data'}
+              </Text>
+              <Text style={styles.settingSubtitle}>Permanently erase all health records & auth profile</Text>
             </View>
           </View>
         </TouchableOpacity>

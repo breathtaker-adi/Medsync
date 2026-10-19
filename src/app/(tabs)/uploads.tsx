@@ -18,8 +18,10 @@ import {
 } from 'react-native';
 import { PulseView } from '../../components/PulseView';
 import { SeniorButton } from '../../components/SeniorButton';
-import { useAuth } from '../../context/authcontext';
-import { supabase } from '../../lib/supabase';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/authService';
+import { patientService } from '../../services/patientService';
 import { prescriptionService } from '../../services/prescriptionService';
 import { Theme } from '../../theme';
 import { showErrorAlert } from '../../utils/errorHandler';
@@ -55,56 +57,20 @@ export default function UploadsScreen() {
     async function loadDoctors() {
       if (!session?.user?.id) return;
       try {
-        // 1. Fetch actively linked doctors/caregivers for this patient
-        const { data: links } = await supabase
-          .from('patient_caregivers')
-          .select('caregiver_id')
-          .eq('patient_id', session.user.id)
-          .not('caregiver_id', 'is', null);
+        const res = await patientService.fetchAvailableDoctors(session.user.id);
+        if (res.success && res.data.length > 0) {
+          const docs: ConnectedDoc[] = res.data.map((p) => ({
+            id: p.id,
+            full_name: p.full_name?.startsWith('Dr.') ? p.full_name : `Dr. ${p.full_name || 'Physician'}`,
+            specialty: p.specialty || 'General Practice',
+            clinic: p.clinic_affiliation || 'Clinical Practice',
+          }));
+          setConnectedDoctors(docs);
 
-        let docs: ConnectedDoc[] = [];
-
-        if (links && links.length > 0) {
-          const cIds = links.map((l: any) => l.caregiver_id);
-          const { data: profs } = await supabase
-            .from('profiles')
-            .select('id, full_name, specialty, clinic_affiliation')
-            .in('id', cIds);
-
-          if (profs && profs.length > 0) {
-            docs = profs.map((p: any) => ({
-              id: p.id,
-              full_name: p.full_name?.startsWith('Dr.') ? p.full_name : `Dr. ${p.full_name || 'Physician'}`,
-              specialty: p.specialty || 'General Practice',
-              clinic: p.clinic_affiliation || 'Clinical Practice',
-            }));
+          // Auto-select if exactly 1 doctor is connected
+          if (docs.length === 1) {
+            setSelectedDoctorId(docs[0].id);
           }
-        }
-
-        // 2. If patient has no connected doctors yet in patient_caregivers,
-        // load registered verified platform doctors so patient has clear choices
-        if (docs.length === 0) {
-          const { data: allDocs } = await supabase
-            .from('profiles')
-            .select('id, full_name, specialty, clinic_affiliation')
-            .or('role.eq.doctor,is_verified_doctor.eq.true')
-            .limit(10);
-
-          if (allDocs && allDocs.length > 0) {
-            docs = allDocs.map((p: any) => ({
-              id: p.id,
-              full_name: p.full_name?.startsWith('Dr.') ? p.full_name : `Dr. ${p.full_name || 'Physician'}`,
-              specialty: p.specialty || 'General Practice',
-              clinic: p.clinic_affiliation || 'Clinical Practice',
-            }));
-          }
-        }
-
-        setConnectedDoctors(docs);
-
-        // Auto-select if exactly 1 doctor is connected
-        if (docs.length === 1) {
-          setSelectedDoctorId(docs[0].id);
         }
       } catch (err) {
         console.error('Failed to load connected doctors for upload:', err);
@@ -201,15 +167,7 @@ export default function UploadsScreen() {
       const hasConsented = await AsyncStorage.getItem('dpdp_ocr_consent');
       if (hasConsented === 'true') {
         if (session?.user?.id) {
-          supabase
-            .from('user_consents')
-            .upsert({
-              user_id: session.user.id,
-              consent_type: 'dpdp_ocr_processing',
-              consent_version: '1.0',
-              consented_at: new Date().toISOString(),
-            })
-            .then(() => {});
+          authService.recordUserConsent(session.user.id, 'dpdp_ocr_processing', '1.0');
         }
         await executeUpload(targetDocId);
       } else {
@@ -223,15 +181,7 @@ export default function UploadsScreen() {
               onPress: async () => {
                 await AsyncStorage.setItem('dpdp_ocr_consent', 'true');
                 if (session?.user?.id) {
-                  supabase
-                    .from('user_consents')
-                    .upsert({
-                      user_id: session.user.id,
-                      consent_type: 'dpdp_ocr_processing',
-                      consent_version: '1.0',
-                      consented_at: new Date().toISOString(),
-                    })
-                    .then(() => {});
+                  authService.recordUserConsent(session.user.id, 'dpdp_ocr_processing', '1.0');
                 }
                 await executeUpload(targetDocId);
               },
@@ -262,125 +212,156 @@ export default function UploadsScreen() {
   const selectedDoctorObj = connectedDoctors.find((d) => d.id === selectedDoctorId);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Top Header with History Action */}
-      <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <Text style={styles.headerText}>Scan Prescription</Text>
-          <TouchableOpacity
-            style={styles.historyBtn}
-            onPress={() => router.push('/prescription-history' as any)}
-            accessibilityRole="button"
-            accessibilityLabel="View submitted prescriptions history"
-          >
-            <Ionicons name="time-outline" size={17} color={Theme.colors.primary} />
-            <Text style={styles.historyBtnText}>History</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.subHeaderText}>
-          Take a clear photo of your prescription slip. AI will parse the details and send them to your doctor for approval.
-        </Text>
-      </View>
-
-      {/* Helpful Instructions for Seniors */}
-      <View style={styles.guideCard}>
-        <View style={styles.guideRow}>
-          <View style={styles.guideStepCircle}>
-            <Text style={styles.guideStepNum}>1</Text>
-          </View>
-          <Text style={styles.guideText}>Lay slip flat under good lighting</Text>
-        </View>
-        <View style={styles.guideRow}>
-          <View style={styles.guideStepCircle}>
-            <Text style={styles.guideStepNum}>2</Text>
-          </View>
-          <Text style={styles.guideText}>Hold steady and fit within the frame</Text>
-        </View>
-        <View style={styles.guideRow}>
-          <View style={styles.guideStepCircle}>
-            <Text style={styles.guideStepNum}>3</Text>
-          </View>
-          <Text style={styles.guideText}>Select doctor and tap "Submit"</Text>
-        </View>
-      </View>
-
-      {/* Status Banner */}
-      {uploadStatus === 'pending' && (
-        <View style={styles.statusBadge}>
-          <Ionicons name="time" size={22} color="#92400E" style={{ marginRight: 10 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statusText}>
-              Prescription queued! Waiting for supervisor approval.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push('/prescription-history' as any)}
-              style={styles.statusHistoryLink}
-            >
-              <Text style={styles.statusHistoryLinkText}>
-                View Submission Status &rarr;
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header with History Action */}
+        <View style={styles.header}>
+          <View style={styles.headerTopRow}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.headerText}>Scan Prescription</Text>
+              <Text style={styles.subHeaderText}>
+                Take a clear photo for AI parsing & doctor sign-off
               </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.historyBtn}
+              onPress={() => router.push('/prescription-history' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="View submitted prescriptions history"
+              activeOpacity={0.7}
+            >
+              <Ionicons name="time-outline" size={16} color={Theme.colors.primary} />
+              <Text style={styles.historyBtnText}>History</Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
 
-      {/* Image Preview / Viewfinder */}
-      <View style={[styles.previewContainer, imageUri && styles.previewContainerHasImage]}>
-        {imageUri ? (
-          <View style={styles.imageWrapper}>
-            <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
+        {/* Helpful Instructions for Seniors */}
+        <View style={styles.guideCard}>
+          <View style={styles.guideRow}>
+            <View style={styles.guideStepCircle}>
+              <Ionicons name="sunny-outline" size={13} color={Theme.colors.primary} />
+            </View>
+            <Text style={styles.guideText}>Lay slip flat under good lighting</Text>
+          </View>
+          <View style={styles.guideRow}>
+            <View style={styles.guideStepCircle}>
+              <Ionicons name="scan-outline" size={13} color={Theme.colors.primary} />
+            </View>
+            <Text style={styles.guideText}>Hold steady and fit within the frame</Text>
+          </View>
+          <View style={styles.guideRow}>
+            <View style={styles.guideStepCircle}>
+              <Ionicons name="checkmark-circle-outline" size={13} color={Theme.colors.primary} />
+            </View>
+            <Text style={styles.guideText}>Select doctor and tap &quot;Submit&quot;</Text>
+          </View>
+        </View>
+
+        {/* Status Banner */}
+        {uploadStatus === 'pending' && (
+          <View style={styles.statusBadge}>
+            <Ionicons name="time" size={22} color="#92400E" style={{ marginRight: 10 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusText}>
+                Prescription queued! Waiting for supervisor approval.
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/prescription-history' as any)}
+                style={styles.statusHistoryLink}
+              >
+                <Text style={styles.statusHistoryLinkText}>
+                  View Submission Status &rarr;
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Image Preview / Viewfinder */}
+        <View style={[styles.previewContainer, imageUri && styles.previewContainerHasImage]}>
+          {imageUri ? (
+            <View style={styles.imageWrapper}>
+              <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
+              <TouchableOpacity
+                style={styles.retakeButton}
+                onPress={() => {
+                  setImageUri(null);
+                  setBase64Image(null);
+                }}
+                accessibilityLabel="Remove photo"
+              >
+                <Ionicons name="close" size={18} color="#FFFFFF" />
+                <Text style={styles.retakeText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
             <TouchableOpacity
-              style={styles.retakeButton}
-              onPress={() => {
-                setImageUri(null);
-                setBase64Image(null);
-              }}
-              accessibilityLabel="Remove and retake photo"
+              style={styles.placeholder}
+              onPress={() => pickImage(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Tap to open camera and scan prescription"
+              activeOpacity={0.8}
             >
-              <Ionicons name="close" size={20} color="#FFFFFF" />
-              <Text style={styles.retakeText}>Retake</Text>
+              <View style={styles.cameraIconPlate}>
+                <Ionicons name="camera" size={44} color={Theme.colors.primary} />
+              </View>
+              <Text style={styles.placeholderTitle}>Tap to Open Camera</Text>
+              <Text style={styles.placeholderText}>Or choose from photo gallery below</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* When NO image: Show camera & gallery buttons */}
+        {!imageUri && (
+          <View style={styles.buttonsGroup}>
+            <SeniorButton
+              title="Snap Prescription Photo"
+              onPress={() => pickImage(true)}
+              size="large"
+              variant="primary"
+              icon={<Ionicons name="camera" size={24} color="#FFFFFF" />}
+              style={{ marginBottom: 12 }}
+            />
+
+            <SeniorButton
+              title="Upload from Photo Gallery"
+              onPress={() => pickImage(false)}
+              size="normal"
+              variant="secondary"
+              icon={<Ionicons name="images-outline" size={22} color={Theme.colors.primary} />}
+            />
+          </View>
+        )}
+
+        {/* When image IS selected: Show compact retake/switch actions */}
+        {imageUri && (
+          <View style={styles.photoActionsRow}>
+            <TouchableOpacity
+              style={styles.photoActionBtn}
+              onPress={() => pickImage(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="camera-reverse-outline" size={17} color={Theme.colors.primary} />
+              <Text style={styles.photoActionText}>Retake Photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.photoActionBtn}
+              onPress={() => pickImage(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="images-outline" size={17} color={Theme.colors.primary} />
+              <Text style={styles.photoActionText}>Choose from Gallery</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.placeholder}
-            onPress={() => pickImage(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Tap to open camera and scan prescription"
-          >
-            <View style={styles.cameraIconPlate}>
-              <Ionicons name="camera" size={44} color={Theme.colors.primary} />
-            </View>
-            <Text style={styles.placeholderTitle}>Tap to Open Camera</Text>
-            <Text style={styles.placeholderText}>Or choose from photo gallery below</Text>
-          </TouchableOpacity>
         )}
-      </View>
 
-      {/* Action Buttons */}
-      <View style={styles.buttonsGroup}>
-        <SeniorButton
-          title={imageUri ? "Retake with Camera" : "Snap Prescription Photo"}
-          onPress={() => pickImage(true)}
-          size="large"
-          variant={imageUri ? "outline" : "primary"}
-          icon={<Ionicons name="camera" size={24} color={imageUri ? Theme.colors.primary : "#FFFFFF"} />}
-          style={{ marginBottom: 14 }}
-        />
-
-        <SeniorButton
-          title="Upload from Photo Gallery"
-          onPress={() => pickImage(false)}
-          size="normal"
-          variant="secondary"
-          icon={<Ionicons name="images-outline" size={22} color={Theme.colors.primary} />}
-          style={{ marginBottom: 16 }}
-        />
-
+        <View style={styles.buttonsGroup}>
         {imageUri && (
           <View style={styles.detailsCard}>
             <View style={styles.detailsHeader}>
@@ -624,32 +605,62 @@ export default function UploadsScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
   contentContainer: {
-    padding: 20,
+    padding: 16,
+    paddingTop: 8,
     paddingBottom: 60,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   headerText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 26,
+    fontSize: 24,
     color: '#0F172A',
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  photoActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#E6F4F4',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  photoActionText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: Theme.colors.primary,
   },
   historyBtn: {
     flexDirection: 'row',

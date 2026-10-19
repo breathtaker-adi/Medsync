@@ -20,8 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { Theme } from '../theme';
 import { avatarHelper } from '../utils/avatarHelper';
 
@@ -53,18 +53,18 @@ export default function EditProfileScreen() {
 
   // Common fields
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [email, setEmail] = useState(session?.user?.email || '');
-  const [phone, setPhone] = useState(session?.user?.user_metadata?.phone || '');
+  const [email, setEmail] = useState(profile?.email || session?.user?.email || '');
+  const [phone, setPhone] = useState(profile?.phone || session?.user?.user_metadata?.phone || '');
 
   // Patient-specific fields
   const [bloodGroup, setBloodGroup] = useState<string>(profile?.blood_group || '');
   const [customBloodGroup, setCustomBloodGroup] = useState<string>('');
   const [allergies, setAllergies] = useState<string>(profile?.allergies || '');
   const [emergencyContactName, setEmergencyContactName] = useState<string>(
-    session?.user?.user_metadata?.emergency_contact_name || ''
+    profile?.emergency_contact_name || session?.user?.user_metadata?.emergency_contact_name || ''
   );
   const [emergencyContactPhone, setEmergencyContactPhone] = useState<string>(
-    session?.user?.user_metadata?.emergency_contact_phone || ''
+    profile?.emergency_contact_phone || session?.user?.user_metadata?.emergency_contact_phone || ''
   );
   const [age, setAge] = useState<string>(
     profile?.age != null
@@ -129,6 +129,8 @@ export default function EditProfileScreen() {
       const profileUpdates: any = {
         full_name: fullName.trim(),
         avatar_url: avatarUri,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -145,6 +147,8 @@ export default function EditProfileScreen() {
             : bloodGroup.trim();
         profileUpdates.blood_group = resolvedBloodGroup;
         profileUpdates.allergies = allergies.trim();
+        profileUpdates.emergency_contact_name = emergencyContactName.trim() || null;
+        profileUpdates.emergency_contact_phone = emergencyContactPhone.trim() || null;
         if (age.trim()) {
           const parsedAge = parseInt(age.trim(), 10);
           if (!isNaN(parsedAge)) {
@@ -153,13 +157,9 @@ export default function EditProfileScreen() {
         }
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileUpdates)
-        .eq('id', session.user.id);
-
-      if (profileError) {
-        throw new Error(profileError.message);
+      const profileRes = await authService.updateProfile(session.user.id, profileUpdates);
+      if (!profileRes.success) {
+        throw profileRes.error;
       }
 
       // 2. Update email in auth if user modified it
@@ -168,11 +168,9 @@ export default function EditProfileScreen() {
       let emailUpdateInitiated = false;
 
       if (trimmedEmail && trimmedEmail.toLowerCase() !== currentEmail.toLowerCase()) {
-        const { error: emailErr } = await supabase.auth.updateUser({
-          email: trimmedEmail,
-        });
-        if (emailErr) {
-          throw new Error(`Email update failed: ${emailErr.message}`);
+        const emailRes = await authService.updateUserEmail(trimmedEmail);
+        if (!emailRes.success) {
+          throw new Error(`Email update failed: ${emailRes.error.message}`);
         }
         emailUpdateInitiated = true;
       }
@@ -190,9 +188,10 @@ export default function EditProfileScreen() {
         metadataUpdates.blood_group = profileUpdates.blood_group;
       }
 
-      await supabase.auth.updateUser({
-        data: metadataUpdates,
-      });
+      const metaRes = await authService.updateUserMetadata(metadataUpdates);
+      if (!metaRes.success) {
+        console.warn('Metadata update warning:', metaRes.error.message);
+      }
 
       // 4. Refresh in-app profile state
       await refreshProfile();

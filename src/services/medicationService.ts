@@ -189,6 +189,10 @@ export const medicationService = {
     medicationId: number | string,
     countToAdd: number
   ): Promise<Result<number>> {
+    if (!Number.isInteger(countToAdd) || countToAdd <= 0 || countToAdd > 5000) {
+      return err(new Error('Invalid restock quantity: must be an integer between 1 and 5000.'));
+    }
+
     try {
       const { data: current, error: fetchErr } = await supabase
         .from('medications')
@@ -401,6 +405,98 @@ export const medicationService = {
       return ok(sorted as Medication[]);
     } catch (caught: any) {
       handleAppError(caught, { action: 'fetchDailySchedule' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Fetch all paused (inactive) medications for a patient
+   */
+  async fetchPausedMedications(patientId: string): Promise<Result<Medication[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('medications')
+        .select('*')
+        .eq('patient_id', patientId)
+        .eq('is_active', false)
+        .order('time', { ascending: true });
+
+      if (error) {
+        return err(new Error(getErrorMessage(error)));
+      }
+
+      return ok((data || []) as Medication[]);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'fetchPausedMedications' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Toggle medication active/paused status
+   */
+  async setMedicationActive(
+    medicationId: number | string,
+    isActive: boolean
+  ): Promise<Result<void>> {
+    try {
+      const { error } = await supabase
+        .from('medications')
+        .update({ is_active: isActive })
+        .eq('id', medicationId);
+
+      if (error) {
+        return err(new Error(getErrorMessage(error)));
+      }
+
+      return ok(undefined);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'setMedicationActive' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Update medication schedule fields (time, status, warnings, etc.)
+   */
+  async updateMedication(
+    medicationId: number | string,
+    updates: Partial<Medication>
+  ): Promise<Result<void>> {
+    try {
+      const { error } = await supabase
+        .from('medications')
+        .update(updates)
+        .eq('id', medicationId);
+
+      if (error) {
+        return err(new Error(getErrorMessage(error)));
+      }
+
+      return ok(undefined);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'updateMedication' });
+      return err(new Error(getErrorMessage(caught)));
+    }
+  },
+
+  /**
+   * Permanently delete medication and all associated logs
+   */
+  async deleteMedication(medicationId: number | string): Promise<Result<void>> {
+    try {
+      const { error } = await supabase
+        .from('medications')
+        .delete()
+        .eq('id', medicationId);
+
+      if (error) {
+        return err(new Error(getErrorMessage(error)));
+      }
+
+      return ok(undefined);
+    } catch (caught: any) {
+      handleAppError(caught, { action: 'deleteMedication' });
       return err(new Error(getErrorMessage(caught)));
     }
   },
