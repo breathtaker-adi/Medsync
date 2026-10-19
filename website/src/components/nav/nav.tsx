@@ -18,6 +18,7 @@ const LINKS = [
 export function Nav() {
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navEffect, setNavEffect] = useState<"liquid-glass" | "shadow" | "glow">("liquid-glass");
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (y) => {
@@ -44,7 +45,13 @@ export function Nav() {
       >
         <nav
           aria-label="Primary"
-          className="glass-strong flex w-full max-w-5xl items-center justify-between gap-4 rounded-full border border-white/10 py-2 pr-2.5 pl-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-bio/30 md:pl-4"
+          className={`flex w-full max-w-5xl items-center justify-between gap-4 rounded-full py-2.5 pr-2.5 pl-3.5 md:pl-4 transition-all duration-500 ${
+            navEffect === "shadow"
+              ? "nav-effect-shadow"
+              : navEffect === "glow"
+              ? "nav-effect-glow"
+              : "nav-effect-liquid-glass"
+          }`}
         >
           {/* logo */}
           <a
@@ -92,7 +99,7 @@ export function Nav() {
                 </a>
               </li>
             ))}
-            <li className="flex items-center">
+            <li className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => emit(BUS.consoleOpen)}
@@ -101,6 +108,22 @@ export function Nav() {
               >
                 <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-bio" />
                 CONSOLE
+              </button>
+
+              {/* Navbar Effect Cycler: Liquid Glass / Shadow / Glow */}
+              <button
+                type="button"
+                onClick={() => {
+                  setNavEffect((prev) =>
+                    prev === "liquid-glass" ? "shadow" : prev === "shadow" ? "glow" : "liquid-glass"
+                  );
+                }}
+                className="group relative flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-telemetry text-[9px] tracking-[0.14em] text-slate-400 transition-all duration-300 hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+                title="Click to cycle navbar effect: Liquid Glass -> Shadow -> Glow"
+                aria-label={`Current navbar effect: ${navEffect}. Click to switch.`}
+              >
+                <span className="text-[10px] opacity-75">✨</span>
+                <span>{navEffect === "liquid-glass" ? "LIQUID GLASS" : navEffect.toUpperCase()}</span>
               </button>
             </li>
           </ul>
