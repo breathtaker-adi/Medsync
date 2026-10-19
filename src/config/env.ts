@@ -16,8 +16,8 @@ const DEFAULT_SUPABASE_URL = 'https://kvbjmkadnavvajwxcepj.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_M_bF5TvIBj5AdhKLYPmh3w_uOQn-RQL';
 
 function validateEnv(): AppConfig {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || (__DEV__ ? DEFAULT_SUPABASE_URL : '');
-  const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || (__DEV__ ? DEFAULT_SUPABASE_ANON_KEY : '');
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     const errorMsg = '[Security Alert] EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY must be configured in environment variables.';
@@ -29,9 +29,9 @@ function validateEnv(): AppConfig {
   }
 
   return {
-    supabaseUrl: supabaseUrl || DEFAULT_SUPABASE_URL,
-    supabaseAnonKey: supabaseAnonKey || DEFAULT_SUPABASE_ANON_KEY,
-    easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+    supabaseUrl,
+    supabaseAnonKey,
+    easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '08976e05-387f-4b74-a4bb-f2a1fdc5540b',
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     isDev: __DEV__,
   };
