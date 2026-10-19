@@ -1,0 +1,72 @@
+name: 🐛 Bug Report
+description: File a bug report to help us improve MedSync
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please check existing issues before submitting.
+        If this is a security vulnerability, please report it via [SECURITY.md](https://github.com/breathtaker-adi/Medsync/blob/main/SECURITY.md) instead.
+
+  - type: dropdown
+    id: role
+    attributes:
+      label: Affected User Role
+      description: Which user persona experienced this problem?
+      options:
+        - 👵 Senior Patient (Voice, High Contrast, Large Buttons)
+        - 👨‍👩‍👧 Caregiver (Remote Telemetry, Streak, Alerts)
+        - 🩺 Physician / Doctor (Verification, Review Queue, Patient Directory)
+        - 🔑 Authentication & Onboarding
+        - 🛠 Developer / Build System (Expo, EAS, TypeScript)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can maintainers reproduce this issue step-by-step?
+      placeholder: |
+        1. Open the app as Patient
+        2. Tap on 'Taken' button
+        3. Notice...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen instead?
+      placeholder: The dose should register and speak aloud...
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Device & OS
+      description: e.g., Xiaomi Redmi Note 13 (HyperOS / Android 14), Samsung Galaxy S24 (One UI 6.1), iPhone 15 (iOS 17.4), or Android Emulator.
+      placeholder: Pixel 7 - Android 14 (App v1.2.0)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs_or_screenshots
+    attributes:
+      label: Screenshots or Error Logs
+      description: Drag & drop screenshots, screen recordings, or paste error stack traces.
+      placeholder: Paste console output or attach images here...
+    validations:
+      required: false

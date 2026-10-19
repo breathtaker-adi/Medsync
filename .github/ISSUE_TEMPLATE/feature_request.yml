@@ -1,0 +1,63 @@
+name: 💡 Feature Request & Improvement
+description: Suggest a new idea, accessibility enhancement, or clinical workflow for MedSync
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We love hearing suggestions to make MedSync more accessible, secure, and helpful for families and healthcare providers!
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What part of MedSync does this proposal relate to?
+      options:
+        - 👵 Senior Accessibility (Voice, Haptics, Large UI)
+        - 🤖 AI Vision & Prescription OCR
+        - 👨‍👩‍👧 Caregiver Telemetry & Escalation
+        - 🩺 Physician Portal & Medical Registry
+        - 📊 Health PDF Export & Clinical Analytics
+        - 🔒 Privacy, Security & Compliance
+        - 🛠 Developer Experience & CI/CD
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem or limitation? Please describe.
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution or new capability you would like to see implemented.
+      placeholder: Add support for...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: We could also...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: willingness_to_contribute
+    attributes:
+      label: Would you like to implement this feature?
+      options:
+        - "Yes, I would love to submit a Pull Request!"
+        - "I can help test and provide feedback."
+        - "No, I am only submitting the proposal."
+    validations:
+      required: true

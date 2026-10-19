@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 MedSync Official Documentation
+    url: https://breathtaker-adi.github.io/Medsync/
+    about: Read our technical guides, architecture documentation, and user manuals.
+  - name: 🔒 Report a Security Vulnerability
+    url: https://github.com/breathtaker-adi/Medsync/security/advisories/new
+    about: Please report security vulnerabilities privately according to our security policy.
+  - name: 💬 Ask Questions & General Discussion
+    url: https://github.com/breathtaker-adi/Medsync/discussions
+    about: Ask implementation questions or connect with the developer community.
