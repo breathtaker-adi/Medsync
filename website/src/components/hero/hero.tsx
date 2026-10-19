@@ -83,7 +83,7 @@ export function Hero() {
       </div>
 
       {/* ── content ── */}
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 items-center gap-8 px-5 pt-28 pb-14 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 lg:pt-20">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 items-center gap-8 px-5 pt-36 pb-14 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 lg:pt-28">
         <div className="flex flex-col items-start gap-6">
           <TelemetryBadge />
 
