@@ -9,13 +9,15 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native & Signing Keys
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
+*.pem
 *.mobileprovision
 
 # Metro
@@ -26,12 +28,13 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# OS
 .DS_Store
-*.pem
+Thumbs.db
 
-# local env files
-.env*.local
+# IDE & Tooling
+.vscode/
+.idea/
 
 # typescript
 *.tsbuildinfo
@@ -47,16 +50,10 @@ example
 .env.*
 !.env.example
 google-services.json
-*.pem
-*.key
-*.jks
-*.p8
-*.p12
-*.mobileprovision
 
-# Supabase Local Backups & Sensitive Database Exports
-supabase/
+# Supabase Local Backups & Temporary Files
 supabase/.temp/
+supabase_backup/
 *.csv
 
 # Mobile Build Binaries & Packages
@@ -71,7 +68,3 @@ med sync ui/
 graphify-out/
 un-used files/
 security/
-test/
-scripts/
-docs/
-assets/
