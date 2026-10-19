@@ -7,6 +7,7 @@ import { Bento } from "@/components/bento/bento";
 import { DayInMedsync } from "@/components/day/day-in-medsync";
 import { Metrics } from "@/components/metrics/metrics";
 import { Film } from "@/components/film/film";
+import { FAQSection } from "@/components/faq/faq";
 import { Footer } from "@/components/footer/footer";
 import { TerminalDrawer } from "@/components/console/terminal";
 
@@ -21,6 +22,7 @@ export default function Page() {
         <DayInMedsync />
         <Metrics />
         <Film />
+        <FAQSection />
       </main>
       <Footer />
       <TerminalDrawer />

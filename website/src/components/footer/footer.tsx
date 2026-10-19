@@ -173,9 +173,23 @@ export function Footer() {
 
       {/* bottom bar */}
       <div className="relative z-10 mt-auto border-t border-white/8 bg-obsidian/80 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 px-5 py-6 sm:flex-row md:px-8">
-          <div className="font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase">
-            © {currentYear} MEDSYNC · OPEN SOURCE (MIT)
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 px-5 py-6 sm:flex-row sm:pr-48 md:px-8 md:pr-56">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase">
+            <span>© {currentYear} MEDSYNC · OPEN SOURCE (MIT)</span>
+            <span className="hidden text-white/20 sm:inline" aria-hidden="true">|</span>
+            <a
+              href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/privacy`}
+              className="text-slate-400 transition-colors hover:text-bio"
+            >
+              Privacy Policy
+            </a>
+            <span className="text-white/20" aria-hidden="true">·</span>
+            <a
+              href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/faq`}
+              className="text-slate-400 transition-colors hover:text-bio"
+            >
+              FAQ
+            </a>
           </div>
           <div className="flex items-center gap-6">
             <a
@@ -185,7 +199,8 @@ export function Footer() {
               className="flex items-center gap-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
             >
               <Github size={13} aria-hidden="true" focusable="false" />
-              breathtaker-adi/Medsync
+              <span className="hidden lg:inline">breathtaker-adi/Medsync</span>
+              <span className="lg:hidden">GitHub</span>
             </a>
             <button
               type="button"

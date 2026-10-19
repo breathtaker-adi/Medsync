@@ -12,6 +12,7 @@ const LINKS = [
   { label: "A DAY", target: "day" },
   { label: "TELEMETRY", target: "telemetry" },
   { label: "FILM", target: "film" },
+  { label: "FAQ", target: "faq" },
 ];
 
 export function Nav() {

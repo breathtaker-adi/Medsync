@@ -1,42 +1,44 @@
 1:"$Sreact.fragment"
-4:"/Medsync/_next/static/chunks/1hl5wfatcwgwe.js"
-5:"/Medsync/_next/static/chunks/2ugjg0gq-1pan.js"
-6:I[12585,["$4","$5"],"Providers"]
-7:I[87180,["$4","$5"],"default"]
-8:I[42045,["$4","$5"],"default"]
-9:"/Medsync/_next/static/chunks/3_ik98uxptci6.js"
-a:I[54249,["$4","$5","$9"],""]
-14:"ViewportBoundary"
-15:I[19400,["$4","$5"],"$14"]
-16:"MetadataBoundary"
-17:I[19400,["$4","$5"],"$16"]
-18:"$Sreact.suspense"
-:HL["/Medsync/_next/static/chunks/2gwufs5zm604m.css","style"]
+4:"/Medsync/_next/static/chunks/0i26gtfhnr8y3.js"
+5:"/Medsync/_next/static/chunks/2i12urmu_7w4r.js"
+6:"/Medsync/_next/static/chunks/2n-akgs5cd5xk.js"
+7:I[12585,["$4","$5","$6"],"Providers"]
+8:I[87180,["$4","$5","$6"],"default"]
+9:I[42045,["$4","$5","$6"],"default"]
+a:"/Medsync/_next/static/chunks/3_ik98uxptci6.js"
+b:I[54249,["$4","$5","$6","$a"],""]
+15:"ViewportBoundary"
+16:I[19400,["$4","$5","$6"],"$15"]
+17:"MetadataBoundary"
+18:I[19400,["$4","$5","$6"],"$17"]
+19:"$Sreact.suspense"
+:HL["/Medsync/_next/static/chunks/3ekmzn06-txss.css","style"]
 2:["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n              .boot-overlay, [aria-label*=\"boot screen\"] { display: none !important; }\n              .noscript-fallback {\n                display: flex !important;\n                min-height: 100vh;\n                flex-direction: column;\n                align-items: center;\n                justify-content: center;\n                padding: 2rem;\n                text-align: center;\n                background: #040711;\n                color: #e6edf7;\n              }\n            "}}]
 3:["$","div",null,{"className":"noscript-fallback","children":[["$","h1",null,{"style":{"fontSize":"2rem","marginBottom":"1rem"},"children":"Medsync: Medicine in Sync. Life on Schedule."}],["$","p",null,{"style":{"maxWidth":"32rem","color":"#90989f","marginBottom":"1.5rem"},"children":"Medsync is an open-source prescription adherence platform connecting patients, doctors, and family caregivers in real time. This interactive marketing site requires JavaScript. You can read the project documentation and download releases on GitHub."}],["$","a",null,{"href":"https://github.com/breathtaker-adi/Medsync","style":{"display":"inline-block","padding":"0.75rem 1.5rem","background":"#00f0ff","color":"#040711","borderRadius":"0.5rem","textDecoration":"none","fontWeight":600},"children":"View on GitHub →"}]]}]
-c:X
-f:X
-f:C
-10:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","main",null,{"className":"flex min-h-screen flex-col items-center justify-center bg-obsidian px-6 text-center","children":[["$","div",null,{"className":"relative mb-6","children":["$","span",null,{"className":"font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase","children":"404 · signal lost"}]}],["$","h1",null,{"className":"text-4xl font-extrabold tracking-tight text-white md:text-6xl","children":"This page fell out of sync."}],["$","p",null,{"className":"mt-4 max-w-md text-slate-400","children":"The URL you followed is no longer in the adherence loop. Let us get you back to the timeline."}],["$","$La",null,{"href":"/","className":"mt-8 inline-flex items-center gap-2 rounded-xl bg-bio px-6 py-3 font-telemetry text-sm font-semibold tracking-[0.18em] text-obsidian transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio","children":"← BACK TO MEDSYNC"}]]}],["$L11"],"$L12"]}],"p":"$@13","v":null,"s":"$c"}}]]
-d:[["children",{"s":"/_not-found","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L7",null,{"parallelRouterKey":"children","template":["$","$L8",null,{}]}]]}],"p":"$@e","v":"$f","s":"$c"},"c":"$Q10"}]]
-0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/Medsync/_next/static/chunks/2gwufs5zm604m.css","precedence":"next"}],["$","script","script-0",{"src":"/Medsync/_next/static/chunks/1hl5wfatcwgwe.js","async":true}],["$","script","script-1",{"src":"/Medsync/_next/static/chunks/2ugjg0gq-1pan.js","async":true}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"className":"dark","children":[["$","head",null,{"children":[["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Organization\",\"@id\":\"https://breathtaker-adi.github.io/Medsync/#org\",\"name\":\"Medsync\",\"url\":\"https://breathtaker-adi.github.io/Medsync/\",\"logo\":\"https://breathtaker-adi.github.io/Medsync/medsync-logo.png\",\"description\":\"Smart Medication Adherence, AI Prescription OCR & Caregiver Platform\",\"sameAs\":[\"https://github.com/breathtaker-adi/Medsync\"]},{\"@type\":\"SoftwareApplication\",\"name\":\"Medsync\",\"applicationCategory\":\"HealthApplication\",\"operatingSystem\":\"ANDROID\",\"offers\":{\"@type\":\"Offer\",\"price\":\"0\",\"priceCurrency\":\"USD\"},\"publisher\":{\"@id\":\"https://breathtaker-adi.github.io/Medsync/#org\"}}]}"}}],["$","noscript",null,{"children":"$2"}]]}],["$","body",null,{"className":"Xf24RG_variable TIR3ba_variable bg-obsidian text-foreground antialiased","children":[["$","a",null,{"href":"#main-content","className":"sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-bio focus:px-5 focus:py-3 focus:font-telemetry focus:text-sm focus:tracking-[0.18em] focus:text-obsidian focus:shadow-lg focus:outline-none","children":"Skip to main content"}],["$","noscript",null,{"children":"$3"}],["$","$L6",null,{"children":["$","$L7",null,{"parallelRouterKey":"children","template":["$","$L8",null,{}],"notFound":[["$","main",null,{"className":"flex min-h-screen flex-col items-center justify-center bg-obsidian px-6 text-center","children":[["$","div",null,{"className":"relative mb-6","children":["$","span",null,{"className":"font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase","children":"404 · signal lost"}]}],["$","h1",null,{"className":"text-4xl font-extrabold tracking-tight text-white md:text-6xl","children":"This page fell out of sync."}],["$","p",null,{"className":"mt-4 max-w-md text-slate-400","children":"The URL you followed is no longer in the adherence loop. Let us get you back to the timeline."}],["$","$La",null,{"href":"/","className":"mt-8 inline-flex items-center gap-2 rounded-xl bg-bio px-6 py-3 font-telemetry text-sm font-semibold tracking-[0.18em] text-obsidian transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio","children":"← BACK TO MEDSYNC"}]]}],[]]}]}]]}]]}]]}],"p":"$@b","v":null,"s":"$c"},"c":"$Qd"},"h":{"r":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L15",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#040711"}]]}],["$","$L17",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$18",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"404 - Page Not Found | Medsync"}],["$","meta","1",{"name":"description","content":"The page you were looking for could not be found. Return to the Medsync homepage to continue."}],["$","meta","2",{"name":"author","content":"Medsync"}],["$","meta","3",{"name":"keywords","content":"Medsync,medication adherence,prescription sync,AI prescription OCR,caregiver alerts,digital health,offline-first,DPDP Act"}],["$","meta","4",{"name":"robots","content":"noindex, nofollow"}],["$","link","5",{"rel":"canonical","href":"https://breathtaker-adi.github.io/Medsync/"}],["$","meta","6",{"property":"og:title","content":"404 - Page Not Found | Medsync"}],["$","meta","7",{"property":"og:description","content":"The page you were looking for could not be found."}],"$L19","$L1a","$L1b","$L1c","$L1d","$L1e"]}]}],null]}],"$L1f"]}],"p":"$@20","v":null,"s":"$c"}},"a":"$@21","u":"$@22","b":"cc_LbEcHxluqEqux_X1zH"}
-23:I[19400,["$4","$5"],"OutletBoundary"]
-25:I[18516,["$4","$5"],"IconMark"]
-11:["$","script","script-0",{"src":"/Medsync/_next/static/chunks/3_ik98uxptci6.js","async":true}]
-12:["$","$L23",null,{"children":["$","$18",null,{"name":"Next.MetadataOutlet","children":"$@24"}]}]
-19:["$","meta","8",{"name":"twitter:card","content":"summary"}]
-1a:["$","meta","9",{"name":"twitter:title","content":"404 - Page Not Found | Medsync"}]
-1b:["$","meta","10",{"name":"twitter:description","content":"The page you were looking for could not be found."}]
-1c:["$","link","11",{"rel":"icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}]
-1d:["$","link","12",{"rel":"apple-touch-icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}]
-1e:["$","$L25","13",{}]
-1f:["$","meta",null,{"name":"next-size-adjust","content":""}]
-c:300
-24:null
-22:true
-c:C
-21:0
-e:"$undefined"
-b:"$undefined"
-20:"$undefined"
-13:"$undefined"
+d:X
+10:X
+10:C
+11:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","main",null,{"className":"flex min-h-screen flex-col items-center justify-center bg-obsidian px-6 text-center","children":[["$","div",null,{"className":"relative mb-6","children":["$","span",null,{"className":"font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase","children":"404 · signal lost"}]}],["$","h1",null,{"className":"text-4xl font-extrabold tracking-tight text-white md:text-6xl","children":"This page fell out of sync."}],["$","p",null,{"className":"mt-4 max-w-md text-slate-400","children":"The URL you followed is no longer in the adherence loop. Let us get you back to the timeline."}],["$","$Lb",null,{"href":"/","className":"mt-8 inline-flex items-center gap-2 rounded-xl bg-bio px-6 py-3 font-telemetry text-sm font-semibold tracking-[0.18em] text-obsidian transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio","children":"← BACK TO MEDSYNC"}]]}],["$L12"],"$L13"]}],"p":"$@14","v":null,"s":"$d"}}]]
+e:[["children",{"s":"/_not-found","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L8",null,{"parallelRouterKey":"children","template":["$","$L9",null,{}]}]]}],"p":"$@f","v":"$10","s":"$d"},"c":"$Q11"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/Medsync/_next/static/chunks/3ekmzn06-txss.css","precedence":"next"}],["$","script","script-0",{"src":"/Medsync/_next/static/chunks/0i26gtfhnr8y3.js","async":true}],["$","script","script-1",{"src":"/Medsync/_next/static/chunks/2i12urmu_7w4r.js","async":true}],["$","script","script-2",{"src":"/Medsync/_next/static/chunks/2n-akgs5cd5xk.js","async":true}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"className":"dark","children":[["$","head",null,{"children":[["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Organization\",\"@id\":\"https://breathtaker-adi.github.io/Medsync/#org\",\"name\":\"Medsync\",\"url\":\"https://breathtaker-adi.github.io/Medsync/\",\"logo\":\"https://breathtaker-adi.github.io/Medsync/medsync-logo.png\",\"description\":\"Smart Medication Adherence, AI Prescription OCR & Caregiver Platform\",\"sameAs\":[\"https://github.com/breathtaker-adi/Medsync\"]},{\"@type\":\"SoftwareApplication\",\"name\":\"Medsync\",\"applicationCategory\":\"HealthApplication\",\"operatingSystem\":\"ANDROID\",\"offers\":{\"@type\":\"Offer\",\"price\":\"0\",\"priceCurrency\":\"USD\"},\"publisher\":{\"@id\":\"https://breathtaker-adi.github.io/Medsync/#org\"}}]}"}}],["$","noscript",null,{"children":"$2"}]]}],["$","body",null,{"className":"Xf24RG_variable TIR3ba_variable bg-obsidian text-foreground antialiased","children":[["$","a",null,{"href":"#main-content","className":"sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-bio focus:px-5 focus:py-3 focus:font-telemetry focus:text-sm focus:tracking-[0.18em] focus:text-obsidian focus:shadow-lg focus:outline-none","children":"Skip to main content"}],["$","noscript",null,{"children":"$3"}],["$","$L7",null,{"children":["$","$L8",null,{"parallelRouterKey":"children","template":["$","$L9",null,{}],"notFound":[["$","main",null,{"className":"flex min-h-screen flex-col items-center justify-center bg-obsidian px-6 text-center","children":[["$","div",null,{"className":"relative mb-6","children":["$","span",null,{"className":"font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase","children":"404 · signal lost"}]}],["$","h1",null,{"className":"text-4xl font-extrabold tracking-tight text-white md:text-6xl","children":"This page fell out of sync."}],["$","p",null,{"className":"mt-4 max-w-md text-slate-400","children":"The URL you followed is no longer in the adherence loop. Let us get you back to the timeline."}],["$","$Lb",null,{"href":"/","className":"mt-8 inline-flex items-center gap-2 rounded-xl bg-bio px-6 py-3 font-telemetry text-sm font-semibold tracking-[0.18em] text-obsidian transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio","children":"← BACK TO MEDSYNC"}]]}],[]]}]}]]}]]}]]}],"p":"$@c","v":null,"s":"$d"},"c":"$Qe"},"h":{"r":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L16",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#040711"}]]}],["$","$L18",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$19",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"404 - Page Not Found | Medsync"}],["$","meta","1",{"name":"description","content":"The page you were looking for could not be found. Return to the Medsync homepage to continue."}],["$","meta","2",{"name":"author","content":"Medsync"}],["$","meta","3",{"name":"keywords","content":"Medsync,medication adherence,prescription sync,AI prescription OCR,caregiver alerts,digital health,offline-first,DPDP Act"}],["$","meta","4",{"name":"robots","content":"noindex, nofollow"}],["$","link","5",{"rel":"canonical","href":"https://breathtaker-adi.github.io/Medsync/"}],["$","meta","6",{"property":"og:title","content":"404 - Page Not Found | Medsync"}],"$L1a","$L1b","$L1c","$L1d","$L1e","$L1f","$L20"]}]}],null]}],"$L21"]}],"p":"$@22","v":null,"s":"$d"}},"a":"$@23","u":"$@24","b":"rFu685zJvfSnaffwm6bwO"}
+25:I[19400,["$4","$5","$6"],"OutletBoundary"]
+27:I[18516,["$4","$5","$6"],"IconMark"]
+12:["$","script","script-0",{"src":"/Medsync/_next/static/chunks/3_ik98uxptci6.js","async":true}]
+13:["$","$L25",null,{"children":["$","$19",null,{"name":"Next.MetadataOutlet","children":"$@26"}]}]
+1a:["$","meta","7",{"property":"og:description","content":"The page you were looking for could not be found."}]
+1b:["$","meta","8",{"name":"twitter:card","content":"summary"}]
+1c:["$","meta","9",{"name":"twitter:title","content":"404 - Page Not Found | Medsync"}]
+1d:["$","meta","10",{"name":"twitter:description","content":"The page you were looking for could not be found."}]
+1e:["$","link","11",{"rel":"icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}]
+1f:["$","link","12",{"rel":"apple-touch-icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}]
+20:["$","$L27","13",{}]
+21:["$","meta",null,{"name":"next-size-adjust","content":""}]
+d:300
+26:null
+24:true
+d:C
+23:0
+f:"$undefined"
+c:"$undefined"
+22:"$undefined"
+14:"$undefined"

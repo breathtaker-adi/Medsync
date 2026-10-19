@@ -63,7 +63,7 @@ export function KineticHeadline({ lines, play }: KineticHeadlineProps) {
   return (
     <h1
       ref={actualRef}
-      className="shimmer-line text-[clamp(2.9rem,7.2vw,6.4rem)] leading-[1.06] font-extrabold tracking-[-0.035em] text-white"
+      className="text-[clamp(2.9rem,7.2vw,6.4rem)] leading-[1.06] font-extrabold tracking-[-0.035em] text-white"
       aria-label={lines
         .map((l) => l.map((w) => w.text).join(" "))
         .join(" ")}

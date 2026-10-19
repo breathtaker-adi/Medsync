@@ -529,3 +529,33 @@ html.lenis body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════ CUSTOM CURSOR ═══════════════ */
+
+@media (pointer: fine) {
+  html.custom-cursor-active,
+  html.custom-cursor-active * {
+    cursor: none !important;
+  }
+  html.custom-cursor-active input,
+  html.custom-cursor-active textarea,
+  html.custom-cursor-active [contenteditable] {
+    cursor: text !important;
+  }
+}
+
+/* ═══════════════ VIDEO CAPTIONS ═══════════════ */
+
+video::cue {
+  background: rgba(4, 7, 17, 0.88);
+  color: #eafcff;
+  font-family: var(--font-telemetry, monospace);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  border-radius: 6px;
+  padding: 3px 8px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+

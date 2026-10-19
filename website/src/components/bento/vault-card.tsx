@@ -31,17 +31,17 @@ export function VaultCard({ className = "" }: { className?: string }) {
         <div
           ref={ref}
           onMouseMove={onMove}
-          className="parent-specular group/holo relative mx-auto my-2 flex h-20 w-28 items-center justify-center rounded-xl border border-white/8 bg-gradient-to-br from-white/[0.04] to-transparent"
+          className="parent-specular group/holo relative mx-auto my-2 flex h-20 w-36 items-center justify-center rounded-xl border border-white/8 bg-gradient-to-br from-white/[0.04] to-transparent px-3"
         >
           <span className="holo-border rounded-xl" aria-hidden />
           <span className="specular rounded-xl" aria-hidden />
-          <div className="relative flex flex-col items-center gap-1.5">
+          <div className="relative flex flex-col items-center justify-center gap-1.5 w-full text-center">
             <Lock
               size={26}
               strokeWidth={1.5}
               className="text-slate-300 transition-all duration-500 group-hover/holo:text-bio group-hover/holo:[animation:hue-cycle_4s_linear_infinite] group-hover/holo:drop-shadow-[0_0_14px_rgba(0,240,255,0.7)]"
             />
-            <span className="font-telemetry text-[8px] tracking-[0.25em] text-slate-400 uppercase">
+            <span className="font-telemetry text-[8.5px] font-medium tracking-[0.18em] text-slate-300 uppercase whitespace-nowrap pl-[0.18em]">
               LOCAL · ENCRYPTED
             </span>
           </div>

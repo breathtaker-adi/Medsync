@@ -49,10 +49,11 @@ export function Bento() {
         <Reveal className="md:col-span-2" delay={0.16} y={36}>
           <VaultCard className="h-full" />
         </Reveal>
-        <Reveal className="md:col-span-6" delay={0.1} y={30}>
-          <CaregiverSyncCard className="h-full" />
-        </Reveal>
       </div>
+
+      <Reveal className="mt-4" delay={0.1} y={30}>
+        <CaregiverSyncCard />
+      </Reveal>
     </section>
   );
 }
