@@ -2,14 +2,14 @@
 
 import { useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Float, Sparkles } from "@react-three/drei";
+import { Float } from "@react-three/drei";
 import * as THREE from "three";
 
 // ── Dimensions & Physics Constants ──────────────────────────────
 const CAPSULE_RADIUS = 0.54;
 const CYLINDER_HALF_HEIGHT = 0.68;
-const BEAD_COUNT = 420;
-const BEAD_BASE_RADIUS = 0.062;
+const BEAD_COUNT = 2000;
+const BEAD_BASE_RADIUS = 0.042;
 
 interface PhysicalBead {
   x: number;
@@ -87,7 +87,7 @@ function PhysicalBeadsLayer({
       args={[undefined, undefined, beads.length]}
       renderOrder={1}
     >
-      <sphereGeometry args={[1, 16, 16]}>
+      <sphereGeometry args={[1, 14, 14]}>
         <instancedBufferAttribute
           attach="attributes-color"
           args={[colorsArray, 3]}
@@ -108,22 +108,34 @@ function PhysicalBeadsLayer({
 function CapsuleGlassShell() {
   return (
     <group renderOrder={2}>
-      {/* Outer Clear Tinted Pharmaceutical Bio-Glass Shell */}
-      <mesh>
+      {/* Layer 1: Luminous Outer Silhouette Contour (Inverted Hull) */}
+      <mesh renderOrder={4}>
+        <capsuleGeometry args={[CAPSULE_RADIUS + 0.007, CYLINDER_HALF_HEIGHT * 2, 32, 64]} />
+        <meshBasicMaterial
+          color="#00f0ff"
+          transparent
+          opacity={0.32}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Layer 2: Crystal Tinted Bio-Glass Shell with Specular Luster */}
+      <mesh renderOrder={3}>
         <capsuleGeometry args={[CAPSULE_RADIUS, CYLINDER_HALF_HEIGHT * 2, 32, 64]} />
         <meshPhysicalMaterial
           color="#00f0ff"
           transparent
-          opacity={0.18}
-          roughness={0.04}
-          metalness={0.12}
+          opacity={0.2}
+          roughness={0.03}
+          metalness={0.1}
           clearcoat={1.0}
-          clearcoatRoughness={0.03}
-          ior={1.5}
-          specularIntensity={2.5}
+          clearcoatRoughness={0.02}
+          ior={1.52}
+          specularIntensity={3.0}
           specularColor="#ffffff"
           emissive="#002b3d"
-          emissiveIntensity={0.22}
+          emissiveIntensity={0.24}
           depthWrite={false}
         />
       </mesh>
@@ -131,7 +143,7 @@ function CapsuleGlassShell() {
   );
 }
 
-// ── Dynamic Capsule Rig with Real Granular Physics ──────────────
+// ── Dynamic Capsule Rig with Fast Spatial-Grid Granular Physics ──
 function CapsuleRig({ reduced }: { reduced: boolean }) {
   const group = useRef<THREE.Group>(null);
   const instancedMesh = useRef<THREE.InstancedMesh>(null);
@@ -144,6 +156,10 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
   // Initialize beads array with their own independent state
   const beads = useMemo(() => initPhysicalBeads(), []);
+
+  // Spatial grid partitioning buffers (12 x 26 x 12 cells)
+  const gridHead = useMemo(() => new Int32Array(3744), []);
+  const gridNext = useMemo(() => new Int32Array(BEAD_COUNT), []);
 
   // Color buffer
   const colorsArray = useMemo(() => {
@@ -172,20 +188,20 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     pointerPrev.current = { x: pX, y: pY };
 
     if (g && !reduced) {
-      // Autonomous smooth spin & cursor tilt with high responsiveness
-      g.rotation.y += dt * 0.2;
-      const targetX = 0.22 + pY * -0.48;
-      const targetZ = -0.38 + pX * 0.44;
-      tilt.current.x = THREE.MathUtils.lerp(tilt.current.x, targetX, 0.16);
-      tilt.current.z = THREE.MathUtils.lerp(tilt.current.z, targetZ, 0.16);
+      // Autonomous smooth spin & cursor tilt with ultra-high responsiveness
+      g.rotation.y += dt * 0.22;
+      const targetX = 0.22 + pY * -0.52;
+      const targetZ = -0.38 + pX * 0.48;
+      tilt.current.x = THREE.MathUtils.lerp(tilt.current.x, targetX, 0.18);
+      tilt.current.z = THREE.MathUtils.lerp(tilt.current.z, targetZ, 0.18);
       g.rotation.x = tilt.current.x;
       g.rotation.z = tilt.current.z;
 
-      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 42, 0.24);
-      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 42, 0.24);
+      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 46, 0.26);
+      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 46, 0.26);
     }
 
-    // ── Free Particle Physics Step with Pairwise Collisions ──
+    // ── Free Particle Physics Step with Fast Spatial Grid Collisions ──
     const mesh = instancedMesh.current;
     if (mesh) {
       const rotX = g ? g.rotation.x : 0;
@@ -219,11 +235,100 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           b.x += b.vx * subDt;
           b.y += b.vy * subDt;
           b.z += b.vz * subDt;
+        }
 
-          // 2. Capsule inner wall boundary collision
-          const effR = CAPSULE_RADIUS - b.radius;
+        // 2. Build spatial grid index
+        gridHead.fill(-1);
+        for (let i = 0; i < N; i++) {
+          const b = beads[i];
+          const cx = Math.max(0, Math.min(11, Math.floor((b.x + 0.6) * 10)));
+          const cy = Math.max(0, Math.min(25, Math.floor((b.y + 1.3) * 10)));
+          const cz = Math.max(0, Math.min(11, Math.floor((b.z + 0.6) * 10)));
+          const cell = cx + cy * 12 + cz * 312;
+          gridNext[i] = gridHead[cell];
+          gridHead[cell] = i;
+        }
+
+        // 3. Resolve inter-bead collisions via spatial grid
+        for (let i = 0; i < N; i++) {
+          const bi = beads[i];
+          const cx = Math.max(0, Math.min(11, Math.floor((bi.x + 0.6) * 10)));
+          const cy = Math.max(0, Math.min(25, Math.floor((bi.y + 1.3) * 10)));
+          const cz = Math.max(0, Math.min(11, Math.floor((bi.z + 0.6) * 10)));
+
+          for (let ox = -1; ox <= 1; ox++) {
+            const ncx = cx + ox;
+            if (ncx < 0 || ncx >= 12) continue;
+            for (let oy = -1; oy <= 1; oy++) {
+              const ncy = cy + oy;
+              if (ncy < 0 || ncy >= 26) continue;
+              for (let oz = -1; oz <= 1; oz++) {
+                const ncz = cz + oz;
+                if (ncz < 0 || ncz >= 12) continue;
+
+                let j = gridHead[ncx + ncy * 12 + ncz * 312];
+                while (j !== -1) {
+                  if (j > i) {
+                    const bj = beads[j];
+                    const dy = bi.y - bj.y;
+                    const minDist = bi.radius + bj.radius;
+
+                    if (Math.abs(dy) < minDist) {
+                      const dx = bi.x - bj.x;
+                      if (Math.abs(dx) < minDist) {
+                        const dz = bi.z - bj.z;
+                        if (Math.abs(dz) < minDist) {
+                          const distSq = dx * dx + dy * dy + dz * dz;
+                          if (distSq < minDist * minDist && distSq > 0.00001) {
+                            const dist = Math.sqrt(distSq);
+                            const overlap = minDist - dist;
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            const nz = dz / dist;
+
+                            // Push apart along contact normal
+                            const sep = overlap * 0.5;
+                            bi.x += nx * sep;
+                            bi.y += ny * sep;
+                            bi.z += nz * sep;
+
+                            bj.x -= nx * sep;
+                            bj.y -= ny * sep;
+                            bj.z -= nz * sep;
+
+                            // Velocity exchange along collision normal
+                            const relVx = bi.vx - bj.vx;
+                            const relVy = bi.vy - bj.vy;
+                            const relVz = bi.vz - bj.vz;
+                            const normalVel = relVx * nx + relVy * ny + relVz * nz;
+
+                            if (normalVel < 0) {
+                              const impulse = -1.35 * normalVel * 0.5;
+                              bi.vx += nx * impulse;
+                              bi.vy += ny * impulse;
+                              bi.vz += nz * impulse;
+
+                              bj.vx -= nx * impulse;
+                              bj.vy -= ny * impulse;
+                              bj.vz -= nz * impulse;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  j = gridNext[j];
+                }
+              }
+            }
+          }
+        }
+
+        // 4. FINAL RIGOROUS WALL CONTAINMENT CLAMP (Executed AFTER inter-bead relaxation)
+        for (let i = 0; i < N; i++) {
+          const b = beads[i];
+          const effR = CAPSULE_RADIUS - b.radius - 0.002;
           if (b.y < -CYLINDER_HALF_HEIGHT) {
-            // Bottom spherical cap
             const capCenterY = -CYLINDER_HALF_HEIGHT;
             const dy = b.y - capCenterY;
             const dist = Math.hypot(b.x, dy, b.z);
@@ -237,13 +342,12 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.72;
-                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.72;
-                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.72;
+                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.7;
+                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.7;
+                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.7;
               }
             }
           } else if (b.y > CYLINDER_HALF_HEIGHT) {
-            // Top spherical cap
             const capCenterY = CYLINDER_HALF_HEIGHT;
             const dy = b.y - capCenterY;
             const dist = Math.hypot(b.x, dy, b.z);
@@ -257,13 +361,12 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.72;
-                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.72;
-                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.72;
+                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.7;
+                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.7;
+                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.7;
               }
             }
           } else {
-            // Cylindrical side wall
             const rCyl = Math.hypot(b.x, b.z);
             if (rCyl > effR && rCyl > 0.0001) {
               const nx = b.x / rCyl;
@@ -273,61 +376,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.72;
-                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.72;
-              }
-            }
-          }
-        }
-
-        // 3. Pairwise sphere-sphere collision relaxation (volume exclusion)
-        for (let i = 0; i < N; i++) {
-          const bi = beads[i];
-          for (let j = i + 1; j < N; j++) {
-            const bj = beads[j];
-            const dy = bi.y - bj.y;
-            const minDist = bi.radius + bj.radius;
-            if (Math.abs(dy) >= minDist) continue;
-
-            const dx = bi.x - bj.x;
-            if (Math.abs(dx) >= minDist) continue;
-
-            const dz = bi.z - bj.z;
-            if (Math.abs(dz) >= minDist) continue;
-
-            const distSq = dx * dx + dy * dy + dz * dz;
-            if (distSq < minDist * minDist && distSq > 0.00001) {
-              const dist = Math.sqrt(distSq);
-              const overlap = minDist - dist;
-              const nx = dx / dist;
-              const ny = dy / dist;
-              const nz = dz / dist;
-
-              // Push apart along contact normal
-              const sep = overlap * 0.5;
-              bi.x += nx * sep;
-              bi.y += ny * sep;
-              bi.z += nz * sep;
-
-              bj.x -= nx * sep;
-              bj.y -= ny * sep;
-              bj.z -= nz * sep;
-
-              // Velocity exchange along collision normal
-              const relVx = bi.vx - bj.vx;
-              const relVy = bi.vy - bj.vy;
-              const relVz = bi.vz - bj.vz;
-              const normalVel = relVx * nx + relVy * ny + relVz * nz;
-
-              if (normalVel < 0) {
-                const impulse = -1.35 * normalVel * 0.5;
-                bi.vx += nx * impulse;
-                bi.vy += ny * impulse;
-                bi.vz += nz * impulse;
-
-                bj.vx -= nx * impulse;
-                bj.vy -= ny * impulse;
-                bj.vz -= nz * impulse;
+                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.7;
+                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.7;
               }
             }
           }
@@ -360,19 +410,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           colorsArray={colorsArray}
         />
 
-        {/* Layer 2: Crystal Glass Capsule Shell (renderOrder=2, depthWrite=false) */}
+        {/* Layer 2: Crystal Glass Capsule Shell with Luminous Silhouette Rim */}
         <CapsuleGlassShell />
       </Float>
-
-      {/* 3D ambient floating micro-sparkles around capsule */}
-      <Sparkles
-        count={85}
-        scale={[6.5, 4.5, 3.0]}
-        size={1.7}
-        speed={reduced ? 0 : 0.35}
-        color="#7ef0ff"
-        opacity={0.45}
-      />
     </group>
   );
 }

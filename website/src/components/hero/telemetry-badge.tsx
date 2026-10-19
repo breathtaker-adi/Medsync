@@ -23,7 +23,7 @@ export function TelemetryBadge() {
 
   return (
     <motion.div
-      className="glass inline-flex items-center gap-3 rounded-full px-4 py-2"
+      className="glass inline-flex items-center gap-3 rounded-full px-4 py-2 mt-2 lg:mt-4"
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
