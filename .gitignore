@@ -68,3 +68,12 @@ med sync ui/
 graphify-out/
 un-used files/
 security/
+
+# Video Launch Artifacts & Compositions (/brag)
+brag-output/
+brag-output-*/
+
+# Agent Skills (temporary/downloaded on demand)
+.agents/skills/brag/
+.agents/skills/brag-slim/
+
