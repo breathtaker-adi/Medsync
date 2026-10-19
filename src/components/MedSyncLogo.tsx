@@ -88,14 +88,9 @@ export const MedSyncLogo: React.FC<MedSyncLogoProps> = ({
       <View style={[styles.horizontalContainer, style]}>
         {renderEmblem()}
         <View style={styles.horizontalTextContainer}>
-          <Text
-            style={{
-              includeFontPadding: false,
-            }}
-            numberOfLines={1}
-          >
-            <Text style={[styles.medText, isLight && styles.textLight]}>Med</Text>
-            <Text style={[styles.syncText, isLight && styles.textLightSync]}>Sync</Text>
+          <Text style={[styles.brandTitleHorizontalText, isLight && styles.textLight]}>
+            <Text style={styles.medColor}>Med</Text>
+            <Text style={isLight ? styles.textLightSync : styles.syncColor}>Sync</Text>
           </Text>
           <Text style={[styles.subText, isLight && styles.subTextLight]}>
             DAILY HEALTH COMPANION
@@ -109,18 +104,12 @@ export const MedSyncLogo: React.FC<MedSyncLogoProps> = ({
   return (
     <View style={[styles.stackedContainer, style]}>
       {renderEmblem()}
-      <Text
-        style={{
-          width: '100%',
-          textAlign: 'center',
-          includeFontPadding: false,
-          marginTop: 8,
-        }}
-        numberOfLines={1}
-      >
-        <Text style={[styles.medTextStacked, isLight && styles.textLight]}>Med</Text>
-        <Text style={[styles.syncTextStacked, isLight && styles.textLightSync]}>Sync</Text>
-      </Text>
+      <View style={styles.brandTitleStackedRow}>
+        <Text style={[styles.brandTitleText, isLight && styles.textLight]}>
+          <Text style={styles.medColor}>Med</Text>
+          <Text style={isLight ? styles.textLightSync : styles.syncColor}>Sync</Text>
+        </Text>
+      </View>
       <Text style={[styles.subTextStacked, isLight && styles.subTextLight]}>
         DAILY MEDICATION CARE
       </Text>
@@ -142,29 +131,28 @@ const styles = StyleSheet.create({
   horizontalTextContainer: {
     justifyContent: 'center',
   },
-  brandTitleHorizontal: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  brandTitleHorizontalText: {
+    fontFamily: 'PublicSans-ExtraBold',
+    fontSize: 24,
+    includeFontPadding: false,
   },
   brandTitleStackedRow: {
-    flexDirection: 'row',
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    paddingHorizontal: 16,
   },
-  medText: {
+  brandTitleText: {
     fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 24,
+    fontSize: 32,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  medColor: {
     color: Theme.colors.primary,
-    includeFontPadding: false,
   },
-  syncText: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 24,
+  syncColor: {
     color: '#0F172A',
-    includeFontPadding: false,
-    paddingRight: 6,
   },
   subText: {
     fontFamily: 'PublicSans-Bold',
@@ -175,22 +163,9 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   stackedContainer: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  medTextStacked: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
-    color: Theme.colors.primary,
-    includeFontPadding: false,
-  },
-  syncTextStacked: {
-    fontFamily: 'PublicSans-ExtraBold',
-    fontSize: 32,
-    color: '#0F172A',
-    includeFontPadding: false,
-    paddingRight: 6,
   },
   subTextStacked: {
     width: '100%',
