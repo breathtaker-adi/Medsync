@@ -68,8 +68,9 @@ export function KineticHeadline({ lines, play }: KineticHeadlineProps) {
         .map((l) => l.map((w) => w.text).join(" "))
         .join(" ")}
     >
-      {words.map((line, li) => (
-        <span key={li} className="block">
+      <span aria-hidden="true" className="block">
+        {words.map((line, li) => (
+          <span key={li} className="block">
           {line.map((word) => (
             <span
               key={word.key}
@@ -94,6 +95,7 @@ export function KineticHeadline({ lines, play }: KineticHeadlineProps) {
           ))}
         </span>
       ))}
+      </span>
     </h1>
   );
 }

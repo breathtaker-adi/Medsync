@@ -284,7 +284,7 @@ export function DayInMedsync() {
                         Watch buzzed · breakfast logged 07:48
                       </span>
                     </div>
-                    <svg viewBox="0 0 240 60" className="mt-3 w-full">
+                    <svg viewBox="0 0 240 60" className="mt-3 w-full" aria-hidden="true" focusable="false">
                       <path
                         d="M0 30 H50 L58 30 64 12 72 48 80 20 86 30 H140 L148 30 154 6 162 54 170 16 176 30 H240"
                         fill="none"
@@ -306,7 +306,7 @@ export function DayInMedsync() {
                     <div className="mt-2 flex items-end justify-between">
                       <div>
                         <div className="flex items-center gap-1.5 font-telemetry text-[8px] tracking-[0.16em] text-slate-500 uppercase">
-                          <HeartPulse size={10} className="text-coral" /> Heart rate
+                          <HeartPulse size={10} className="text-coral" aria-hidden="true" focusable="false" /> Heart rate
                         </div>
                         <div className="mt-0.5 text-3xl font-extrabold text-white tabular-nums">
                           142<span className="ml-1 text-[10px] font-medium text-slate-500">BPM</span>
@@ -316,7 +316,7 @@ export function DayInMedsync() {
                         SPIKE +64
                       </span>
                     </div>
-                    <svg viewBox="0 0 240 70" className="mt-2 w-full">
+                    <svg viewBox="0 0 240 70" className="mt-2 w-full" aria-hidden="true" focusable="false">
                       <defs>
                         <linearGradient id="hr-fill" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0" stopColor="#FF5C5C" stopOpacity="0.35" />

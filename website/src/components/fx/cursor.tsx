@@ -43,14 +43,6 @@ export function Cursor() {
 
   useEffect(() => {
     if (!enabled) return;
-    document.documentElement.classList.add("custom-cursor-active");
-    return () => {
-      document.documentElement.classList.remove("custom-cursor-active");
-    };
-  }, [enabled]);
-
-  useEffect(() => {
-    if (!enabled) return;
 
     const onMove = (e: MouseEvent) => {
       x.set(e.clientX);

@@ -61,6 +61,7 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
             transition={{ duration: 1 }}
             role="img"
             aria-label="Patient, doctor and pharmacy nodes exchanging live sync packets"
+            focusable="false"
           >
             {/* base paths */}
             {ROUTES.map((r) => (

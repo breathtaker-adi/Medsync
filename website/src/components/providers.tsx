@@ -37,7 +37,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <MotionConfig reducedMotion="user">
       <SmoothScrollProvider>
         <ScrollProgress />
-        <Preloader />
         <Cursor />
         <Grain />
         {children}

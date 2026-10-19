@@ -46,7 +46,7 @@ export function ConsoleTeaser({ className = "" }: { className?: string }) {
 
       <div className="flex items-center gap-4">
         <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-bio/25 bg-bio/10 text-bio">
-          <TerminalSquare size={17} />
+          <TerminalSquare size={17} aria-hidden="true" focusable="false" />
         </span>
         <div>
           <div className="font-telemetry text-[10px] tracking-[0.24em] text-slate-400 uppercase">
@@ -76,14 +76,17 @@ export function ConsoleTeaser({ className = "" }: { className?: string }) {
 
       <Magnetic strength={0.25}>
         <button
+          type="button"
           onClick={() => emit(BUS.consoleOpen)}
-          className="group/btn relative flex items-center gap-2 self-start rounded-full border border-white/12 bg-white/[0.04] px-5 py-2.5 font-telemetry text-[10px] font-semibold tracking-[0.18em] text-white uppercase transition-colors hover:border-bio/50 hover:text-bio sm:self-auto"
+          className="group/btn relative flex items-center gap-2 self-start rounded-full border border-white/12 bg-white/[0.04] px-5 py-2.5 font-telemetry text-[10px] font-semibold tracking-[0.18em] text-white uppercase transition-colors hover:border-bio/50 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio sm:self-auto"
           data-cursor="hover"
           aria-label="Open the live sync console"
         >
           Open Console
           <ArrowUpRight
             size={13}
+            aria-hidden="true"
+            focusable="false"
             className="transition-transform duration-300 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5"
           />
         </button>
