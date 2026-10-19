@@ -129,6 +129,8 @@ export function Film() {
               className="absolute inset-0 h-full w-full object-cover"
               poster={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/film-poster.jpg`}
               preload="none"
+              width={1920}
+              height={1080}
               muted={muted}
               playsInline
               loop
@@ -137,15 +139,24 @@ export function Film() {
               onPause={() => setPlaying(false)}
               onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 20)}
               onError={() => setFailed(true)}
-              aria-label="Medsync pitch film"
+              aria-label="Medsync pitch film — 20 second overview with captions available"
             >
               <source src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-film.mp4`} type="video/mp4" />
+              <track
+                kind="captions"
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-film.vtt`}
+                srcLang="en"
+                label="English captions"
+                default
+              />
+              Your browser does not support the video tag.
             </video>
 
             {/* poster overlay */}
             <AnimatePresence>
               {!started && !failed && (
                 <motion.button
+                  type="button"
                   className="absolute inset-0 flex flex-col items-center justify-center bg-[#040711]/55 backdrop-blur-[2px]"
                   initial={{ opacity: 1 }}
                   exit={{ opacity: 0, scale: 1.04 }}
@@ -160,7 +171,7 @@ export function Film() {
                   <Magnetic strength={0.4}>
                     <span className="relative mt-6 flex h-20 w-20 items-center justify-center rounded-full border border-bio/50 bg-obsidian/70 text-white backdrop-blur-md">
                       <span className="anim-ping-dot absolute inset-0 rounded-full bg-bio/20" />
-                      <Play size={26} className="ml-1" fill="currentColor" />
+                      <Play size={26} className="ml-1" fill="currentColor" aria-hidden="true" focusable="false" />
                     </span>
                   </Magnetic>
                   <span className="mt-6 font-telemetry text-[10px] tracking-[0.24em] text-slate-400 uppercase">
@@ -184,6 +195,7 @@ export function Film() {
             <AnimatePresence>
               {started && !playing && !failed && (
                 <motion.button
+                  type="button"
                   className="absolute inset-0 flex items-center justify-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -192,7 +204,7 @@ export function Film() {
                   aria-label="Resume playback"
                 >
                   <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/30 bg-obsidian/60 text-white backdrop-blur-md">
-                    <Play size={22} className="ml-1" fill="currentColor" />
+                    <Play size={22} className="ml-1" fill="currentColor" aria-hidden="true" focusable="false" />
                   </span>
                 </motion.button>
               )}
@@ -243,18 +255,20 @@ export function Film() {
             {/* controls row */}
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={togglePlay}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                 aria-label={playing ? "Pause" : "Play"}
               >
-                {playing ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+                {playing ? <Pause size={14} aria-hidden="true" /> : <Play size={14} className="ml-0.5" aria-hidden="true" />}
               </button>
               <button
+                type="button"
                 onClick={() => setMuted((m) => !m)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                 aria-label={muted ? "Unmute" : "Mute"}
               >
-                {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                {muted ? <VolumeX size={14} aria-hidden="true" /> : <Volume2 size={14} aria-hidden="true" />}
               </button>
               <span className="font-telemetry text-[10px] tracking-[0.14em] text-slate-400 tabular-nums">
                 {fmt(progress * duration)} / {fmt(duration)}
@@ -263,15 +277,30 @@ export function Film() {
                 {CHAPTERS[activeChapter]?.label}
               </span>
               <button
+                type="button"
                 onClick={fullscreen}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                 aria-label="Toggle fullscreen"
               >
-                <Maximize size={14} />
+                <Maximize size={14} aria-hidden="true" />
               </button>
             </div>
           </div>
         </div>
+
+        {/* text transcript (WCAG 1.2.2 / 1.2.3) */}
+        <details className="mt-4 text-slate-400">
+          <summary className="cursor-pointer font-telemetry text-xs tracking-[0.18em] uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio">
+            Read the film transcript
+          </summary>
+          <div className="mt-3 space-y-2 font-telemetry text-xs leading-relaxed text-slate-400">
+            <p><strong className="text-white">00:00 — The Crisis.</strong> 50% of patients miss doses. Half of all prescriptions are never filled.</p>
+            <p><strong className="text-white">00:03 — AI Intake.</strong> Medsync OCR reads any prescription in 2 seconds. Structured. Validated. FHIR-native.</p>
+            <p><strong className="text-white">00:07 — The Ecosystem.</strong> Patient, doctor, pharmacy — one timeline. Live sync. No dropped doses.</p>
+            <p><strong className="text-white">00:12 — Architecture.</strong> AES-256 local-first vault. Zero-knowledge. HIPAA + SOC 2 Type II.</p>
+            <p><strong className="text-white">00:16 — Medsync.</strong> Medicine in sync. Life on schedule.</p>
+          </div>
+        </details>
       </Reveal>
 
       {/* scene index */}
@@ -280,6 +309,7 @@ export function Film() {
           {CHAPTERS.map((c, i) => (
             <button
               key={c.t}
+              type="button"
               onClick={() => {
                 const v = videoRef.current;
                 if (!v) return;
@@ -288,7 +318,7 @@ export function Film() {
                 setStarted(true);
                 v.play().catch(() => {});
               }}
-              className={`group flex flex-col gap-1 rounded-xl border px-3.5 py-3 text-left transition-all duration-300 ${
+              className={`group flex flex-col gap-1 rounded-xl border px-3.5 py-3 text-left transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio ${
                 i === activeChapter
                   ? "border-bio/40 bg-bio/[0.06]"
                   : "border-white/8 bg-white/[0.02] hover:border-white/20"

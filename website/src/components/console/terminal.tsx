@@ -116,6 +116,7 @@ export function TerminalDrawer() {
     <>
       {/* floating trigger */}
       <motion.button
+        type="button"
         onClick={() => {
           if (open) {
             setOpen(false);
@@ -124,7 +125,7 @@ export function TerminalDrawer() {
             setUnread(0);
           }
         }}
-        className="glass-strong fixed right-4 bottom-4 z-[64] flex items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3.5 font-telemetry text-[10px] font-semibold tracking-[0.18em] text-slate-200 uppercase transition-colors hover:text-bio md:right-6 md:bottom-6"
+        className="glass-strong fixed right-4 bottom-4 z-[64] flex items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3.5 font-telemetry text-[10px] font-semibold tracking-[0.18em] text-slate-200 uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio md:right-6 md:bottom-6"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -132,7 +133,7 @@ export function TerminalDrawer() {
         aria-expanded={open}
         data-cursor="hover"
       >
-        <span className="relative flex h-2 w-2">
+        <span className="relative flex h-2 w-2" aria-hidden="true">
           <span className="anim-ping-dot absolute inline-flex h-full w-full rounded-full bg-bio" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-bio" />
         </span>
@@ -160,36 +161,39 @@ export function TerminalDrawer() {
             <div className="glass-strong flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-3xl border-b-0 shadow-[0_-30px_80px_-30px_rgba(0,240,255,0.18)]">
               {/* header */}
               <div className="flex items-center gap-3 border-b border-white/8 px-4 py-3 md:px-5">
-                <span className="flex gap-1.5" aria-hidden>
+                <span className="flex gap-1.5" aria-hidden="true">
                   <span className="h-2.5 w-2.5 rounded-full bg-coral/80" />
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-clin/80" />
                   <span className="h-2.5 w-2.5 rounded-full bg-pulse/80" />
                 </span>
                 <span className="flex items-center gap-2 font-telemetry text-[10px] tracking-[0.14em] text-slate-400">
-                  <Radio size={11} className="text-bio" />
+                  <Radio size={11} className="text-bio" aria-hidden="true" focusable="false" />
                   medsync://sync-protocol — wss://live.medsync.health/v3
                 </span>
                 <span className="ml-auto flex items-center gap-1">
                   <button
+                    type="button"
                     onClick={() => setPaused((p) => !p)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                     aria-label={paused ? "Resume stream" : "Pause stream"}
                   >
-                    {paused ? <Play size={13} /> : <Pause size={13} />}
+                    {paused ? <Play size={13} aria-hidden="true" /> : <Pause size={13} aria-hidden="true" />}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setFrames([])}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                     aria-label="Clear frames"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={13} aria-hidden="true" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setOpen(false)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                     aria-label="Close console"
                   >
-                    <X size={14} />
+                    <X size={14} aria-hidden="true" />
                   </button>
                 </span>
               </div>
@@ -252,10 +256,11 @@ export function TerminalDrawer() {
                   {frames.length} frames · {paused ? "stream paused" : "streaming"}
                 </span>
                 <button
+                  type="button"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-1 transition-colors hover:text-bio"
+                  className="flex items-center gap-1 transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
                 >
-                  collapse <ChevronUp size={11} />
+                  collapse <ChevronUp size={11} aria-hidden="true" focusable="false" />
                 </button>
               </div>
             </div>

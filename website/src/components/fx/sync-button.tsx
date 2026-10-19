@@ -120,11 +120,12 @@ export function SlideLink({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`group relative inline-flex cursor-pointer items-center gap-3 px-2 py-3 font-telemetry text-[12px] font-semibold tracking-[0.14em] text-slate-300 uppercase transition-colors hover:text-white ${className}`}
+      className={`group relative inline-flex cursor-pointer items-center gap-3 px-2 py-3 font-telemetry text-[12px] font-semibold tracking-[0.14em] text-slate-300 uppercase transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio ${className}`}
     >
       <span>{children}</span>
-      <span className="relative block h-px w-8 overflow-hidden bg-white/25">
+      <span className="relative block h-px w-8 overflow-hidden bg-white/25" aria-hidden="true">
         <span className="absolute inset-0 -translate-x-full bg-bio transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0" />
       </span>
       <svg
@@ -132,6 +133,8 @@ export function SlideLink({
         height="14"
         viewBox="0 0 14 14"
         fill="none"
+        aria-hidden="true"
+        focusable="false"
         className="translate-x-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1.5"
       >
         <path

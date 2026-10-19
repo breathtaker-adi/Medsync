@@ -129,7 +129,7 @@ export function AdherenceCard({ className = "" }: { className?: string }) {
         <div className="flex flex-1 flex-col items-center justify-center gap-6 sm:flex-row sm:gap-8">
           {/* score ring */}
           <div className="relative shrink-0" role="img" aria-label={`Adherence score ${score} percent`}>
-            <svg width="132" height="132" viewBox="0 0 132 132" className="-rotate-90">
+            <svg width="132" height="132" viewBox="0 0 132 132" className="-rotate-90" aria-hidden="true" focusable="false">
               <circle cx="66" cy="66" r={RING_R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="7" />
               <motion.circle
                 cx="66"
@@ -181,19 +181,20 @@ export function AdherenceCard({ className = "" }: { className?: string }) {
                     return (
                       <button
                         key={key}
+                        type="button"
                         onClick={(e) => toggle(key, e)}
                         aria-pressed={isTaken}
                         aria-label={`${m.name} ${m.dose}, ${isTaken ? "taken" : "not taken"}`}
-                        className={`group flex items-center gap-2 rounded-full border px-3.5 py-2 font-telemetry text-[10px] tracking-[0.06em] transition-all duration-300 ${
+                        className={`group flex items-center gap-2 rounded-full border px-3.5 py-2 font-telemetry text-[10px] tracking-[0.06em] transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio ${
                           isTaken
                             ? "border-pulse/50 bg-pulse/12 text-pulse-bright"
                             : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-bio/40 hover:text-white"
                         }`}
                       >
                         {isTaken ? (
-                          <Check size={11} strokeWidth={3} />
+                          <Check size={11} strokeWidth={3} aria-hidden="true" focusable="false" />
                         ) : (
-                          <PillIcon size={11} className="opacity-60" />
+                          <PillIcon size={11} className="opacity-60" aria-hidden="true" focusable="false" />
                         )}
                         <span className={isTaken ? "line-through decoration-pulse/60" : ""}>
                           {m.name} {m.dose}
@@ -213,11 +214,12 @@ export function AdherenceCard({ className = "" }: { className?: string }) {
             window 20:00–21:30
           </span>
           <button
+            type="button"
             onClick={reset}
-            className="flex items-center gap-1.5 text-slate-500 transition-colors hover:text-bio"
+            className="flex items-center gap-1.5 text-slate-500 transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
             aria-label="Reset simulated doses"
           >
-            <RotateCcw size={11} /> RESET
+            <RotateCcw size={11} aria-hidden="true" focusable="false" /> RESET
           </button>
         </div>
       </div>

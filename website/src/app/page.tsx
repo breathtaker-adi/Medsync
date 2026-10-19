@@ -1,5 +1,6 @@
 "use client";
 
+import { Preloader } from "@/components/fx/preloader";
 import { Nav } from "@/components/nav/nav";
 import { Hero } from "@/components/hero/hero";
 import { Bento } from "@/components/bento/bento";
@@ -12,8 +13,9 @@ import { TerminalDrawer } from "@/components/console/terminal";
 export default function Page() {
   return (
     <div className="relative flex min-h-screen flex-col bg-obsidian">
+      <Preloader />
       <Nav />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
         <Hero />
         <Bento />
         <DayInMedsync />

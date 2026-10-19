@@ -76,11 +76,11 @@
   --secondary: #10151f;
   --secondary-foreground: #e6edf7;
   --muted: #10151f;
-  --muted-foreground: #8b95a7;
+  --muted-foreground: #94a3b8;
   --accent: #10151f;
   --accent-foreground: #e6edf7;
   --destructive: #ff5c5c;
-  --border: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.1);
   --ring: #00f0ff;
   --sidebar: #0b0f19;
@@ -445,17 +445,56 @@ html.lenis body {
   animation: spin-slow 22s linear infinite;
 }
 
-/* ═══════════════ CUSTOM CURSOR ═══════════════ */
+/* ═══════════════ ACCESSIBILITY: FORCED COLORS (WCAG 2.4.7) ═══════════════ */
 
-@media (pointer: fine) {
-  html.custom-cursor-active,
-  html.custom-cursor-active * {
-    cursor: none !important;
+@media (forced-colors: active) {
+  :focus-visible,
+  .focus-visible\:outline-hidden:focus-visible,
+  .outline-none:focus-visible {
+    outline: 2px solid CanvasText !important;
+    outline-offset: 2px !important;
   }
-  html.custom-cursor-active input,
-  html.custom-cursor-active textarea {
-    cursor: text !important;
+}
+
+@supports (selector(:focus-visible)) {
+  .outline-none:focus-visible {
+    outline: 2px solid var(--ring, #00f0ff);
+    outline-offset: 2px;
   }
+}
+
+/* ═══════════════ BACKDROP FILTER FALLBACK (P2-011) ═══════════════ */
+
+@supports not (backdrop-filter: blur(16px)) {
+  .glass,
+  .glass-strong,
+  .glass-deep {
+    background: rgba(11, 15, 25, 0.95) !important;
+  }
+}
+
+@media (prefers-reduced-data: reduce) {
+  .glass,
+  .glass-strong,
+  .glass-deep {
+    backdrop-filter: none !important;
+    background: rgba(11, 15, 25, 0.95) !important;
+  }
+}
+
+/* ═══════════════ FLOATING LABEL (P1-007) ═══════════════ */
+
+.float-field {
+  position: relative;
+}
+
+.float-field input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.float-field label {
+  color: #94a3b8;
 }
 
 /* ═══════════════ RANGE / SLIDER POLISH ═══════════════ */

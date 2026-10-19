@@ -130,7 +130,7 @@ export function Hero() {
             animate={ready || reduced ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.9, delay: 1.15, ease: [0.16, 1, 0.3, 1] }}
           >
-            <svg width="38" height="38" viewBox="0 0 38 38" className="-rotate-90">
+            <svg width="38" height="38" viewBox="0 0 38 38" className="-rotate-90" aria-hidden="true" focusable="false">
               <circle cx="19" cy="19" r="15.5" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" />
               <circle
                 cx="19"
@@ -174,8 +174,9 @@ export function Hero() {
 
       {/* ── scroll hint ── */}
       <motion.button
+        type="button"
         onClick={() => scrollToId("system")}
-        className="relative z-10 mx-auto mb-7 flex flex-col items-center gap-2.5"
+        className="relative z-10 mx-auto mb-7 flex flex-col items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio rounded-md"
         initial={{ opacity: 0 }}
         animate={ready || reduced ? { opacity: 1 } : {}}
         transition={{ delay: 1.7, duration: 1 }}

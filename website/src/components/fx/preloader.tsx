@@ -134,7 +134,7 @@ export function Preloader() {
           >
             {/* capsule mark */}
             <div className="relative mb-8">
-              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Medsync loading mark" focusable="false">
                 <rect
                   x="20"
                   y="13"
@@ -161,6 +161,8 @@ export function Preloader() {
               height="36"
               viewBox="0 0 220 36"
               fill="none"
+              aria-hidden="true"
+              focusable="false"
               className="mb-8 overflow-visible"
             >
               <path

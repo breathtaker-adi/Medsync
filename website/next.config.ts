@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
   // Matches the behaviour the site was built & verified with:
   // no StrictMode double-invoke (GSAP timelines + preloader rely on it).
   reactStrictMode: false,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "motion", "three", "gsap"],
+  },
 };
 
 export default nextConfig;
