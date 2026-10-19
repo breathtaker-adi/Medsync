@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 
 // ── Dimensions & Physics Constants ──────────────────────────────
 const CAPSULE_RADIUS = 0.54;
 const CYLINDER_HALF_HEIGHT = 0.68;
-const BEAD_COUNT = 220;
-const BEAD_BASE_RADIUS = 0.052;
+const BEAD_COUNT = 420;
+const BEAD_BASE_RADIUS = 0.062;
 
 interface PhysicalBead {
   x: number;
@@ -23,7 +23,7 @@ interface PhysicalBead {
 }
 
 /**
- * Initializes independent, free-floating physical beads in the lower half of the capsule.
+ * Initializes independent, free-floating physical beads filling up to ~60% of the capsule.
  * Brand palette: Cyan (#00F0FF), Mint (#10B981), Royal Blue (#2563EB), Crisp White (#FFFFFF).
  */
 function initPhysicalBeads(): PhysicalBead[] {
@@ -51,8 +51,8 @@ function initPhysicalBeads(): PhysicalBead[] {
         ? colorBlue
         : colorWhite;
 
-    // Distribute vertically in lower capsule from y = -1.05 to 0.12
-    const y = -1.05 + rand() * 1.17;
+    // Distribute vertically in lower 60% of capsule from y = -1.14 to +0.25
+    const y = -1.14 + rand() * 1.39;
     const effR = Math.max(0.02, (CAPSULE_RADIUS - BEAD_BASE_RADIUS - 0.02) * Math.sqrt(rand()));
     const angle = rand() * Math.PI * 2;
 
@@ -60,10 +60,10 @@ function initPhysicalBeads(): PhysicalBead[] {
       x: Math.cos(angle) * effR,
       y,
       z: Math.sin(angle) * effR,
-      vx: (rand() - 0.5) * 0.02,
-      vy: (rand() - 0.5) * 0.02,
-      vz: (rand() - 0.5) * 0.02,
-      radius: BEAD_BASE_RADIUS * (0.94 + rand() * 0.14),
+      vx: (rand() - 0.5) * 0.035,
+      vy: (rand() - 0.5) * 0.035,
+      vz: (rand() - 0.5) * 0.035,
+      radius: BEAD_BASE_RADIUS * (0.92 + rand() * 0.16),
       color,
     });
   }
@@ -95,10 +95,10 @@ function PhysicalBeadsLayer({
       </sphereGeometry>
       <meshStandardMaterial
         vertexColors
-        roughness={0.24}
-        metalness={0.22}
-        emissive="#001a24"
-        emissiveIntensity={0.28}
+        roughness={0.2}
+        metalness={0.24}
+        emissive="#001824"
+        emissiveIntensity={0.26}
       />
     </instancedMesh>
   );
@@ -108,32 +108,23 @@ function PhysicalBeadsLayer({
 function CapsuleGlassShell() {
   return (
     <group renderOrder={2}>
-      {/* Outer Clear Pharmaceutical Glass Shell */}
+      {/* Outer Clear Tinted Pharmaceutical Bio-Glass Shell */}
       <mesh>
         <capsuleGeometry args={[CAPSULE_RADIUS, CYLINDER_HALF_HEIGHT * 2, 32, 64]} />
         <meshPhysicalMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.07}
-          roughness={0.03}
-          metalness={0.05}
-          clearcoat={1.0}
-          clearcoatRoughness={0.03}
-          ior={1.46}
-          specularIntensity={1.8}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Subtle Capsule Cap Joint Seam */}
-      <mesh position={[0, 0, 0]}>
-        <torusGeometry args={[CAPSULE_RADIUS + 0.002, 0.004, 12, 64]} />
-        <meshStandardMaterial
           color="#00f0ff"
           transparent
-          opacity={0.25}
-          metalness={0.8}
-          roughness={0.2}
+          opacity={0.18}
+          roughness={0.04}
+          metalness={0.12}
+          clearcoat={1.0}
+          clearcoatRoughness={0.03}
+          ior={1.5}
+          specularIntensity={2.5}
+          specularColor="#ffffff"
+          emissive="#002b3d"
+          emissiveIntensity={0.22}
+          depthWrite={false}
         />
       </mesh>
     </group>
@@ -166,6 +157,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     return arr;
   }, [beads]);
 
+  const { viewport } = useThree();
+  const responsiveScale = Math.min(1.04, Math.max(0.78, viewport.width / 4.8));
+
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.035);
     const g = group.current;
@@ -178,17 +172,17 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     pointerPrev.current = { x: pX, y: pY };
 
     if (g && !reduced) {
-      // Autonomous smooth spin & cursor tilt
-      g.rotation.y += dt * 0.15;
-      const targetX = 0.18 + pY * -0.32;
-      const targetZ = -0.36 + pX * 0.28;
-      tilt.current.x = THREE.MathUtils.lerp(tilt.current.x, targetX, 0.06);
-      tilt.current.z = THREE.MathUtils.lerp(tilt.current.z, targetZ, 0.06);
+      // Autonomous smooth spin & cursor tilt with high responsiveness
+      g.rotation.y += dt * 0.2;
+      const targetX = 0.22 + pY * -0.48;
+      const targetZ = -0.38 + pX * 0.44;
+      tilt.current.x = THREE.MathUtils.lerp(tilt.current.x, targetX, 0.16);
+      tilt.current.z = THREE.MathUtils.lerp(tilt.current.z, targetZ, 0.16);
       g.rotation.x = tilt.current.x;
       g.rotation.z = tilt.current.z;
 
-      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 24, 0.14);
-      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 24, 0.14);
+      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 42, 0.24);
+      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 42, 0.24);
     }
 
     // ── Free Particle Physics Step with Pairwise Collisions ──
@@ -202,9 +196,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       const subDt = dt / subSteps;
 
       // Local gravity vector inside rotating capsule frame
-      const gx = -11.0 * Math.sin(rotZ) + mouseImpulse.current.x;
-      const gy = -11.0 * Math.cos(rotX) * Math.cos(rotZ);
-      const gz = 11.0 * Math.sin(rotX) + mouseImpulse.current.y;
+      const gx = -13.5 * Math.sin(rotZ) + mouseImpulse.current.x;
+      const gy = -13.5 * Math.cos(rotX) * Math.cos(rotZ);
+      const gz = 13.5 * Math.sin(rotX) + mouseImpulse.current.y;
 
       const N = beads.length;
 
@@ -216,10 +210,10 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           b.vy += gy * subDt;
           b.vz += gz * subDt;
 
-          // Rolling and air friction
-          b.vx *= 0.985;
-          b.vy *= 0.985;
-          b.vz *= 0.985;
+          // Rolling and air friction - buoyant, light feel
+          b.vx *= 0.992;
+          b.vy *= 0.992;
+          b.vz *= 0.992;
 
           // Integrate position
           b.x += b.vx * subDt;
@@ -243,9 +237,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.4 * vDotN * nx) * 0.6;
-                b.vy = (b.vy - 1.4 * vDotN * ny) * 0.6;
-                b.vz = (b.vz - 1.4 * vDotN * nz) * 0.6;
+                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.72;
+                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.72;
+                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.72;
               }
             }
           } else if (b.y > CYLINDER_HALF_HEIGHT) {
@@ -263,9 +257,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.4 * vDotN * nx) * 0.6;
-                b.vy = (b.vy - 1.4 * vDotN * ny) * 0.6;
-                b.vz = (b.vz - 1.4 * vDotN * nz) * 0.6;
+                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.72;
+                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.72;
+                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.72;
               }
             }
           } else {
@@ -279,8 +273,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.4 * vDotN * nx) * 0.6;
-                b.vz = (b.vz - 1.4 * vDotN * nz) * 0.6;
+                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.72;
+                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.72;
               }
             }
           }
@@ -326,7 +320,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
               const normalVel = relVx * nx + relVy * ny + relVz * nz;
 
               if (normalVel < 0) {
-                const impulse = -1.25 * normalVel * 0.5;
+                const impulse = -1.35 * normalVel * 0.5;
                 bi.vx += nx * impulse;
                 bi.vy += ny * impulse;
                 bi.vz += nz * impulse;
@@ -353,11 +347,11 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
   });
 
   return (
-    <group ref={group} rotation={[0.18, -0.28, -0.36]}>
+    <group ref={group} scale={responsiveScale} rotation={[0.18, -0.28, -0.36]}>
       <Float
-        speed={reduced ? 0 : 1.3}
-        rotationIntensity={reduced ? 0 : 0.12}
-        floatIntensity={reduced ? 0 : 0.45}
+        speed={reduced ? 0 : 1.7}
+        rotationIntensity={reduced ? 0 : 0.16}
+        floatIntensity={reduced ? 0 : 0.55}
       >
         {/* Layer 1: Free Physical Beads (renderOrder=1) */}
         <PhysicalBeadsLayer
@@ -372,10 +366,10 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
       {/* 3D ambient floating micro-sparkles around capsule */}
       <Sparkles
-        count={70}
+        count={85}
         scale={[6.5, 4.5, 3.0]}
-        size={1.6}
-        speed={reduced ? 0 : 0.3}
+        size={1.7}
+        speed={reduced ? 0 : 0.35}
         color="#7ef0ff"
         opacity={0.45}
       />
