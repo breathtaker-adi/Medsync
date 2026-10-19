@@ -9,7 +9,7 @@ import * as THREE from "three";
 const CAPSULE_RADIUS = 0.54;
 const CYLINDER_HALF_HEIGHT = 0.68;
 const BEAD_COUNT = 2000;
-const BEAD_BASE_RADIUS = 0.042;
+const BEAD_BASE_RADIUS = 0.050;
 
 interface PhysicalBead {
   x: number;
@@ -51,8 +51,8 @@ function initPhysicalBeads(): PhysicalBead[] {
         ? colorBlue
         : colorWhite;
 
-    // Distribute vertically in lower 60% of capsule from y = -1.14 to +0.25
-    const y = -1.14 + rand() * 1.39;
+    // Distribute vertically in lower 60% of capsule from y = -1.14 to +0.24 (60% fill)
+    const y = -1.14 + rand() * 1.38;
     const effR = Math.max(0.02, (CAPSULE_RADIUS - BEAD_BASE_RADIUS - 0.02) * Math.sqrt(rand()));
     const angle = rand() * Math.PI * 2;
 
@@ -60,10 +60,10 @@ function initPhysicalBeads(): PhysicalBead[] {
       x: Math.cos(angle) * effR,
       y,
       z: Math.sin(angle) * effR,
-      vx: (rand() - 0.5) * 0.035,
-      vy: (rand() - 0.5) * 0.035,
-      vz: (rand() - 0.5) * 0.035,
-      radius: BEAD_BASE_RADIUS * (0.92 + rand() * 0.16),
+      vx: (rand() - 0.5) * 0.005,
+      vy: (rand() - 0.5) * 0.005,
+      vz: (rand() - 0.5) * 0.005,
+      radius: BEAD_BASE_RADIUS * (0.94 + rand() * 0.12),
       color,
     });
   }
@@ -197,8 +197,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       g.rotation.x = tilt.current.x;
       g.rotation.z = tilt.current.z;
 
-      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 46, 0.26);
-      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 46, 0.26);
+      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 14, 0.16);
+      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 14, 0.16);
     }
 
     // ── Free Particle Physics Step with Fast Spatial Grid Collisions ──
@@ -212,24 +212,24 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       const subDt = dt / subSteps;
 
       // Local gravity vector inside rotating capsule frame
-      const gx = -13.5 * Math.sin(rotZ) + mouseImpulse.current.x;
-      const gy = -13.5 * Math.cos(rotX) * Math.cos(rotZ);
-      const gz = 13.5 * Math.sin(rotX) + mouseImpulse.current.y;
+      const gx = -13.0 * Math.sin(rotZ) + mouseImpulse.current.x;
+      const gy = -13.0 * Math.cos(rotX) * Math.cos(rotZ);
+      const gz = 13.0 * Math.sin(rotX) + mouseImpulse.current.y;
 
       const N = beads.length;
 
       for (let s = 0; s < subSteps; s++) {
-        // 1. Apply gravity, inertia, and position integration
+        // 1. Apply gravity, inertia, and position integration (heavy damping, very low kinetic energy)
         for (let i = 0; i < N; i++) {
           const b = beads[i];
           b.vx += gx * subDt;
           b.vy += gy * subDt;
           b.vz += gz * subDt;
 
-          // Rolling and air friction - buoyant, light feel
-          b.vx *= 0.992;
-          b.vy *= 0.992;
-          b.vz *= 0.992;
+          // Rolling and air friction - heavily damped, low kinetic energy
+          b.vx *= 0.92;
+          b.vy *= 0.92;
+          b.vz *= 0.92;
 
           // Integrate position
           b.x += b.vx * subDt;
@@ -303,7 +303,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             const normalVel = relVx * nx + relVy * ny + relVz * nz;
 
                             if (normalVel < 0) {
-                              const impulse = -1.35 * normalVel * 0.5;
+                              const impulse = -0.25 * normalVel * 0.5;
                               bi.vx += nx * impulse;
                               bi.vy += ny * impulse;
                               bi.vz += nz * impulse;
@@ -342,9 +342,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.7;
-                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.7;
-                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.7;
+                b.vx = (b.vx - 1.2 * vDotN * nx) * 0.18;
+                b.vy = (b.vy - 1.2 * vDotN * ny) * 0.18;
+                b.vz = (b.vz - 1.2 * vDotN * nz) * 0.18;
               }
             }
           } else if (b.y > CYLINDER_HALF_HEIGHT) {
@@ -361,9 +361,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.7;
-                b.vy = (b.vy - 1.45 * vDotN * ny) * 0.7;
-                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.7;
+                b.vx = (b.vx - 1.2 * vDotN * nx) * 0.18;
+                b.vy = (b.vy - 1.2 * vDotN * ny) * 0.18;
+                b.vz = (b.vz - 1.2 * vDotN * nz) * 0.18;
               }
             }
           } else {
@@ -376,8 +376,8 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vz * nz;
               if (vDotN > 0) {
-                b.vx = (b.vx - 1.45 * vDotN * nx) * 0.7;
-                b.vz = (b.vz - 1.45 * vDotN * nz) * 0.7;
+                b.vx = (b.vx - 1.2 * vDotN * nx) * 0.18;
+                b.vz = (b.vz - 1.2 * vDotN * nz) * 0.18;
               }
             }
           }
