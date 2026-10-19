@@ -20,7 +20,7 @@
     "expo-glass-effect": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-image": "~57.0.5",
-    "expo-image-manipulator": "^58.0.14",
+    "expo-image-manipulator": "~57.0.21",
     "expo-image-picker": "~57.0.20",
     "expo-intent-launcher": "~57.0.1",
     "expo-linking": "~57.0.13",
