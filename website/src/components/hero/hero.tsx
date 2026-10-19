@@ -23,7 +23,13 @@ const HEADLINE: HeadlineWord[][] = [
   ],
 ];
 
-const PROTOCOLS = ["FHIR R4", "HL7 V2", "HIPAA", "SOC 2 · II"];
+const CAPABILITIES = [
+  { tag: "AI PRESCRIPTION OCR", tip: "Extracts medication name, dosage & schedule in seconds" },
+  { tag: "DOCTOR VERIFIED", tip: "Prescription changes require clinician sign-off" },
+  { tag: "CAREGIVER SYNC", tip: "Real-time push alerts to family caregivers" },
+  { tag: "OFFLINE-FIRST", tip: "Local encrypted storage with seamless cloud sync" },
+  { tag: "DPDP ACT 2023 READY", tip: "Engineered around Indian healthcare data privacy" },
+];
 
 const rise = (delay: number) => ({
   initial: { opacity: 0, y: 26, filter: "blur(6px)" },
@@ -33,6 +39,7 @@ const rise = (delay: number) => ({
 
 export function Hero() {
   const [ready, setReady] = useState(false);
+  const [activeTip, setActiveTip] = useState<string | null>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
@@ -44,8 +51,6 @@ export function Hero() {
       }
     };
     const off = on(BUS.ready, fire);
-    // if boot already completed before mount, defer one frame
-    // (avoids synchronous setState inside the effect body)
     if (isReady()) {
       const id = requestAnimationFrame(fire);
       return () => {
@@ -60,115 +65,95 @@ export function Hero() {
     <section
       id="top"
       className="relative flex min-h-svh flex-col overflow-clip"
-      aria-label="Medsync — medicine in sync, life on schedule"
+      aria-label="Medsync: medicine in sync, life on schedule"
     >
       {/* ── ambient layers ── */}
       <div aria-hidden className="absolute inset-0">
-        <div className="anim-mesh absolute -top-[20%] left-1/2 h-[70vh] w-[80vw] -translate-x-1/2 rounded-full bg-bio/[0.07] blur-[130px]" />
+        <div className="anim-mesh absolute -top-[20%] left-1/2 h-[70vh] w-[80vw] -translate-x-1/2 rounded-full bg-bio/[0.08] blur-[130px]" />
         <div
           className="anim-mesh absolute top-[35%] -left-[15%] h-[45vh] w-[45vw] rounded-full bg-pulse/[0.06] blur-[110px]"
           style={{ animationDelay: "-7s" }}
         />
+        {/* soft light bridge connecting text to capsule */}
+        <div className="absolute top-1/3 left-1/3 h-[50vh] w-[40vw] -translate-x-1/4 rounded-full bg-gradient-to-r from-bio/[0.05] via-bio/[0.08] to-transparent blur-[90px]" />
         <div className="dot-grid absolute inset-0 opacity-70 [mask-image:radial-gradient(75%_60%_at_50%_40%,#000,transparent)]" />
         <div className="vignette absolute inset-0" />
       </div>
 
       {/* ── content ── */}
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-5 pt-32 pb-24 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-4 lg:pt-24">
-        <div className="flex flex-col items-start gap-7">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 items-center gap-8 px-5 pt-28 pb-14 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 lg:pt-20">
+        <div className="flex flex-col items-start gap-6">
           <TelemetryBadge />
 
           <KineticHeadline lines={HEADLINE} play={ready} />
 
           <motion.p
             {...rise(0.55)}
-            className="max-w-lg text-base leading-relaxed text-slate-400 md:text-lg"
+            className="max-w-xl text-base leading-relaxed text-slate-300 md:text-lg"
           >
-            Medsync orchestrates prescriptions, vitals and refills across
-            patients, doctors and pharmacies — one living timeline,
-            zero dropped doses. The adherence engine that notices before
-            anyone else does.
+            Medsync connects prescriptions, schedules and adherence across
+            patients, doctors and family caregivers into one living timeline.
+            Zero dropped doses, with full offline-first resilience.
           </motion.p>
 
-          <motion.div {...rise(0.7)} className="flex flex-wrap items-center gap-x-7 gap-y-4">
+          <motion.div {...rise(0.7)} className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <SyncButton onClick={() => scrollToId("access")}>
-              Start Syncing
+              Download MedSync
             </SyncButton>
             <SlideLink onClick={() => scrollToId("system")}>
               Explore Live Architecture
             </SlideLink>
           </motion.div>
 
-          <motion.div
-            {...rise(0.85)}
-            className="mt-2 flex flex-wrap items-center gap-2.5 font-telemetry text-[10px] tracking-[0.2em] text-slate-500 uppercase"
-          >
-            {PROTOCOLS.map((p) => (
-              <span
-                key={p}
-                className="rounded-full border border-white/8 bg-white/[0.02] px-3 py-1.5"
-              >
-                {p}
-              </span>
-            ))}
+          {/* Interactive capabilities */}
+          <motion.div {...rise(0.85)} className="relative mt-2 flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2 font-telemetry text-[10px] tracking-[0.18em] text-slate-400 uppercase">
+              {CAPABILITIES.map((c) => (
+                <button
+                  key={c.tag}
+                  type="button"
+                  onMouseEnter={() => setActiveTip(c.tip)}
+                  onMouseLeave={() => setActiveTip(null)}
+                  onClick={() => setActiveTip((curr) => (curr === c.tip ? null : c.tip))}
+                  className="group relative rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition-all duration-300 hover:border-bio/50 hover:bg-bio/[0.08] hover:text-white"
+                >
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-bio/60 mr-2 group-hover:bg-bio group-hover:shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+                  {c.tag}
+                </button>
+              ))}
+            </div>
+            {/* dynamic tip preview */}
+            <div className="min-h-5 px-1 font-telemetry text-[10px] tracking-[0.12em] text-bio">
+              {activeTip ? (
+                <motion.span
+                  key={activeTip}
+                  initial={{ opacity: 0, y: 3 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <span className="text-pulse-bright">●</span> {activeTip}
+                </motion.span>
+              ) : (
+                <span className="text-slate-500">Tap or hover any capability to learn how it works</span>
+              )}
+            </div>
           </motion.div>
         </div>
 
         {/* ── 3D capsule stage ── */}
         <motion.div
-          className="relative h-[420px] sm:h-[500px] lg:h-[640px]"
-          initial={{ opacity: 0, scale: 0.92 }}
+          className="relative flex items-center justify-center h-[460px] sm:h-[540px] lg:h-[660px] w-full"
+          initial={{ opacity: 0, scale: 0.94 }}
           animate={ready || reduced ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 1.6, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
+          {/* subtle ambient focal ring behind the 3D capsule */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-[340px] w-[340px] sm:h-[440px] sm:w-[440px] rounded-full border border-bio/15 bg-bio/[0.02] blur-[1px]" />
+            <div className="absolute h-[260px] w-[260px] sm:h-[320px] sm:w-[320px] rounded-full border border-dashed border-white/10 animate-[spin_60s_linear_infinite]" />
+          </div>
+
           <CapsuleScene />
-
-          {/* floating telemetry chips */}
-          <motion.div
-            className="glass absolute top-[12%] right-[4%] flex items-center gap-3 rounded-2xl px-4 py-3"
-            initial={{ opacity: 0, y: 16 }}
-            animate={ready || reduced ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.9, delay: 1.15, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <svg width="38" height="38" viewBox="0 0 38 38" className="-rotate-90" aria-hidden="true" focusable="false">
-              <circle cx="19" cy="19" r="15.5" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" />
-              <circle
-                cx="19"
-                cy="19"
-                r="15.5"
-                fill="none"
-                stroke="#34d399"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeDasharray="97.4"
-                strokeDashoffset="14"
-              />
-            </svg>
-            <div>
-              <div className="font-telemetry text-[9px] tracking-[0.2em] text-slate-500 uppercase">
-                Adherence · 7d
-              </div>
-              <div className="text-lg font-bold text-white">
-                98<span className="text-pulse-bright">%</span>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="glass anim-float-soft absolute bottom-[10%] left-[2%] max-w-[240px] rounded-2xl px-4 py-3"
-            initial={{ opacity: 0, y: 16 }}
-            animate={ready || reduced ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.9, delay: 1.35, ease: [0.16, 1, 0.3, 1] }}
-            style={{ animationDelay: "-3s" }}
-          >
-            <div className="font-telemetry text-[9px] tracking-[0.2em] text-slate-500 uppercase">
-              RX #A7F3 → Crescent Pharmacy
-            </div>
-            <div className="mt-1 flex items-center gap-2 font-telemetry text-[11px] text-bio">
-              <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-bio" />
-              SYNCED · REFILL QUEUED
-            </div>
-          </motion.div>
         </motion.div>
       </div>
 

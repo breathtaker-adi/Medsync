@@ -7,10 +7,10 @@ import { getLenis } from "@/lib/scroll";
 import { BUS, emit, markReady } from "@/lib/events";
 
 const BOOT_LINES = [
-  { at: 8, text: "LINKING EHR PROVIDERS", status: "OK" },
-  { at: 34, text: "CALIBRATING SYNC MATRIX", status: "OK" },
-  { at: 62, text: "PHARMACY HANDSHAKE · 12MS", status: "OK" },
-  { at: 86, text: "ADHERENCE ENGINE ONLINE", status: "OK" },
+  { at: 8, text: "ENCRYPTED LOCAL VAULT", status: "OK" },
+  { at: 34, text: "CALIBRATING ADHERENCE ENGINE", status: "OK" },
+  { at: 62, text: "AI PRESCRIPTION OCR READY", status: "OK" },
+  { at: 86, text: "CAREGIVER LOOP ONLINE", status: "OK" },
 ];
 
 type Phase = "loading" | "exit" | "gone";
@@ -133,26 +133,12 @@ export function Preloader() {
             transition={{ duration: 0.35, ease: "easeIn" }}
           >
             {/* capsule mark */}
-            <div className="relative mb-8">
-              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" role="img" aria-label="Medsync loading mark" focusable="false">
-                <rect
-                  x="20"
-                  y="13"
-                  width="24"
-                  height="38"
-                  rx="12"
-                  stroke="url(#pl-g)"
-                  strokeWidth="3"
-                />
-                <line x1="20" y1="32" x2="44" y2="32" stroke="url(#pl-g)" strokeWidth="3" />
-                <defs>
-                  <linearGradient id="pl-g" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stopColor="#00F0FF" />
-                    <stop offset="1" stopColor="#10B981" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span className="anim-ping-dot absolute inset-0 -z-10 rounded-full bg-bio/10" />
+            <div className="relative mb-6 h-16 w-16 overflow-hidden rounded-2xl border border-bio/40 bg-[#061017] shadow-[0_0_24px_rgba(0,240,255,0.35)]">
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-logo.png`}
+                alt="Medsync loading mark"
+                className="h-full w-full object-cover scale-[1.08]"
+              />
             </div>
 
             {/* ECG line */}

@@ -9,14 +9,14 @@ import { useReducedMotion } from "@/hooks/use-motion-prefs";
 /* ── velocity-reactive marquee ──────────────────────────────── */
 
 const MARQUEE_ITEMS = [
-  "99.98% DOSAGE ACCURACY",
-  "500K+ PRESCRIPTIONS SYNCED",
-  "ZERO DATA LEAKS",
-  "12MS MEDIAN LATENCY",
-  "HIPAA + SOC 2 TYPE II",
-  "FHIR R4 NATIVE",
-  "OFFLINE-FIRST",
-  "42 PHARMACY NETWORKS",
+  "AI PRESCRIPTION SCANNING",
+  "DOCTOR REVIEW LOOP",
+  "OFFLINE-FIRST ARCHITECTURE",
+  "CAREGIVER NOTIFICATIONS",
+  "DPDP ACT 2023 READY",
+  "END-TO-END ENCRYPTED IN TRANSIT",
+  "PATIENT-CONTROLLED DATA",
+  "OPEN SOURCE HEALTHCARE",
 ];
 
 function VelocityMarquee({
@@ -47,14 +47,11 @@ function VelocityMarquee({
       const tick = (_t: number, dt: number) => {
         const track = trackRef.current;
         if (!track) return;
-        // decay captured velocity toward 0
         vel.current *= 0.92;
         const v = vel.current;
-        // px/s: base drift + scroll-velocity boost (reverses on scroll-up)
         const pxPerSec =
           direction * baseSpeed + gsap.utils.clamp(-640, 640, v * 0.55);
         pos.current -= (pxPerSec * dt) / 1000;
-        // wrap over half track (content duplicated once)
         const half = track.scrollWidth / 2;
         pos.current = (((pos.current % half) + half) % half) - half;
         const skew = gsap.utils.clamp(-7, 7, v * 0.012);
@@ -116,46 +113,44 @@ interface MetricDef {
   prefix?: string;
   label: string;
   caption: string;
-  countdown?: boolean;
 }
 
 const METRICS: MetricDef[] = [
   {
-    value: 99.98,
-    decimals: 2,
+    value: 100,
     suffix: "%",
-    label: "DOSAGE ACCURACY",
-    caption: "across 4.1M scheduled doses",
+    label: "OPEN SOURCE",
+    caption: "MIT licensed, public repository",
   },
   {
-    value: 500,
-    suffix: "K+",
-    label: "PRESCRIPTIONS SYNCED",
-    caption: "and counting, every hour",
-  },
-  {
-    value: 12,
-    suffix: "ms",
-    label: "MEDIAN SYNC LATENCY",
-    caption: "patient → doctor → pharmacy",
+    value: 2.0,
+    decimals: 1,
+    prefix: "< ",
+    suffix: "s",
+    label: "AI OCR EXTRACTION",
+    caption: "average camera parse time",
   },
   {
     value: 0,
-    label: "DATA LEAKS",
-    caption: "zero-knowledge, local-first",
-    countdown: true,
+    label: "CLOUD LOCK-IN",
+    caption: "local SQLite offline storage",
+  },
+  {
+    value: 3,
+    suffix: "-WAY",
+    label: "SAFETY LOOP",
+    caption: "patient, doctor & caregiver sync",
   },
 ];
 
 function Counter({ metric, started }: { metric: MetricDef; started: boolean }) {
-  const [animated, setAnimated] = useState(metric.countdown ? 87 : 0);
+  const [animated, setAnimated] = useState(0);
   const reduced = useReducedMotion();
 
   useEffect(() => {
     if (!started || reduced) return;
-    const from = metric.countdown ? 87 : 0;
-    const controls = animate(from, metric.value, {
-      duration: 2.2,
+    const controls = animate(0, metric.value, {
+      duration: 1.8,
       ease: [0.16, 1, 0.3, 1],
       onUpdate: (v) => setAnimated(v),
     });
@@ -170,17 +165,18 @@ function Counter({ metric, started }: { metric: MetricDef; started: boolean }) {
       : Math.round(display).toLocaleString();
 
   return (
-    <div className="group relative flex flex-col gap-3 px-6 py-10 md:px-8 md:py-14">
-      <div className="font-telemetry text-[10px] tracking-[0.26em] text-slate-500 uppercase">
+    <div className="group relative flex flex-col gap-3 px-6 py-8 md:px-8 md:py-10">
+      <div className="font-telemetry text-[10px] tracking-[0.26em] text-slate-400 uppercase">
         {metric.label}
       </div>
-      <div className="font-telemetry text-4xl font-bold tabular-nums tracking-tight text-white transition-all duration-500 group-hover:text-glow-bio md:text-6xl">
+      <div className="font-telemetry text-4xl font-bold tabular-nums tracking-tight text-white transition-all duration-500 group-hover:text-glow-bio md:text-5xl">
         <span className="text-gradient-sync">
+          {metric.prefix}
           {formatted}
           {metric.suffix}
         </span>
       </div>
-      <div className="text-[13px] text-slate-500">{metric.caption}</div>
+      <div className="text-[13px] text-slate-400">{metric.caption}</div>
     </div>
   );
 }
@@ -194,7 +190,7 @@ export function Metrics() {
   return (
     <section
       id="telemetry"
-      className="relative py-28 md:py-36"
+      className="relative py-14 md:py-20"
       aria-label="Live telemetry metrics"
     >
       <div className="mx-auto max-w-7xl px-5 md:px-8">
@@ -208,11 +204,11 @@ export function Metrics() {
               <span className="text-gradient-sync">their pulse.</span>
             </>
           }
-          description="Every sync, every dose, every refill — measured, encrypted, and audited in real time. The marquee below reacts to your scroll velocity."
+          description="Every sync, dose and check-in measured, encrypted, and recorded in real time. The marquee below reacts to your scroll velocity."
         />
       </div>
 
-      <div ref={gridRef} className="mt-16">
+      <div ref={gridRef} className="mt-12">
         <VelocityMarquee direction={1} />
         <div className="mx-auto grid max-w-7xl grid-cols-1 divide-y divide-white/6 px-5 sm:grid-cols-2 sm:divide-x lg:grid-cols-4 lg:divide-y-0">
           {METRICS.map((m) => (

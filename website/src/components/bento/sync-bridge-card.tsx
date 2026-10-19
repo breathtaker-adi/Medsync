@@ -2,29 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Waypoints } from "lucide-react";
+import { Waypoints, User, PlusCircle, Users } from "lucide-react";
 import { HologramCard, CardHeader } from "./hologram-card";
 
 /**
- * Tri-party sync bridge — Patient ↔ Doctor ↔ Pharmacy nodes stitched with
- * bezier paths; light packets traverse the curves via SVG motion paths.
+ * Tri-party sync bridge: Patient ↔ Doctor ↔ Caregiver nodes stitched with
+ * bezier paths; data packets traverse the curves via SVG motion paths.
  */
 const NODES = {
-  patient: { x: 160, y: 36, label: "PATIENT" },
-  doctor: { x: 58, y: 154, label: "DOCTOR" },
-  pharmacy: { x: 262, y: 154, label: "PHARMACY" },
+  patient: { x: 160, y: 32, label: "PATIENT" },
+  doctor: { x: 64, y: 138, label: "DOCTOR" },
+  caregiver: { x: 256, y: 138, label: "CAREGIVER" },
 } as const;
 
 const ROUTES = [
-  { key: "p-d", d: `M${NODES.patient.x},${NODES.patient.y} C120,84 82,102 ${NODES.doctor.x},${NODES.doctor.y}` },
-  { key: "p-ph", d: `M${NODES.patient.x},${NODES.patient.y} C200,84 238,102 ${NODES.pharmacy.x},${NODES.pharmacy.y}` },
-  { key: "d-ph", d: `M${NODES.doctor.x},${NODES.doctor.y} C124,182 196,182 ${NODES.pharmacy.x},${NODES.pharmacy.y}` },
+  { key: "p-d", d: `M${NODES.patient.x},${NODES.patient.y} C120,78 84,98 ${NODES.doctor.x},${NODES.doctor.y}` },
+  { key: "p-c", d: `M${NODES.patient.x},${NODES.patient.y} C200,78 236,98 ${NODES.caregiver.x},${NODES.caregiver.y}` },
+  { key: "d-c", d: `M${NODES.doctor.x},${NODES.doctor.y} C124,166 196,166 ${NODES.caregiver.x},${NODES.caregiver.y}` },
 ] as const;
 
 const NODE_LINKS: Record<string, string[]> = {
-  patient: ["p-d", "p-ph"],
-  doctor: ["p-d", "d-ph"],
-  pharmacy: ["p-ph", "d-ph"],
+  patient: ["p-d", "p-c"],
+  doctor: ["p-d", "d-c"],
+  caregiver: ["p-c", "d-c"],
 };
 
 type NodeKey = keyof typeof NODES;
@@ -43,7 +43,7 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
 
   return (
     <HologramCard className={className} label="Tri-party sync bridge" spotlightColor="rgba(16,185,129,0.06)">
-      <div className="flex h-full flex-col gap-4 p-6">
+      <div className="flex h-full flex-col justify-between p-5 md:p-6">
         <CardHeader
           icon={<Waypoints size={13} />}
           title="Tri-Party Sync"
@@ -51,16 +51,16 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
           chipTone="pulse"
         />
 
-        <div className="relative flex-1">
+        <div className="relative my-auto flex items-center justify-center py-1">
           <motion.svg
-            viewBox="0 0 320 190"
-            className="h-full w-full"
+            viewBox="0 0 320 185"
+            className="h-full max-h-[155px] w-full"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-15%" }}
             transition={{ duration: 1 }}
             role="img"
-            aria-label="Patient, doctor and pharmacy nodes exchanging live sync packets"
+            aria-label="Patient, doctor and caregiver nodes exchanging real-time sync data"
             focusable="false"
           >
             {/* base paths */}
@@ -139,7 +139,7 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
                   <circle
                     cx={n.x}
                     cy={n.y}
-                    r="17"
+                    r="16"
                     fill="rgba(11,15,25,0.9)"
                     stroke={isActive ? "#00f0ff" : "rgba(255,255,255,0.18)"}
                     strokeWidth={isActive ? 1.6 : 1}
@@ -152,7 +152,7 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
                     <circle
                       cx={n.x}
                       cy={n.y}
-                      r="17"
+                      r="16"
                       fill="none"
                       stroke="#00f0ff"
                       strokeWidth="1"
@@ -161,38 +161,32 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
                     />
                   )}
                   {key === "patient" && (
-                    <g stroke={isActive ? "#00f0ff" : "rgba(255,255,255,0.65)"} strokeWidth="1.5" fill="none" strokeLinecap="round">
-                      <circle cx={n.x} cy={n.y - 4} r="3.2" />
-                      <path d={`M${n.x - 5.5},${n.y + 6.5} a5.5,5 0 0 1 11,0`} />
+                    <g stroke={isActive ? "#00f0ff" : "rgba(255,255,255,0.65)"} strokeWidth="1.4" fill="none" strokeLinecap="round">
+                      <circle cx={n.x} cy={n.y - 3.5} r="3" />
+                      <path d={`M${n.x - 5},${n.y + 6} a5,4.5 0 0 1 10,0`} />
                     </g>
                   )}
                   {key === "doctor" && (
-                    <g stroke={isActive ? "#00f0ff" : "rgba(255,255,255,0.65)"} strokeWidth="1.5" strokeLinecap="round">
-                      <line x1={n.x} y1={n.y - 5.5} x2={n.x} y2={n.y + 5.5} />
-                      <line x1={n.x - 5.5} y1={n.y} x2={n.x + 5.5} y2={n.y} />
+                    <g stroke={isActive ? "#00f0ff" : "rgba(255,255,255,0.65)"} strokeWidth="1.4" strokeLinecap="round">
+                      <line x1={n.x} y1={n.y - 5} x2={n.x} y2={n.y + 5} />
+                      <line x1={n.x - 5} y1={n.y} x2={n.x + 5} y2={n.y} />
                     </g>
                   )}
-                  {key === "pharmacy" && (
-                    <text
-                      x={n.x}
-                      y={n.y + 3.5}
-                      textAnchor="middle"
-                      fill={isActive ? "#00f0ff" : "rgba(255,255,255,0.7)"}
-                      fontSize="9"
-                      fontFamily="var(--font-jetbrains), monospace"
-                      fontWeight="700"
-                      style={{ transition: "fill 0.3s" }}
-                    >
-                      Rx
-                    </text>
+                  {key === "caregiver" && (
+                    <g stroke={isActive ? "#00f0ff" : "rgba(255,255,255,0.65)"} strokeWidth="1.3" fill="none" strokeLinecap="round">
+                      <circle cx={n.x - 3} cy={n.y - 3} r="2.5" />
+                      <circle cx={n.x + 3.5} cy={n.y - 2.5} r="2" />
+                      <path d={`M${n.x - 7},${n.y + 6} a4.5,4 0 0 1 7.5,-2`} />
+                      <path d={`M${n.x},${n.y + 5.5} a3.5,3.5 0 0 1 6,0`} />
+                    </g>
                   )}
                   <text
                     x={n.x}
-                    y={n.y + 31}
+                    y={n.y + 26}
                     textAnchor="middle"
-                    fill={isActive ? "#7ef0ff" : "rgba(255,255,255,0.4)"}
+                    fill={isActive ? "#7ef0ff" : "rgba(255,255,255,0.5)"}
                     fontSize="7.5"
-                    letterSpacing="2.5"
+                    letterSpacing="1.8"
                     fontFamily="var(--font-jetbrains), monospace"
                     style={{ transition: "fill 0.3s" }}
                   >
@@ -204,11 +198,11 @@ export function SyncBridgeCard({ className = "" }: { className?: string }) {
           </motion.svg>
         </div>
 
-        <div className="flex items-center justify-between font-telemetry text-[9px] tracking-[0.16em] text-slate-500 uppercase">
+        <div className="flex items-center justify-between border-t border-white/6 pt-2 font-telemetry text-[9px] tracking-[0.16em] text-slate-500 uppercase">
           <span>
-            <span className="tabular-nums text-bio">{packets.toLocaleString()}</span> packets
+            <span className="tabular-nums text-bio">{packets.toLocaleString()}</span> sync events
           </span>
-          <span className="text-pulse-bright">0 drops</span>
+          <span className="text-pulse-bright">Zero conflict</span>
         </div>
       </div>
     </HologramCard>

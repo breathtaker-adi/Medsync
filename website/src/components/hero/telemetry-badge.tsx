@@ -33,7 +33,7 @@ export function TelemetryBadge() {
         <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
       </span>
       <span className="font-telemetry text-[10px] tracking-[0.22em] text-slate-300 uppercase md:text-[11px]">
-        Real-time EHR sync: <span className="text-pulse-bright">Active</span>
+        Adherence Engine: <span className="text-pulse-bright">Active</span>
       </span>
       <span className="hidden h-3 w-px bg-white/15 sm:block" />
       <span className="hidden items-center gap-2 sm:flex">

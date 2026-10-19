@@ -99,7 +99,7 @@ export function Film() {
   return (
     <section
       id="film"
-      className="relative mx-auto w-full max-w-7xl px-5 py-28 md:px-8 md:py-36"
+      className="relative mx-auto w-full max-w-7xl px-5 py-14 md:px-8 md:py-20"
       aria-label="Medsync product film"
     >
       <SectionHeading
@@ -111,7 +111,7 @@ export function Film() {
             <span className="text-gradient-sync">breathing.</span>
           </>
         }
-        description="A 20-second cut of the Medsync loop — from the adherence crisis to AI prescription intake to a clinically aligned architecture. Sound on."
+        description="A 20-second overview of the Medsync loop: from the adherence challenge to AI prescription intake to an on-device architecture. Sound on."
       />
 
       <Reveal className="mt-14" y={40}>
@@ -139,7 +139,7 @@ export function Film() {
               onPause={() => setPlaying(false)}
               onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 20)}
               onError={() => setFailed(true)}
-              aria-label="Medsync pitch film — 20 second overview with captions available"
+              aria-label="Medsync pitch film: 20 second overview with captions available"
             >
               <source src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-film.mp4`} type="video/mp4" />
               <track
@@ -185,7 +185,7 @@ export function Film() {
             {failed && (
               <div className="absolute inset-0 flex items-center justify-center bg-obsidian/90 p-8 text-center">
                 <p className="max-w-sm font-telemetry text-[11px] leading-relaxed tracking-[0.14em] text-slate-400 uppercase">
-                  Film stream unavailable — the sync matrix is still worth the
+                  Film stream unavailable: the project documentation is still worth the
                   scroll.
                 </p>
               </div>
@@ -294,11 +294,11 @@ export function Film() {
             Read the film transcript
           </summary>
           <div className="mt-3 space-y-2 font-telemetry text-xs leading-relaxed text-slate-400">
-            <p><strong className="text-white">00:00 — The Crisis.</strong> 50% of patients miss doses. Half of all prescriptions are never filled.</p>
-            <p><strong className="text-white">00:03 — AI Intake.</strong> Medsync OCR reads any prescription in 2 seconds. Structured. Validated. FHIR-native.</p>
-            <p><strong className="text-white">00:07 — The Ecosystem.</strong> Patient, doctor, pharmacy — one timeline. Live sync. No dropped doses.</p>
-            <p><strong className="text-white">00:12 — Architecture.</strong> AES-256 local-first vault. Zero-knowledge. HIPAA + SOC 2 Type II.</p>
-            <p><strong className="text-white">00:16 — Medsync.</strong> Medicine in sync. Life on schedule.</p>
+            <p><strong className="text-white">00:00: The Challenge.</strong> 50% of patients miss doses. Half of all chronic prescriptions lapse.</p>
+            <p><strong className="text-white">00:03: AI Intake.</strong> Medsync reads your prescription photo. Your doctor checks and confirms before anything starts.</p>
+            <p><strong className="text-white">00:07: The Ecosystem.</strong> Patient, doctor and family caregiver in one living timeline. Zero dropped doses.</p>
+            <p><strong className="text-white">00:12: Architecture.</strong> Encrypted on-device local storage. Designed around India's DPDP Act 2023 principles.</p>
+            <p><strong className="text-white">00:16: Medsync.</strong> Medicine in sync. Life on schedule.</p>
           </div>
         </details>
       </Reveal>

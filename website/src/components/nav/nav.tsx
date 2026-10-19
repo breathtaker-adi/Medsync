@@ -43,7 +43,7 @@ export function Nav() {
       >
         <nav
           aria-label="Primary"
-          className="glass-strong flex w-full max-w-5xl items-center justify-between gap-4 rounded-full py-2 pr-2 pl-4 md:pl-5"
+          className="glass-strong flex w-full max-w-5xl items-center justify-between gap-4 rounded-full border border-white/10 py-2 pr-2.5 pl-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-bio/30 md:pl-4"
         >
           {/* logo */}
           <a
@@ -56,38 +56,26 @@ export function Nav() {
               } catch {}
             }}
             className="group flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
-            aria-label="Medsync — back to top"
+            aria-label="Medsync: back to top"
           >
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 64 64"
-              fill="none"
-              className="shrink-0"
-              role="img"
-              aria-label="Medsync logo"
-              focusable="false"
-            >
-              <rect x="20" y="13" width="24" height="38" rx="12" stroke="url(#nv-g)" strokeWidth="4" />
-              <line x1="20" y1="32" x2="44" y2="32" stroke="url(#nv-g)" strokeWidth="4" />
-              <defs>
-                <linearGradient id="nv-g" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#00F0FF" />
-                  <stop offset="1" stopColor="#10B981" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-bio/40 bg-[#061016] shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-transform duration-300 group-hover:scale-105">
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-logo.png`}
+                alt="Medsync icon"
+                className="h-full w-full object-cover scale-[1.08]"
+              />
+            </div>
             <span className="text-[17px] font-bold tracking-[-0.02em] text-white">
               medsync
             </span>
-            <span className="hidden items-center gap-1.5 rounded-full border border-pulse/25 bg-pulse/10 px-2 py-0.5 font-telemetry text-[9px] tracking-[0.16em] text-pulse-bright sm:flex">
+            <span className="hidden items-center gap-1.5 rounded-full border border-bio/30 bg-bio/10 px-2 py-0.5 font-telemetry text-[9px] tracking-[0.16em] text-bio sm:flex">
               <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-pulse" />
-              V3.2 LIVE
+              PILOT ACTIVE
             </span>
           </a>
 
           {/* center links */}
-          <ul className="hidden items-center gap-7 md:flex">
+          <ul className="hidden items-center gap-6 md:flex">
             {LINKS.map((l) => (
               <li key={l.label}>
                 <a
@@ -99,19 +87,19 @@ export function Nav() {
                   className="group relative font-telemetry text-[11px] tracking-[0.22em] text-slate-400 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
                 >
                   {l.label}
-                  <span className="absolute -bottom-1.5 left-0 h-px w-0 bg-bio transition-all duration-400 group-hover:w-full" />
+                  <span className="absolute -bottom-1.5 left-0 h-px w-0 bg-bio transition-all duration-300 group-hover:w-full" />
                 </a>
               </li>
             ))}
-            <li>
+            <li className="flex items-center">
               <button
                 type="button"
                 onClick={() => emit(BUS.consoleOpen)}
-                className="group relative flex items-center gap-1.5 font-telemetry text-[11px] tracking-[0.22em] text-slate-400 transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+                className="group relative flex items-center gap-1.5 rounded-full border border-bio/30 bg-bio/[0.08] px-3 py-1 font-telemetry text-[10px] tracking-[0.18em] text-slate-300 transition-all duration-300 hover:border-bio/60 hover:text-bio hover:shadow-[0_0_12px_rgba(0,240,255,0.25)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+                aria-label="Open live sync telemetry console"
               >
-                <span className="anim-pulse-dot h-1 w-1 rounded-full bg-bio" />
+                <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-bio" />
                 CONSOLE
-                <span className="absolute -bottom-1.5 left-0 h-px w-0 bg-bio transition-all duration-400 group-hover:w-full" />
               </button>
             </li>
           </ul>
@@ -125,10 +113,9 @@ export function Nav() {
                   e.preventDefault();
                   go("access");
                 }}
-                className="group hidden items-center gap-1.5 rounded-full bg-white px-4.5 py-2 font-telemetry text-[11px] font-semibold tracking-[0.12em] text-obsidian uppercase transition-colors hover:bg-bio sm:flex focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
-                data-cursor="hover"
+                className="group hidden items-center gap-1.5 rounded-full bg-white px-4.5 py-2 font-telemetry text-[11px] font-bold tracking-[0.12em] text-obsidian uppercase transition-all duration-300 hover:bg-bio hover:shadow-[0_0_16px_rgba(0,240,255,0.35)] sm:flex focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
               >
-                Get Early Access
+                Download App
                 <ArrowUpRight
                   size={13}
                   className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
@@ -218,9 +205,9 @@ export function Nav() {
                 e.preventDefault();
                 go("access");
               }}
-              className="mt-10 flex items-center justify-center gap-2 rounded-full bg-white py-4 font-telemetry text-[12px] font-semibold tracking-[0.14em] text-obsidian uppercase focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+              className="mt-10 flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-bio to-pulse py-4 font-telemetry text-[12px] font-bold tracking-[0.14em] text-obsidian uppercase focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
             >
-              Get Early Access <ArrowUpRight size={15} aria-hidden="true" focusable="false" />
+              Download App <ArrowUpRight size={15} aria-hidden="true" focusable="false" />
             </motion.a>
           </motion.div>
         )}
