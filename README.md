@@ -41,12 +41,25 @@
   </a>
 </p>
 
+<p align="center">
+  <img src="assets/images/banner.jpg" width="100%" alt="MedSync Launch Banner" style="border-radius: 12px; max-width: 960px;" />
+</p>
+
+<p align="center">
+  <a href="https://breathtaker-adi.github.io/Medsync/"><strong>🌐 Live Website</strong></a> &nbsp;•&nbsp;
+  <a href="https://github.com/breathtaker-adi/Medsync/releases"><strong>📲 Download APK</strong></a> &nbsp;•&nbsp;
+  <a href="SECURITY.md"><strong>🔒 Security Policy</strong></a> &nbsp;•&nbsp;
+  <a href="#-getting-started"><strong>🚀 Quickstart</strong></a> &nbsp;•&nbsp;
+  <a href="https://github.com/breathtaker-adi/Medsync/issues/new/choose"><strong>🐛 Report Issue</strong></a>
+</p>
+
 ---
 
 ## 📑 Table of Contents
 
 - [Overview](#-overview)
 - [Why MedSync?](#-why-medsync)
+- [📲 Download Android App (.apk)](#-download-the-android-app-apk)
 - [Key Features](#-key-features)
   - [👵 Patient & Senior Experience](#-patient--senior-experience)
   - [👨‍👩‍👧 Caregiver Ecosystem](#-caregiver-ecosystem)
@@ -55,6 +68,7 @@
 - [System Architecture](#-system-architecture)
 - [Tech Stack](#-tech-stack)
 - [Security, Privacy & Compliance](#-security-privacy--compliance)
+  - [Security Policy & Disclosures](SECURITY.md)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Quickstart Installation](#quickstart-installation)
@@ -93,6 +107,17 @@ MedSync solves this with:
 - **Zero-Typing Regimen Onboarding**: Snap a photo of a doctor's handwritten or printed prescription; our AI Vision OCR engine extracts medications, dosages, and schedules in seconds.
 - **Senior-First Accessibility (WCAG AAA)**: Oversized touch targets, dynamic font scaling, tactile haptics, and spoken voice directions.
 - **Fail-Safe Caregiver Watch**: If a senior misses a dose or forgets their phone, caregivers receive an urgent notification automatically.
+
+---
+
+## 📲 Download the Android App (.apk)
+
+Want to try MedSync directly on your physical Android phone without building from source?
+
+1. Head over to our **[Releases Page](https://github.com/breathtaker-adi/Medsync/releases)**.
+2. Download the latest standalone **`MedSync-vX.X.X.apk`** installer under the Assets section.
+3. Open the APK on your device and tap **Install** (allow *Install from Unknown Sources* if prompted).
+4. Launch MedSync and experience the high-contrast senior dashboard and AI prescription scanner!
 
 ---
 
@@ -200,6 +225,8 @@ MedSync adheres to defense-in-depth principles and core HIPAA / GDPR data privac
 - **Hardware-Backed Cryptographic Storage**: Sensitive session tokens and encryption keys are stored inside device hardware keystores via `expo-secure-store`.
 - **Zero Hardcoded Secrets**: All cloud API keys and project configurations are dynamically injected via EAS secret variables (`GOOGLE_SERVICES_JSON`, Supabase anon keys).
 - **Sanitized Audit Logging**: Health reports and edge functions scrub sensitive medical telemetry to prevent PII/PHI leakage.
+
+For vulnerability disclosure procedures and our security response SLA, please review our full **[Security Policy (SECURITY.md)](SECURITY.md)**.
 
 ---
 
