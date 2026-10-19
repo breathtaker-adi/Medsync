@@ -128,7 +128,7 @@ export function Film() {
               ref={videoRef}
               className="absolute inset-0 h-full w-full object-cover"
               poster={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/film-poster.jpg`}
-              preload="metadata"
+              preload="none"
               muted={muted}
               playsInline
               loop

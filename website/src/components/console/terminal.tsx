@@ -127,7 +127,7 @@ export function TerminalDrawer() {
         className="glass-strong fixed right-4 bottom-4 z-[64] flex items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3.5 font-telemetry text-[10px] font-semibold tracking-[0.18em] text-slate-200 uppercase transition-colors hover:text-bio md:right-6 md:bottom-6"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 2.6, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         aria-label={open ? "Close sync console" : "Open sync console"}
         aria-expanded={open}
         data-cursor="hover"

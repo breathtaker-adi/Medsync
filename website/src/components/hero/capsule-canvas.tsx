@@ -29,6 +29,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
   const ringA = useRef<THREE.Mesh>(null);
   const ringB = useRef<THREE.Mesh>(null);
   const tilt = useRef(0);
+  const timeRef = useRef(0);
 
   const helixA = useMemo(() => makeHelix(0, 2.35, 1.7, 0.235), []);
   const helixB = useMemo(() => makeHelix(Math.PI, 2.35, 1.7, 0.235), []);
@@ -57,11 +58,13 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
   useFrame((state, delta) => {
     if (reduced) return;
-    const t = state.clock.elapsedTime;
+    const safeDelta = Math.min(delta, 0.1);
+    timeRef.current += safeDelta;
+    const t = timeRef.current;
     const g = group.current;
     if (g) {
       // slow autonomous spin + cursor-parallax tilt
-      g.rotation.y += delta * 0.12;
+      g.rotation.y += safeDelta * 0.12;
       const target = 0.12 + state.pointer.y * -0.22;
       tilt.current = THREE.MathUtils.lerp(tilt.current, target, 0.045);
       g.rotation.x = tilt.current;
