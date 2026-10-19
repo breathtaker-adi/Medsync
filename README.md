@@ -1,18 +1,20 @@
 <p align="center">
-  <img src="assets/images/logo-glow.png" width="130" alt="MedSync Logo" />
+  <img src="assets/images/logo-transparent.png" width="130" alt="MedSync Official Emblem" />
 </p>
 
-<h1 align="center">MedSync 💊</h1>
+<h1 align="center">MedSync — Smart Medication Adherence, AI Prescription OCR & Caregiver Platform 💊</h1>
 
 <p align="center">
-  <strong>Next-Gen Medication Adherence, AI Prescription OCR Scanner & Caregiver Remote Monitoring Platform</strong>
-</p>
-
-<p align="center">
-  <em>An accessible, intelligent, and secure mobile health application bridging seniors, caregivers, and licensed physicians to eliminate preventable medication errors and maximize therapy adherence.</em>
+  <strong>An accessible, intelligent, and secure mobile health (mHealth) platform bridging seniors, caregivers, and licensed physicians to eliminate preventable medication errors and maximize therapy adherence.</strong>
 </p>
 
 <p align="center">
+  <a href="https://breathtaker-adi.github.io/Medsync/">
+    <img src="https://img.shields.io/badge/Docs%20&%20Landing%20Page-Live-0D9488.svg?logo=github&logoColor=white" alt="Live Docs & Landing Page" />
+  </a>
+  <a href="https://github.com/breathtaker-adi/Medsync/releases">
+    <img src="https://img.shields.io/github/v/release/breathtaker-adi/Medsync?color=blue&label=Latest%20Release" alt="Latest Release" />
+  </a>
   <a href="https://github.com/breathtaker-adi/Medsync/actions/workflows/ci.yml">
     <img src="https://github.com/breathtaker-adi/Medsync/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
   </a>
