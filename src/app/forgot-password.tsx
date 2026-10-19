@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '../components/BackButton';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { SeniorButton } from '../components/SeniorButton';
-import { supabase } from '../lib/supabase';
+import { authService } from '../services/authService';
 import { Theme } from '../theme';
 
 export default function ForgotPasswordScreen() {
@@ -34,12 +34,10 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: 'medsync://reset-password',
-      });
+      const result = await authService.resetPassword(trimmed, 'medsync://reset-password');
 
-      if (error) {
-        Alert.alert('Reset Request Failed', error.message);
+      if (!result.success) {
+        Alert.alert('Reset Request Failed', result.error.message);
       } else {
         setSent(true);
       }

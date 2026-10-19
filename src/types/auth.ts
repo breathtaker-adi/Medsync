@@ -18,6 +18,10 @@ export interface UserProfile {
   clinic_affiliation?: string | null;
   years_of_experience?: string | null;
   avatar_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
   created_at?: string;
   updated_at?: string;
 }

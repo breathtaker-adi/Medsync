@@ -88,9 +88,9 @@ export const MedSyncLogo: React.FC<MedSyncLogoProps> = ({
       <View style={[styles.horizontalContainer, style]}>
         {renderEmblem()}
         <View style={styles.horizontalTextContainer}>
-          <Text style={styles.brandTitleRow}>
+          <Text style={styles.brandTitleHorizontal}>
             <Text style={[styles.medText, isLight && styles.textLight]}>Med</Text>
-            <Text style={[styles.syncText, isLight && styles.textLightSync]}>Sync{'\u200A'}</Text>
+            <Text style={[styles.syncText, isLight && styles.textLightSync]}>Sync</Text>
           </Text>
           <Text style={[styles.subText, isLight && styles.subTextLight]}>
             DAILY HEALTH COMPANION
@@ -106,10 +106,10 @@ export const MedSyncLogo: React.FC<MedSyncLogoProps> = ({
       {renderEmblem()}
       <Text style={styles.brandTitleStacked}>
         <Text style={[styles.medTextStacked, isLight && styles.textLight]}>Med</Text>
-        <Text style={[styles.syncTextStacked, isLight && styles.textLightSync]}>Sync{'\u200A'}</Text>
+        <Text style={[styles.syncTextStacked, isLight && styles.textLightSync]}>Sync</Text>
       </Text>
       <Text style={[styles.subTextStacked, isLight && styles.subTextLight]}>
-        DAILY MEDICATION COMPANION
+        DAILY MEDICATION CARE
       </Text>
     </View>
   );
@@ -129,42 +129,30 @@ const styles = StyleSheet.create({
   horizontalTextContainer: {
     justifyContent: 'center',
   },
-  brandTitleRow: {
-    fontSize: 24,
-    lineHeight: 30,
-    includeFontPadding: false,
-    paddingRight: 6,
+  brandTitleHorizontal: {
+    flexDirection: 'row',
   },
   brandTitleStacked: {
-    fontSize: 32,
-    lineHeight: 40,
+    marginTop: 8,
     textAlign: 'center',
-    marginTop: 10,
-    paddingHorizontal: 16,
-    includeFontPadding: false,
+    paddingHorizontal: 4,
   },
   medText: {
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 24,
     color: Theme.colors.primary,
-    letterSpacing: -0.2,
-    includeFontPadding: false,
   },
   syncText: {
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 24,
-    color: '#1E293B',
-    letterSpacing: -0.2,
-    includeFontPadding: false,
-    paddingRight: 4,
+    color: '#0F172A',
   },
   subText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 9,
+    fontSize: 9.5,
     color: Theme.colors.onSurfaceVariant,
     letterSpacing: 1.0,
     marginTop: 2,
-    includeFontPadding: false,
   },
   stackedContainer: {
     alignItems: 'center',
@@ -175,23 +163,19 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 32,
     color: Theme.colors.primary,
-    includeFontPadding: false,
   },
   syncTextStacked: {
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 32,
-    color: '#1E293B',
-    includeFontPadding: false,
-    paddingRight: 6,
+    color: '#0F172A',
   },
   subTextStacked: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 10,
+    fontSize: 10.5,
     color: Theme.colors.onSurfaceVariant,
     letterSpacing: 0.8,
-    marginTop: 4,
+    marginTop: 3,
     textAlign: 'center',
-    includeFontPadding: false,
   },
   textLight: {
     color: '#FFFFFF',

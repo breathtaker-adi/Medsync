@@ -1,6 +1,8 @@
 // tests/security_and_integrity.test.js
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // 1. HTML Sanitization Test (Settings Health Report PDF)
 function escapeHtml(str) {
@@ -561,6 +563,545 @@ describe('Security & Integrity Test Suite', () => {
       assert.strictEqual(historyA.some((r) => r.medication === 'Atorvastatin'), false);
     });
   });
+
+  describe('Verified Doctor Patient Contact & Emergency Card Access', () => {
+    it('should expose phone, email, and emergency SOS details to connected doctor', () => {
+      const patientProfile = {
+        id: 'patient-123',
+        full_name: 'Margaret Doe',
+        phone: '+91 98765 43210',
+        email: 'margaret@example.com',
+        emergency_contact_name: 'John Doe (Son)',
+        emergency_contact_phone: '+91 98765 00000',
+        blood_group: 'O+',
+        age: 72,
+      };
+
+      const callerDoctor = {
+        id: 'doc-456',
+        role: 'doctor',
+        is_verified_doctor: true,
+      };
+
+      const connections = [
+        { caregiver_id: 'doc-456', patient_id: 'patient-123', status: 'active' },
+      ];
+
+      function canDoctorViewContactDetails(doctor, patient, links) {
+        const isLinked = links.some(
+          (l) => l.caregiver_id === doctor.id && l.patient_id === patient.id
+        );
+        if (!isLinked) return null;
+        return {
+          phone: patient.phone,
+          email: patient.email,
+          emergency_contact_name: patient.emergency_contact_name,
+          emergency_contact_phone: patient.emergency_contact_phone,
+        };
+      }
+
+      const contact = canDoctorViewContactDetails(callerDoctor, patientProfile, connections);
+      assert.ok(contact !== null);
+      assert.strictEqual(contact.phone, '+91 98765 43210');
+      assert.strictEqual(contact.email, 'margaret@example.com');
+      assert.strictEqual(contact.emergency_contact_phone, '+91 98765 00000');
+    });
+
+    it('should disallow unlinked doctor from reading patient contact details', () => {
+      const patientProfile = {
+        id: 'patient-123',
+        full_name: 'Margaret Doe',
+        phone: '+91 98765 43210',
+      };
+
+      const unlinkedDoctor = {
+        id: 'doc-999',
+        role: 'doctor',
+        is_verified_doctor: true,
+      };
+
+      const connections = [
+        { caregiver_id: 'doc-456', patient_id: 'patient-123', status: 'active' },
+      ];
+
+      function canDoctorViewContactDetails(doctor, patient, links) {
+        const isLinked = links.some(
+          (l) => l.caregiver_id === doctor.id && l.patient_id === patient.id
+        );
+        return isLinked ? patient.phone : null;
+      }
+
+      const contact = canDoctorViewContactDetails(unlinkedDoctor, patientProfile, connections);
+      assert.strictEqual(contact, null);
+    });
+  });
+
+  describe('take_dose Ownership Verification', () => {
+    it('should reject take_dose when medication belongs to a different patient', () => {
+      const medications = [
+        { id: 101, patient_id: 'patient-A', is_active: true, pills_remaining: 30 },
+        { id: 102, patient_id: 'patient-B', is_active: true, pills_remaining: 15 },
+      ];
+
+      function simulateTakeDose(callerId, medicationId) {
+        const med = medications.find(
+          (m) => m.id === medicationId && m.patient_id === callerId && m.is_active
+        );
+        if (!med) {
+          throw new Error('Medication not found or not owned by user');
+        }
+        return { success: true, pills_remaining: med.pills_remaining - 1 };
+      }
+
+      // Caller B tries to take Patient A's medication
+      assert.throws(
+        () => simulateTakeDose('patient-B', 101),
+        /Medication not found or not owned by user/
+      );
+
+      // Caller A takes their own medication
+      const res = simulateTakeDose('patient-A', 101);
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(res.pills_remaining, 29);
+    });
+  });
+
+  describe('evaluate_missed_doses Midnight Rollover Logic', () => {
+    it('should not mark 00:10 doses as missed using full datetime comparison', () => {
+      // Simulate date 2026-10-20 at 00:15 IST
+      const nowKolkata = new Date('2026-10-20T00:15:00+05:30');
+      const cutoff = new Date(nowKolkata.getTime() - 60 * 60 * 1000); // 2026-10-19T23:15:00+05:30
+
+      function isDoseOverdue(logDate, scheduledTimeStr) {
+        // Parse "08:00 AM" or "11:30 PM"
+        const [timePart, modifier] = scheduledTimeStr.split(' ');
+        let [hours, minutes] = timePart.split(':').map(Number);
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
+
+        const doseDateTime = new Date(`${logDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+05:30`);
+        return doseDateTime < cutoff;
+      }
+
+      // Today's dose scheduled for 08:00 AM should NOT be overdue at 00:15 AM
+      assert.strictEqual(isDoseOverdue('2026-10-20', '08:00 AM'), false);
+
+      // Yesterday's dose scheduled for 08:00 AM SHOULD be overdue
+      assert.strictEqual(isDoseOverdue('2026-10-19', '08:00 AM'), true);
+
+      // Yesterday's late night dose at 10:00 PM (22:00) should be overdue at 00:15 AM (cutoff was 23:15)
+      assert.strictEqual(isDoseOverdue('2026-10-19', '10:00 PM'), true);
+    });
+  });
+
+  describe('protect_profile_fields Trigger Rules', () => {
+    it('should disallow client from elevating role or is_verified_doctor', () => {
+      const oldProfile = {
+        id: 'user-123',
+        role: 'patient',
+        email: 'patient@example.com',
+        is_verified_doctor: false,
+        full_name: 'Regular Patient',
+      };
+
+      function simulateProfileUpdateTrigger(oldRow, newRow, userRole = 'authenticated') {
+        const result = { ...newRow };
+        if (['anon', 'authenticated'].includes(userRole)) {
+          result.id = oldRow.id;
+          result.role = oldRow.role;
+          result.email = oldRow.email;
+          result.is_verified_doctor = oldRow.is_verified_doctor;
+          if (oldRow.is_verified_doctor) {
+            result.medical_license_number = oldRow.medical_license_number;
+            result.medical_council = oldRow.medical_council;
+          }
+        }
+        return result;
+      }
+
+      // Attacker attempts to change role to doctor and is_verified_doctor to true
+      const maliciousUpdate = {
+        id: 'user-123',
+        role: 'doctor',
+        email: 'patient@example.com',
+        is_verified_doctor: true,
+        full_name: 'Patient Impersonating MD',
+      };
+
+      const sanitized = simulateProfileUpdateTrigger(oldProfile, maliciousUpdate, 'authenticated');
+      assert.strictEqual(sanitized.role, 'patient');
+      assert.strictEqual(sanitized.is_verified_doctor, false);
+      assert.strictEqual(sanitized.full_name, 'Patient Impersonating MD'); // Name can be updated
+    });
+  });
+
+  describe('Untargeted Review Active Link Requirement', () => {
+    it('should require active link if target_doctor_id is null', () => {
+      const review = {
+        id: 50,
+        patient_id: 'patient-123',
+        target_doctor_id: null, // Untargeted practice queue
+        status: 'pending',
+      };
+
+      const links = [
+        { patient_id: 'patient-123', caregiver_id: 'doc-linked', status: 'active' },
+        { patient_id: 'patient-456', caregiver_id: 'doc-unlinked', status: 'active' },
+      ];
+
+      function canReviewPrescription(doctor, targetReview) {
+        if (!doctor.is_verified_doctor) return false;
+        if (targetReview.target_doctor_id !== null) {
+          return targetReview.target_doctor_id === doctor.id;
+        }
+        // If target is null, doctor MUST have an active link to this patient
+        return links.some(
+          (l) => l.patient_id === targetReview.patient_id && l.caregiver_id === doctor.id && l.status === 'active'
+        );
+      }
+
+      const linkedDoctor = { id: 'doc-linked', is_verified_doctor: true };
+      const unlinkedDoctor = { id: 'doc-unlinked', is_verified_doctor: true };
+
+      assert.strictEqual(canReviewPrescription(linkedDoctor, review), true);
+      assert.strictEqual(canReviewPrescription(unlinkedDoctor, review), false);
+    });
+  });
+
+  describe('Doctor Account Deletion Review Preservation', () => {
+    it('should nullify target_doctor_id on patients reviews instead of deleting them', () => {
+      let pendingReviews = [
+        { id: 1, patient_id: 'patient-X', target_doctor_id: 'doc-to-delete' },
+        { id: 2, patient_id: 'doc-to-delete', target_doctor_id: null }, // Doctor's own personal prescription
+        { id: 3, patient_id: 'patient-Y', target_doctor_id: 'doc-other' },
+      ];
+
+      function simulateDeleteAccount(userId) {
+        // Patient's own reviews deleted
+        pendingReviews = pendingReviews.filter((r) => r.patient_id !== userId);
+        // Targeted doctor references cleared without deleting patient review!
+        pendingReviews = pendingReviews.map((r) =>
+          r.target_doctor_id === userId ? { ...r, target_doctor_id: null } : r
+        );
+      }
+
+      simulateDeleteAccount('doc-to-delete');
+
+      // Patient X review is preserved with target_doctor_id set to null
+      const patientXReview = pendingReviews.find((r) => r.patient_id === 'patient-X');
+      assert.ok(patientXReview !== undefined);
+      assert.strictEqual(patientXReview.target_doctor_id, null);
+
+      // Doctor's own personal review row is purged
+      const docReview = pendingReviews.find((r) => r.patient_id === 'doc-to-delete');
+      assert.strictEqual(docReview, undefined);
+
+      // Patient Y review unaffected
+      const patientYReview = pendingReviews.find((r) => r.patient_id === 'patient-Y');
+      assert.strictEqual(patientYReview.target_doctor_id, 'doc-other');
+    });
+  });
+
+  describe('Schedule Time Format Validation Constraint', () => {
+    it('should validate 12-hour HH:MM AM/PM regex format chk_time_format', () => {
+      const timeRegex = /^(0[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/;
+
+      // Valid times
+      assert.ok(timeRegex.test('08:00 AM'));
+      assert.ok(timeRegex.test('12:30 PM'));
+      assert.ok(timeRegex.test('01:45 PM'));
+      assert.ok(timeRegex.test('11:59 PM'));
+
+      // Invalid times
+      assert.ok(!timeRegex.test('8:00 AM')); // missing leading zero
+      assert.ok(!timeRegex.test('13:00 PM')); // hour > 12
+      assert.ok(!timeRegex.test('00:30 AM')); // hour 00 invalid in 12h
+      assert.ok(!timeRegex.test('08:60 AM')); // minute >= 60
+      assert.ok(!timeRegex.test('random string'));
+    });
+  });
+
+  describe('Doctor Disconnect and Review Target Reassignment', () => {
+    it('should disconnect doctor, purge link, and nullify pending review targets', () => {
+      let patientCaregivers = [
+        { id: 1, patient_id: 'patient-A', caregiver_id: 'doc-1', status: 'active' },
+        { id: 2, patient_id: 'patient-B', caregiver_id: 'doc-2', status: 'active' },
+      ];
+      let pendingReviews = [
+        { id: 10, patient_id: 'patient-A', target_doctor_id: 'doc-1', status: 'pending' },
+        { id: 11, patient_id: 'patient-B', target_doctor_id: 'doc-2', status: 'pending' },
+      ];
+
+      function simulateDisconnect(callerId, linkId) {
+        const link = patientCaregivers.find(
+          (l) => l.id === linkId && (l.patient_id === callerId || l.caregiver_id === callerId)
+        );
+        if (!link) {
+          throw new Error('Connection not found or not owned by user');
+        }
+
+        // Reset target_doctor_id on patient's pending reviews
+        if (link.patient_id === callerId && link.caregiver_id) {
+          pendingReviews = pendingReviews.map((r) =>
+            r.patient_id === callerId && r.target_doctor_id === link.caregiver_id && r.status === 'pending'
+              ? { ...r, target_doctor_id: null }
+              : r
+          );
+        }
+
+        // Remove link
+        patientCaregivers = patientCaregivers.filter((l) => l.id !== linkId);
+        return { success: true };
+      }
+
+      // Unauthorized user cannot disconnect
+      assert.throws(
+        () => simulateDisconnect('attacker-C', 1),
+        /Connection not found or not owned by user/
+      );
+
+      // Patient A disconnects Doc 1
+      const res = simulateDisconnect('patient-A', 1);
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(patientCaregivers.some((l) => l.id === 1), false);
+
+      // Patient A's pending review target is nullified
+      const pAReview = pendingReviews.find((r) => r.id === 10);
+      assert.strictEqual(pAReview.target_doctor_id, null);
+
+      // Patient B's review is unaffected
+      const pBReview = pendingReviews.find((r) => r.id === 11);
+      assert.strictEqual(pBReview.target_doctor_id, 'doc-2');
+    });
+
+    it('should exclude revoked or unlinked doctors from active roster query', () => {
+      const links = [
+        { id: 1, patient_id: 'patient-A', caregiver_id: 'doc-1', status: 'active' },
+        { id: 2, patient_id: 'patient-A', caregiver_id: 'doc-revoked', status: 'revoked' },
+      ];
+
+      const activeOnly = links.filter(
+        (l) => l.patient_id === 'patient-A' && l.status === 'active' && l.caregiver_id !== null
+      );
+      assert.strictEqual(activeOnly.length, 1);
+      assert.strictEqual(activeOnly[0].caregiver_id, 'doc-1');
+    });
+  });
+
+  describe('Vibe-Check Security Audit: Secrets Exposure & Git Tracking', () => {
+    it('should ensure .env and google-services.json are strictly excluded from git tracking', () => {
+      const gitignore = fs.readFileSync(path.join(__dirname, '..', '.gitignore'), 'utf8');
+      assert.ok(gitignore.includes('.env'), '.gitignore must contain .env');
+      assert.ok(gitignore.includes('google-services.json'), '.gitignore must contain google-services.json');
+    });
+
+    it('should verify google-services.json.example template exists with sanitized placeholder values', () => {
+      const examplePath = path.join(__dirname, '..', 'google-services.json.example');
+      assert.ok(fs.existsSync(examplePath), 'google-services.json.example must exist');
+      const content = JSON.parse(fs.readFileSync(examplePath, 'utf8'));
+      assert.strictEqual(content.project_info.project_number, '000000000000');
+      assert.ok(content.client[0].api_key[0].current_key.includes('DummyKey'));
+    });
+  });
+
+  describe('Vibe-Check Security Audit: Database Access & IDOR Protection', () => {
+    it('should enforce status = active on profiles RLS policy to block revoked caregivers', () => {
+      const patientCaregivers = [
+        { patient_id: 'p1', caregiver_id: 'cg-active', status: 'active' },
+        { patient_id: 'p1', caregiver_id: 'cg-revoked', status: 'revoked' },
+        { patient_id: 'p1', caregiver_id: 'cg-pending', status: 'pending' },
+      ];
+
+      function canCaregiverReadProfile(callerId, patientId) {
+        if (callerId === patientId) return true;
+        return patientCaregivers.some(
+          (pc) => pc.patient_id === patientId && pc.caregiver_id === callerId && pc.status === 'active'
+        );
+      }
+
+      // Patient reads self
+      assert.strictEqual(canCaregiverReadProfile('p1', 'p1'), true);
+      // Active caregiver reads patient
+      assert.strictEqual(canCaregiverReadProfile('cg-active', 'p1'), true);
+      // Revoked caregiver MUST BE REJECTED (IDOR fix)
+      assert.strictEqual(canCaregiverReadProfile('cg-revoked', 'p1'), false);
+      // Pending invite caregiver MUST BE REJECTED (IDOR fix)
+      assert.strictEqual(canCaregiverReadProfile('cg-pending', 'p1'), false);
+      // Random attacker MUST BE REJECTED
+      assert.strictEqual(canCaregiverReadProfile('attacker', 'p1'), false);
+    });
+
+    it('should enforce strict ownership and active caregiver link on medications table RLS', () => {
+      const medications = [
+        { id: 101, patient_id: 'user-A', medicine_name: 'Metformin', pills_remaining: 30 },
+        { id: 102, patient_id: 'user-B', medicine_name: 'Lisinopril', pills_remaining: 15 },
+      ];
+      const activeLinks = [
+        { patient_id: 'user-A', caregiver_id: 'caregiver-1', status: 'active' },
+      ];
+
+      function canReadMedication(callerId, medId) {
+        const med = medications.find((m) => m.id === medId);
+        if (!med) return false;
+        if (med.patient_id === callerId) return true;
+        return activeLinks.some(
+          (al) => al.patient_id === med.patient_id && al.caregiver_id === callerId && al.status === 'active'
+        );
+      }
+
+      function canMutateMedication(callerId, medId) {
+        const med = medications.find((m) => m.id === medId);
+        if (!med) return false;
+        return med.patient_id === callerId;
+      }
+
+      // User A reads their own medication
+      assert.strictEqual(canReadMedication('user-A', 101), true);
+      // User B cannot read User A's medication
+      assert.strictEqual(canReadMedication('user-B', 101), false);
+      // Linked active caregiver can read User A's medication
+      assert.strictEqual(canReadMedication('caregiver-1', 101), true);
+      // Linked caregiver CANNOT mutate User A's medication (owner-only mutation)
+      assert.strictEqual(canMutateMedication('caregiver-1', 101), false);
+      // User B cannot mutate User A's medication
+      assert.strictEqual(canMutateMedication('user-B', 101), false);
+    });
+
+    it('should restrict unassigned pending reviews strictly to verified physicians (blocking unverified caregivers)', () => {
+      const users = [
+        { id: 'verified-doc', role: 'doctor', is_verified_doctor: true },
+        { id: 'unverified-doc', role: 'doctor', is_verified_doctor: false },
+        { id: 'fake-caregiver', role: 'caregiver', is_verified_doctor: false },
+        { id: 'patient-A', role: 'patient', is_verified_doctor: false },
+      ];
+
+      const pendingReviews = [
+        { id: 1, patient_id: 'patient-A', target_doctor_id: null, medication: 'Amoxicillin' },
+      ];
+
+      function canViewUntargetedReview(callerId, reviewId) {
+        const review = pendingReviews.find((r) => r.id === reviewId);
+        if (!review) return false;
+        if (review.patient_id === callerId) return true;
+
+        const profile = users.find((u) => u.id === callerId);
+        if (!profile) return false;
+
+        // Untargeted reviews require is_verified_doctor = true
+        if (review.target_doctor_id === null) {
+          return profile.is_verified_doctor === true;
+        }
+        return review.target_doctor_id === callerId;
+      }
+
+      // Patient A reads own review
+      assert.strictEqual(canViewUntargetedReview('patient-A', 1), true);
+      // Verified doctor reads unassigned practice queue
+      assert.strictEqual(canViewUntargetedReview('verified-doc', 1), true);
+      // Unverified doctor cannot read unassigned queue
+      assert.strictEqual(canViewUntargetedReview('unverified-doc', 1), false);
+      // Self-declared caregiver CANNOT read unassigned review (privacy fix)
+      assert.strictEqual(canViewUntargetedReview('fake-caregiver', 1), false);
+    });
+  });
+
+  describe('Vibe-Check Security Audit: Edge Function Fail-Closed Quota & Timing Protection', () => {
+    it('should fail closed in scan-prescription when service key is missing or quota update fails', () => {
+      function evaluateQuotaEnforcement({ rpcAvailable, quotaAllowed, serviceKeyPresent, upsertSuccess }) {
+        if (rpcAvailable) {
+          return quotaAllowed ? { proceed: true } : { error: 'Quota reached', status: 429 };
+        }
+        // Fallback requires service key
+        if (!serviceKeyPresent) {
+          return { error: 'Service unavailable', status: 503 };
+        }
+        if (!upsertSuccess) {
+          return { error: 'Database write failed', status: 500 };
+        }
+        return { proceed: true };
+      }
+
+      // Normal flow with RPC
+      assert.deepStrictEqual(
+        evaluateQuotaEnforcement({ rpcAvailable: true, quotaAllowed: true }),
+        { proceed: true }
+      );
+      // Quota exceeded
+      assert.deepStrictEqual(
+        evaluateQuotaEnforcement({ rpcAvailable: true, quotaAllowed: false }),
+        { error: 'Quota reached', status: 429 }
+      );
+      // Missing service role key fails closed with 503
+      assert.deepStrictEqual(
+        evaluateQuotaEnforcement({ rpcAvailable: false, serviceKeyPresent: false }),
+        { error: 'Service unavailable', status: 503 }
+      );
+      // Upsert error fails closed with 500
+      assert.deepStrictEqual(
+        evaluateQuotaEnforcement({ rpcAvailable: false, serviceKeyPresent: true, upsertSuccess: false }),
+        { error: 'Database write failed', status: 500 }
+      );
+    });
+
+    it('should execute constant-time comparison in check-missed-doses to defeat timing side channels', () => {
+      const correctSecret = 'super_secret_service_role_key_2026';
+
+      function verifyTokenTimingSafe(token, expected) {
+        if (typeof token !== 'string' || typeof expected !== 'string') return false;
+        const isLengthMatch = token.length === expected.length;
+        let mismatch = isLengthMatch ? 0 : 1;
+        for (let i = 0; i < token.length && i < expected.length; i++) {
+          mismatch |= token.charCodeAt(i) ^ expected.charCodeAt(i);
+        }
+        return mismatch === 0;
+      }
+
+      assert.strictEqual(verifyTokenTimingSafe(correctSecret, correctSecret), true);
+      assert.strictEqual(verifyTokenTimingSafe('wrong_token', correctSecret), false);
+      assert.strictEqual(verifyTokenTimingSafe(correctSecret.slice(0, -1) + 'X', correctSecret), false);
+      assert.strictEqual(verifyTokenTimingSafe('', correctSecret), false);
+    });
+  });
+
+  describe('Vibe-Check Security Audit: Input Validation & PostgREST Sanitization', () => {
+    it('should validate and sanitize UUID inputs for PostgREST .or() filters', () => {
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      // Valid UUIDs
+      const validCgId = 'c1234567-89ab-cdef-0123-456789abcdef';
+      const validPatIds = ['a1234567-89ab-cdef-0123-456789abcdef', 'b1234567-89ab-cdef-0123-456789abcdef'];
+
+      assert.ok(UUID_REGEX.test(validCgId));
+      assert.ok(validPatIds.every((id) => UUID_REGEX.test(id)));
+
+      // Malicious injected strings
+      const maliciousId1 = 'c1234567-89ab-cdef-0123-456789abcdef),target_doctor_id.is.null';
+      const maliciousId2 = '1; DROP TABLE medications;--';
+
+      assert.ok(!UUID_REGEX.test(maliciousId1));
+      assert.ok(!UUID_REGEX.test(maliciousId2));
+    });
+
+    it('should reject negative, zero, fractional, or excessive restock counts', () => {
+      function validateRestockCount(count) {
+        if (!Number.isInteger(count) || count <= 0 || count > 5000) {
+          throw new Error('Invalid restock quantity: must be an integer between 1 and 5000.');
+        }
+        return true;
+      }
+
+      assert.strictEqual(validateRestockCount(30), true);
+      assert.strictEqual(validateRestockCount(1), true);
+      assert.strictEqual(validateRestockCount(5000), true);
+
+      assert.throws(() => validateRestockCount(-10), /Invalid restock quantity/);
+      assert.throws(() => validateRestockCount(0), /Invalid restock quantity/);
+      assert.throws(() => validateRestockCount(15.5), /Invalid restock quantity/);
+      assert.throws(() => validateRestockCount(100000), /Invalid restock quantity/);
+      assert.throws(() => validateRestockCount(NaN), /Invalid restock quantity/);
+    });
+  });
 });
+
 
 

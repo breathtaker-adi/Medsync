@@ -23,8 +23,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { Theme } from '../theme';
 
 interface PlaceResult {
@@ -386,20 +386,17 @@ export default function DoctorVerificationScreen() {
       specialty === 'Other' && customSpecialty.trim() ? customSpecialty.trim() : specialty;
 
     try {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName.trim(),
-          medical_license_number: licenseNumber.trim(),
-          medical_council: medicalCouncil.trim(),
-          specialty: resolvedSpecialty,
-          clinic_affiliation: clinicAffiliation.trim(),
-          years_of_experience: yearsExperience,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.user.id);
+      const res = await authService.updateProfile(session.user.id, {
+        full_name: fullName.trim(),
+        medical_license_number: licenseNumber.trim(),
+        medical_council: medicalCouncil.trim(),
+        specialty: resolvedSpecialty,
+        clinic_affiliation: clinicAffiliation.trim(),
+        years_of_experience: yearsExperience,
+        updated_at: new Date().toISOString(),
+      });
 
-      if (updateError) throw updateError;
+      if (!res.success) throw res.error;
 
       await refreshProfile();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

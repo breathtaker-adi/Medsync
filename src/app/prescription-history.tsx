@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { notificationService } from '../services/notificationService';
 import { prescriptionService } from '../services/prescriptionService';

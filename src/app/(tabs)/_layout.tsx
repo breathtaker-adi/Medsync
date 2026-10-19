@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Platform, View, StyleSheet, BackHandler, ToastAndroid } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, useRouter, usePathname } from 'expo-router';
-import { useAuth } from '../../context/authcontext';
+import { useAuth } from '../../context/AuthContext';
 import { Theme } from '../../theme';
 
 export default function TabsLayout() {

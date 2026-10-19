@@ -5,6 +5,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -22,7 +23,7 @@ import { PulseView } from '../../components/PulseView';
 import { SeniorButton } from '../../components/SeniorButton';
 import { MedSyncLogo } from '../../components/MedSyncLogo';
 import { useAccessibility } from '../../context/AccessibilityContext';
-import { useAuth } from '../../context/authcontext';
+import { useAuth } from '../../context/AuthContext';
 import { useCaregiverRoster } from '../../hooks/useCaregiverRoster';
 import { notificationService } from '../../services/notificationService';
 import { Theme } from '../../theme';
@@ -776,6 +777,73 @@ export default function CaregiverDashboard() {
 
                   <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
                 </View>
+
+                {/* Patient Contact Details Section */}
+                {patient.phone || patient.email || patient.emergency_contact_phone ? (
+                  <View style={styles.patientContactRow}>
+                    {patient.phone ? (
+                      <TouchableOpacity
+                        style={styles.contactChip}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic();
+                          Linking.openURL(`tel:${patient.phone}`);
+                        }}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Call patient: ${patient.phone}`}
+                      >
+                        <Ionicons name="call" size={12} color="#0284C7" />
+                        <Text style={styles.contactChipText}>{patient.phone}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {patient.email ? (
+                      <TouchableOpacity
+                        style={styles.contactChip}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic();
+                          Linking.openURL(`mailto:${patient.email}`);
+                        }}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Email patient: ${patient.email}`}
+                      >
+                        <Ionicons name="mail" size={12} color="#0D9488" />
+                        <Text style={styles.contactChipText} numberOfLines={1}>
+                          {patient.email}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {patient.emergency_contact_phone ? (
+                      <TouchableOpacity
+                        style={[styles.contactChip, styles.emergencyContactChip]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic();
+                          Linking.openURL(`tel:${patient.emergency_contact_phone}`);
+                        }}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Emergency call: ${patient.emergency_contact_name || 'Emergency contact'}`}
+                      >
+                        <Ionicons name="warning" size={12} color="#DC2626" />
+                        <Text style={[styles.contactChipText, { color: '#DC2626' }]}>
+                          SOS: {patient.emergency_contact_name ? `${patient.emergency_contact_name} ` : ''}({patient.emergency_contact_phone})
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ) : (
+                  <View style={styles.patientNoContactRow}>
+                    <Ionicons name="call-outline" size={12} color="#94A3B8" />
+                    <Text style={styles.patientNoContactText}>
+                      No direct contact phone registered
+                    </Text>
+                  </View>
+                )}
 
                 {/* Patient Bottom Controls */}
                 <View style={styles.patientBottomRow}>
@@ -1572,6 +1640,49 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#64748B',
     marginTop: 1,
+  },
+  patientContactRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  contactChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  emergencyContactChip: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  contactChipText: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: '#0369A1',
+  },
+  patientNoContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+  },
+  patientNoContactText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 10.5,
+    color: '#94A3B8',
   },
   patientBottomRow: {
     flexDirection: 'row',

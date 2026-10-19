@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '../components/BackButton';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { SeniorButton } from '../components/SeniorButton';
-import { supabase } from '../lib/supabase';
+import { authService } from '../services/authService';
 import { Theme } from '../theme';
 
 export default function ResetPasswordScreen() {
@@ -45,12 +45,10 @@ export default function ResetPasswordScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
+      const result = await authService.updatePassword(password);
 
-      if (error) {
-        Alert.alert('Update Failed', error.message);
+      if (!result.success) {
+        Alert.alert('Update Failed', result.error.message);
       } else {
         setSuccess(true);
       }

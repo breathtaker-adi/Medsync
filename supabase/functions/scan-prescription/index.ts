@@ -64,7 +64,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Enforce per-user daily scan quota to protect against OpenAI billing abuse
+    // 3. Enforce per-user daily scan quota to protect against OpenAI billing abuse (Fail-Closed)
     const todayKolkata = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
@@ -72,28 +72,90 @@ Deno.serve(async (req: Request) => {
       day: '2-digit',
     }).format(new Date());
 
-    const { count: dailyScanCount, error: countError } = await supabase
-      .from('pending_reviews')
-      .select('id', { count: 'exact', head: true })
-      .eq('patient_id', user.id)
-      .gte('created_at', `${todayKolkata}T00:00:00+05:30`);
+    // Primary: Attempt atomic RPC execution
+    const { data: quotaResult, error: quotaError } = await supabase.rpc(
+      'check_and_increment_scan_quota',
+      { p_user_id: user.id, p_max_daily: MAX_DAILY_SCANS }
+    );
 
-    if (!countError && dailyScanCount !== null && dailyScanCount >= MAX_DAILY_SCANS) {
-      return new Response(
-        JSON.stringify({
-          error: `Daily prescription scan quota reached (${MAX_DAILY_SCANS} scans per day). Please try again tomorrow or contact support.`,
-        }),
-        {
-          status: 429,
+    if (!quotaError && quotaResult) {
+      if (!quotaResult.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: `Daily prescription scan quota reached (${MAX_DAILY_SCANS} scans per day). Please try again tomorrow or contact support.`,
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    } else {
+      // Fallback: Admin client check with strict fail-closed enforcement
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (!serviceRoleKey) {
+        console.error('Server configuration error: SUPABASE_SERVICE_ROLE_KEY missing');
+        return new Response(
+          JSON.stringify({ error: 'AI quota service unavailable. Please configure server credentials.' }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const { data: usageRecord, error: usageErr } = await adminClient
+        .from('scan_usage')
+        .select('scan_count')
+        .eq('user_id', user.id)
+        .eq('scan_date', todayKolkata)
+        .maybeSingle();
+
+      if (usageErr) {
+        console.error('Scan quota lookup failure:', usageErr);
+        return new Response(JSON.stringify({ error: 'Unable to verify daily scan quota.' }), {
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        });
+      }
+
+      const currentScans = usageRecord?.scan_count ?? 0;
+      if (currentScans >= MAX_DAILY_SCANS) {
+        return new Response(
+          JSON.stringify({
+            error: `Daily prescription scan quota reached (${MAX_DAILY_SCANS} scans per day). Please try again tomorrow or contact support.`,
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      const { error: upsertErr } = await adminClient.from('scan_usage').upsert(
+        {
+          user_id: user.id,
+          scan_date: todayKolkata,
+          scan_count: currentScans + 1,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,scan_date' }
       );
+
+      if (upsertErr) {
+        console.error('Scan quota write failure:', upsertErr);
+        return new Response(JSON.stringify({ error: 'Unable to update daily scan quota.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) {
       console.error('Server configuration error: OPENAI_API_KEY missing');
-      return new Response(JSON.stringify({ error: 'AI service unavailable. Please configure server keys.' }), {
+      return new Response(JSON.stringify({ error: 'AI service unavailable. Please configure server credentials.' }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

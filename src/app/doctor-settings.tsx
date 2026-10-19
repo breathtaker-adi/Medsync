@@ -26,8 +26,9 @@ import { Image } from 'expo-image';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
+import { patientService } from '../services/patientService';
 import { Theme } from '../theme';
 import { avatarHelper } from '../utils/avatarHelper';
 
@@ -85,6 +86,7 @@ export default function DoctorSettingsScreen() {
 
   // Avatar State
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url || null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
 
 
@@ -124,19 +126,11 @@ export default function DoctorSettingsScreen() {
   const fetchRosterStats = useCallback(async () => {
     if (!session?.user?.id) return;
     try {
-      const { count: patientCount } = await supabase
-        .from('patient_caregivers')
-        .select('id', { count: 'exact', head: true })
-        .eq('caregiver_id', session.user.id);
-
-      setLinkedCount(patientCount || 0);
-
-      const { count: reviewCount } = await supabase
-        .from('pending_reviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      setPendingReviewsCount(reviewCount || 0);
+      const res = await patientService.getDoctorRosterStats(session.user.id);
+      if (res.success) {
+        setLinkedCount(res.data.patientCount);
+        setPendingReviewsCount(res.data.pendingReviewCount);
+      }
     } catch (err) {
       console.warn('Error fetching doctor stats:', err);
     } finally {
@@ -165,15 +159,13 @@ export default function DoctorSettingsScreen() {
   }, [router]);
 
   const handleToggleAlerts = async (value: boolean) => {
+    if (!session?.user?.id) return;
     triggerHaptic();
     setAlertsEnabled(value);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ alerts_enabled: value })
-      .eq('id', session?.user?.id);
+    const res = await authService.updateProfile(session.user.id, { alerts_enabled: value });
 
-    if (error) {
+    if (!res.success) {
       Alert.alert('Error', 'Could not update alert preferences.');
       setAlertsEnabled(!value);
     } else {
@@ -191,47 +183,15 @@ export default function DoctorSettingsScreen() {
     setLinking(true);
 
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('claim_pairing_code', {
-        p_code: formattedCode,
-      });
+      const res = await patientService.claimPairingCode(session.user.id, formattedCode);
 
-      if (!rpcError && rpcData?.success) {
-        Alert.alert('Success', 'Patient linked to your care roster successfully!');
-        setModalVisible(false);
-        setPairingInput('');
-        fetchRosterStats();
-        return;
-      }
-
-      // Fallback direct link
-      const { data, error } = await supabase
-        .from('patient_caregivers')
-        .select('patient_id, caregiver_id')
-        .eq('pairing_code', formattedCode)
-        .single();
-
-      if (error || !data) {
-        Alert.alert('Error', rpcError?.message || 'Invalid pairing code or patient not found.');
-        return;
-      }
-
-      if (data.caregiver_id) {
-        Alert.alert('Already Linked', 'This patient is already linked to a caregiver or doctor.');
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('patient_caregivers')
-        .update({ caregiver_id: session.user.id })
-        .eq('pairing_code', formattedCode);
-
-      if (!updateError) {
+      if (res.success) {
         Alert.alert('Success', 'Patient linked to your clinical roster!');
         setModalVisible(false);
         setPairingInput('');
         fetchRosterStats();
       } else {
-        Alert.alert('Error', 'Failed to link patient.');
+        Alert.alert('Error', res.error.message || 'Failed to link patient.');
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to link patient.');
@@ -302,11 +262,49 @@ export default function DoctorSettingsScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
+            const res = await authService.signOut();
+            if (!res.success) {
               Alert.alert('Error', 'Failed to sign out.');
             } else {
               router.replace('/login');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    triggerHaptic();
+    Alert.alert(
+      'Delete Physician Account & Clinical Records',
+      'Are you sure you want to delete your account? All clinician credentials, patient associations, and pending review assignments will be permanently purged in accordance with DPDP Act 2023 data erasure standards. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingAccount(true);
+              const result = await authService.deleteAccount();
+              setDeletingAccount(false);
+
+              if (!result.success) {
+                Alert.alert('Deletion Failed', result.error.message || 'Failed to delete account. Please try again.');
+                return;
+              }
+
+              Alert.alert('Account Deleted', 'Your physician account and credentials have been permanently deleted.', [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/login'),
+                },
+              ]);
+            } catch (err: any) {
+              setDeletingAccount(false);
+              console.error('Doctor account deletion error:', err);
+              Alert.alert('Error', err?.message || 'Failed to delete account. Please try again.');
             }
           },
         },
@@ -351,16 +349,6 @@ export default function DoctorSettingsScreen() {
                 {profile?.specialty || 'Internal Medicine & Geriatrics'}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 }}>
-                <TouchableOpacity
-                  onPress={handlePickAvatar}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                >
-                  <Ionicons name="camera-outline" size={13} color={Theme.colors.primary} />
-                  <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 11.5, color: Theme.colors.primary }}>
-                    Photo
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   onPress={() => {
                     triggerHaptic();
@@ -704,7 +692,7 @@ export default function DoctorSettingsScreen() {
 
 
           <TouchableOpacity
-            style={[styles.settingRow, { borderBottomWidth: 0 }]}
+            style={styles.settingRow}
             onPress={handleLogout}
           >
             <View style={styles.settingInfo}>
@@ -712,6 +700,30 @@ export default function DoctorSettingsScreen() {
               <Text style={[styles.settingTitle, { color: Theme.colors.error }]}>Sign Out</Text>
             </View>
             <Ionicons name="chevron-forward" size={22} color={Theme.colors.outline} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingRow, { borderBottomWidth: 0 }]}
+            onPress={handleDeleteAccount}
+            disabled={deletingAccount}
+            accessibilityRole="button"
+            accessibilityLabel="Delete Physician Account & Data"
+          >
+            <View style={styles.settingInfo}>
+              {deletingAccount ? (
+                <ActivityIndicator size="small" color={Theme.colors.error} />
+              ) : (
+                <Ionicons name="trash-outline" size={22} color={Theme.colors.error} />
+              )}
+              <View style={styles.settingTextContainer}>
+                <Text style={[styles.settingTitle, { color: Theme.colors.error }]}>
+                  {deletingAccount ? 'Deleting Account...' : 'Delete Account & Data'}
+                </Text>
+                <Text style={styles.settingSubtitle}>
+                  Permanently erase clinical account &amp; roster records
+                </Text>
+              </View>
+            </View>
           </TouchableOpacity>
         </View>
 

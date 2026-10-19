@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,8 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SeniorButton } from '../components/SeniorButton';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../theme';
 
 import { useAccessibility } from '../context/AccessibilityContext';
@@ -120,6 +120,120 @@ export default function PatientDetails() {
                 {profile?.allergies || 'None reported'}
               </Text>
             </View>
+          </View>
+
+          {/* Age */}
+          {profile?.age != null && (
+            <View style={styles.clinicalCard}>
+              <View style={[styles.clinicalIconPlate, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="calendar-outline" size={24} color="#7C3AED" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.clinicalLabel}>Patient Age</Text>
+                <Text style={styles.clinicalValue}>{profile.age} years</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Contact & Emergency Details */}
+        <Text style={styles.sectionHeader}>CONTACT &amp; EMERGENCY DETAILS</Text>
+        <View style={styles.contactDetailsCard}>
+          {/* Direct Phone */}
+          <View style={styles.contactItemRow}>
+            <View style={[styles.contactIconPlate, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="call" size={18} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactItemLabel}>Direct Phone</Text>
+              <Text style={styles.contactItemValue}>
+                {profile?.phone || 'Not provided by patient'}
+              </Text>
+            </View>
+            {profile?.phone ? (
+              <TouchableOpacity
+                style={styles.actionCallBtn}
+                onPress={() => {
+                  triggerHaptic();
+                  Linking.openURL(`tel:${profile.phone}`);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Call patient at ${profile.phone}`}
+              >
+                <Ionicons name="call" size={14} color="#FFFFFF" />
+                <Text style={styles.actionCallText}>Call</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Email Address */}
+          <View style={[styles.contactItemRow, { borderTopWidth: 1, borderTopColor: '#F1F5F9' }]}>
+            <View style={[styles.contactIconPlate, { backgroundColor: '#CCFBF1' }]}>
+              <Ionicons name="mail" size={18} color="#0F766E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.contactItemLabel}>Email Address</Text>
+              <Text style={styles.contactItemValue}>
+                {profile?.email || 'Not provided'}
+              </Text>
+            </View>
+            {profile?.email ? (
+              <TouchableOpacity
+                style={[styles.actionCallBtn, { backgroundColor: '#0F766E' }]}
+                onPress={() => {
+                  triggerHaptic();
+                  Linking.openURL(`mailto:${profile.email}`);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Email patient at ${profile.email}`}
+              >
+                <Ionicons name="mail" size={14} color="#FFFFFF" />
+                <Text style={styles.actionCallText}>Email</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Emergency SOS Contact */}
+          <View
+            style={[
+              styles.contactItemRow,
+              {
+                borderTopWidth: 1,
+                borderTopColor: '#FECACA',
+                backgroundColor: '#FEF2F2',
+                borderRadius: 10,
+                padding: 10,
+                marginTop: 2,
+              },
+            ]}
+          >
+            <View style={[styles.contactIconPlate, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="alert-circle" size={20} color="#DC2626" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.contactItemLabel, { color: '#DC2626', fontFamily: 'PublicSans-Bold' }]}>
+                Emergency Contact (SOS)
+              </Text>
+              <Text style={[styles.contactItemValue, { color: '#991B1B' }]}>
+                {profile?.emergency_contact_name
+                  ? `${profile.emergency_contact_name}${profile?.emergency_contact_phone ? ` • ${profile.emergency_contact_phone}` : ''}`
+                  : profile?.emergency_contact_phone || 'None listed'}
+              </Text>
+            </View>
+            {profile?.emergency_contact_phone ? (
+              <TouchableOpacity
+                style={[styles.actionCallBtn, { backgroundColor: '#DC2626' }]}
+                onPress={() => {
+                  triggerHaptic();
+                  Linking.openURL(`tel:${profile.emergency_contact_phone}`);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Emergency call to ${profile.emergency_contact_name || 'Emergency contact'}`}
+              >
+                <Ionicons name="call" size={14} color="#FFFFFF" />
+                <Text style={styles.actionCallText}>SOS Call</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -327,6 +441,54 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-ExtraBold',
     fontSize: 16,
     color: Theme.colors.onSurface,
+  },
+  contactDetailsCard: {
+    backgroundColor: Theme.colors.surfaceContainerLowest,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+    marginBottom: 18,
+    gap: 8,
+    ...Theme.elevation.level1,
+  },
+  contactItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 5,
+  },
+  contactIconPlate: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contactItemLabel: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11,
+    color: Theme.colors.onSurfaceVariant,
+    marginBottom: 1,
+  },
+  contactItemValue: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: Theme.colors.onSurface,
+  },
+  actionCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  actionCallText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
+    color: '#FFFFFF',
   },
   medsHeaderRow: {
     flexDirection: 'row',

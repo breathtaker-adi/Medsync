@@ -173,16 +173,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'nowrap',
+    paddingHorizontal: 8,
   },
   iconWrapper: {
     marginRight: 8,
-    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
     fontFamily: 'PublicSans-Bold',
-    letterSpacing: 0.1,
     textAlignVertical: 'center',
+    textAlign: 'center',
     paddingHorizontal: 2,
   },
   textNormal: {

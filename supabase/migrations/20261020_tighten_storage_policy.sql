@@ -6,6 +6,14 @@
 -- 3. Active linked caregiver/doctor via patient_caregivers
 -- 4. Verified physician (is_verified_doctor = true)
 
+-- 1. Ensure bucket is strictly private (DPDP Act 2023 / HIPAA confidentiality)
+UPDATE storage.buckets SET public = false WHERE id = 'prescriptions';
+
+-- 2. Drop any legacy public or open read policies
+DROP POLICY IF EXISTS "Public can view prescriptions" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public reads on prescriptions" ON storage.objects;
+DROP POLICY IF EXISTS "read own or linked patient or doctor" ON storage.objects;
+DROP POLICY IF EXISTS "read own or linked patient" ON storage.objects;
 DROP POLICY IF EXISTS "read own, targeted or linked" ON storage.objects;
 
 CREATE POLICY "read own, targeted or linked" ON storage.objects

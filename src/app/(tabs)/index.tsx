@@ -1,7 +1,7 @@
 // src/app/(tabs)/index.tsx
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
-import { useAuth } from '../../context/authcontext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Index() {
   const { profile, loading } = useAuth();

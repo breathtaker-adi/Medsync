@@ -8,11 +8,12 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AccessibilityProvider } from '../context/AccessibilityContext';
-import { AuthProvider, useAuth } from '../context/authcontext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { supabase } from '../lib/supabase';
+import { medicationService } from '../services/medicationService';
 import { Theme } from '../theme';
 
 LogBox.ignoreLogs([
@@ -84,50 +85,18 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
 
         // --- ACTION 1: User tapped "I Took It" ---
         if (actionId === 'MARK_TAKEN') {
-          const today = new Date().toISOString().split('T')[0];
-
           // Get active user session
           const {
             data: { session: currentSession },
           } = await supabase.auth.getSession();
           if (!currentSession?.user?.id) return;
 
-          // Attempt atomic take_dose RPC to avoid race conditions with app taps
-          const { error: rpcError } = await supabase.rpc('take_dose', {
-            p_medication_id: medId,
-            p_scheduled_time: '00:00',
+          // Record dose intake atomically with inventory update via service
+          await medicationService.recordDoseWithInventory({
+            medicationId: Number(medId),
+            patientId: currentSession.user.id,
+            scheduledTime: '00:00',
           });
-
-          if (rpcError) {
-            console.warn('take_dose RPC failed or not deployed, using client fallback:', rpcError);
-            // Fetch current medication data
-            const { data: med } = await supabase
-              .from('medications')
-              .select('time, pills_remaining')
-              .eq('id', medId)
-              .single();
-
-            // Log daily intake
-            await supabase.from('medication_logs').upsert(
-              {
-                medication_id: medId,
-                patient_id: currentSession.user.id,
-                log_date: today,
-                scheduled_time: med?.time || '00:00',
-                status: 'taken',
-              },
-              { onConflict: 'medication_id, log_date' }
-            );
-
-            // Decrement pill counter
-            if (med) {
-              const newPills = Math.max(0, (med.pills_remaining ?? 30) - 1);
-              await supabase
-                .from('medications')
-                .update({ pills_remaining: newPills })
-                .eq('id', medId);
-            }
-          }
 
           // Dismiss notification banner
           await Notifications.dismissNotificationAsync(

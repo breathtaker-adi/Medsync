@@ -19,8 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
-import { useAuth } from '../context/authcontext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { medicationService } from '../services/medicationService';
 import { Theme } from '../theme';
 import { Medication } from '../types/medication';
@@ -71,13 +70,9 @@ export default function MedicationDetailsScreen() {
     if (!med) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const { error } = await supabase
-      .from('medications')
-      .update({ status: 'skipped' })
-      .eq('id', med.id)
-      .eq('patient_id', session?.user?.id);
+    const res = await medicationService.updateMedication(med.id, { status: 'skipped' });
 
-    if (error) {
+    if (!res.success) {
       Alert.alert('Error', 'Failed to skip medication.');
     } else {
       Alert.alert('Skipped', `${med.medicine_name} dose skipped for today.`);
@@ -105,13 +100,9 @@ export default function MedicationDetailsScreen() {
           text: actionLabel,
           onPress: async () => {
             const nextActive = !isCurrentlyActive;
-            const { error } = await supabase
-              .from('medications')
-              .update({ is_active: nextActive })
-              .eq('id', Number(id))
-              .eq('patient_id', session?.user?.id);
+            const res = await medicationService.setMedicationActive(Number(id), nextActive);
 
-            if (!error) {
+            if (res.success) {
               setMed((prev) => (prev ? { ...prev, is_active: nextActive } : null));
               Alert.alert('Success', `Medication routine is now ${nextActive ? 'Active' : 'Paused'}.`);
             } else {
@@ -131,16 +122,11 @@ export default function MedicationDetailsScreen() {
       return;
     }
 
-    const newRemaining = (med?.pills_remaining ?? 0) + count;
-    const newTotal = Math.max(med?.total_pills ?? 30, newRemaining);
+    const res = await medicationService.restockMedication(Number(id), count);
 
-    const { error } = await supabase
-      .from('medications')
-      .update({ pills_remaining: newRemaining, total_pills: newTotal })
-      .eq('id', Number(id))
-      .eq('patient_id', session?.user?.id);
-
-    if (!error) {
+    if (res.success) {
+      const newRemaining = res.data;
+      const newTotal = Math.max(med?.total_pills ?? 30, newRemaining);
       setMed((prev) => (prev ? { ...prev, pills_remaining: newRemaining, total_pills: newTotal } : null));
       setRestockModalVisible(false);
       Alert.alert('Inventory Refilled', `Added ${count} units. New supply balance is ${newRemaining}.`);
@@ -163,13 +149,9 @@ export default function MedicationDetailsScreen() {
           text: 'Delete Forever',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase
-              .from('medications')
-              .delete()
-              .eq('id', Number(id))
-              .eq('patient_id', session?.user?.id);
+            const res = await medicationService.deleteMedication(Number(id));
 
-            if (!error) {
+            if (res.success) {
               Alert.alert('Deleted', 'Medication has been permanently removed.');
               router.replace('/(tabs)/patient-dashboard');
             } else {
@@ -200,13 +182,9 @@ export default function MedicationDetailsScreen() {
     }
 
     const finalTime = formatted.toUpperCase();
-    const { error } = await supabase
-      .from('medications')
-      .update({ time: finalTime })
-      .eq('id', Number(id))
-      .eq('patient_id', session?.user?.id);
+    const res = await medicationService.updateMedication(Number(id), { time: finalTime });
 
-    if (error) {
+    if (!res.success) {
       Alert.alert('Error', 'Could not update medication schedule time.');
     } else {
       setMed((prev) => (prev ? { ...prev, time: finalTime } : null));
@@ -408,26 +386,6 @@ export default function MedicationDetailsScreen() {
               'Administer according to verified schedule. If adverse symptoms occur, consult your healthcare provider or caregiver.'}
           </Text>
         </View>
-
-        {/* Routine Management Action (Pause / Resume) - Only shown when medication is active */}
-        {isActive && (
-          <TouchableOpacity style={styles.pauseRoutineCard} onPress={handleTogglePause}>
-            <View style={styles.pauseIconCircle}>
-              <Ionicons
-                name="pause"
-                size={18}
-                color="#D97706"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pauseCardTitle}>Pause Medication Routine</Text>
-              <Text style={styles.pauseCardSubtitle}>
-                Temporarily halt daily reminders without losing history
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
       {/* 3-DOTS ACTION SHEET MODAL (Hiding Delete Forever Safely) */}

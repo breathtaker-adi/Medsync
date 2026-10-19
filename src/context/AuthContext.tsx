@@ -1,14 +1,14 @@
-// src/context/authcontext.tsx
-import { Session, User } from '@supabase/supabase-js';
+// src/context/AuthContext.tsx
+import { Session } from '@supabase/supabase-js';
 import * as Device from 'expo-device';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { ENV } from '../config/env';
 import { supabase } from '../lib/supabase';
 import { authService } from '../services/authService';
 import { UserProfile } from '../types/auth';
-import { handleAppError } from '../utils/errorHandler';
 
 export interface AuthContextType {
   session: Session | null;
@@ -58,10 +58,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const easProjectId =
+        ENV.easProjectId || Constants.expoConfig?.extra?.eas?.projectId;
+
       const token = (
-        await Notifications.getExpoPushTokenAsync({
-          projectId: '08976e05-387f-4b74-a4bb-f2a1fdc5540b',
-        })
+        await Notifications.getExpoPushTokenAsync(
+          easProjectId ? { projectId: easProjectId } : undefined
+        )
       ).data;
 
       if (Platform.OS === 'android') {
@@ -73,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             lightColor: '#FF231F7C',
           });
         } catch {
-          // Channel creation unsupported
+          // Channel creation unsupported in current environment
         }
       }
 
@@ -89,9 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .update({ push_token: token })
           .eq('id', userId);
       } catch {}
-    } catch (error) {
+    } catch {
       // Gracefully silent in environments without push support
-      console.warn('[authcontext] Push registration unavailable in current client environment');
     }
   };
 
