@@ -1,0 +1,492 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ═══════════════════════════════════════════════════════════
+   MEDSYNC — CYBER-CLINICAL NOIR · DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════ */
+
+@theme inline {
+  /* shadcn compatibility tokens (permanently dark) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* ── Medsync palette ─────────────────────────────── */
+  --color-obsidian: #040711;
+  --color-midnight: #0b0f19;
+  --color-abyss: #070a14;
+  --color-bio: #00f0ff;
+  --color-bio-dim: #0aa8b8;
+  --color-pulse: #10b981;
+  --color-pulse-bright: #34d399;
+  --color-coral: #ff5c5c;
+  --color-amber-clin: #f5b942;
+  --color-holo: #8b7bff;
+
+  /* ── Type roles ──────────────────────────────────── */
+  --font-display: var(--font-jakarta);
+  --font-telemetry: var(--font-jetbrains);
+
+  /* ── Motion curves ───────────────────────────────── */
+  --ease-observe: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snap: cubic-bezier(0.83, 0, 0.17, 1);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #040711;
+  --foreground: #e6edf7;
+  --card: #0b0f19;
+  --card-foreground: #e6edf7;
+  --popover: #0b0f19;
+  --popover-foreground: #e6edf7;
+  --primary: #00f0ff;
+  --primary-foreground: #040711;
+  --secondary: #10151f;
+  --secondary-foreground: #e6edf7;
+  --muted: #10151f;
+  --muted-foreground: #8b95a7;
+  --accent: #10151f;
+  --accent-foreground: #e6edf7;
+  --destructive: #ff5c5c;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #00f0ff;
+  --sidebar: #0b0f19;
+  --sidebar-foreground: #e6edf7;
+  --sidebar-primary: #00f0ff;
+  --sidebar-primary-foreground: #040711;
+  --sidebar-accent: #10151f;
+  --sidebar-accent-foreground: #e6edf7;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #00f0ff;
+
+  color-scheme: dark;
+}
+
+/* ═══════════════ BASE ═══════════════ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    background: #040711;
+    scroll-behavior: auto;
+  }
+
+  body {
+    @apply text-foreground antialiased;
+    background: #040711;
+    font-feature-settings: "ss01" on, "cv05" on;
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: rgba(0, 240, 255, 0.24);
+    color: #eafcff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #040711;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(0, 240, 255, 0.35), rgba(16, 185, 129, 0.3));
+    border-radius: 99px;
+    border: 2px solid #040711;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 240, 255, 0.55);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(0, 240, 255, 0.7);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+/* ═══════════════ LENIS ═══════════════ */
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ═══════════════ MATERIALS · GLASS ═══════════════ */
+
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-strong {
+  background: rgba(11, 15, 25, 0.72);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-deep {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012) 38%, rgba(0, 240, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 60px -30px rgba(0, 0, 0, 0.85);
+}
+
+/* ═══════════════ MATERIALS · GLOWS & TEXT ═══════════════ */
+
+.text-glow-bio {
+  text-shadow: 0 0 14px rgba(0, 240, 255, 0.55), 0 0 46px rgba(0, 240, 255, 0.22);
+}
+.text-glow-pulse {
+  text-shadow: 0 0 14px rgba(52, 211, 153, 0.55), 0 0 46px rgba(16, 185, 129, 0.25);
+}
+.text-glow-coral {
+  text-shadow: 0 0 14px rgba(255, 92, 92, 0.55), 0 0 42px rgba(255, 92, 92, 0.25);
+}
+
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14);
+}
+
+.text-gradient-sync {
+  background: linear-gradient(92deg, #eafcff 8%, #00f0ff 44%, #34d399 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* shimmering sweep across text (for revealed headlines) */
+.shimmer-line {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.28) 50%, transparent 80%);
+  transform: translateX(-120%);
+  animation: shimmer-sweep 5.5s var(--ease-observe) 1.6s infinite;
+  pointer-events: none;
+}
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-120%); }
+  38%, 100% { transform: translateX(120%); }
+}
+
+/* ═══════════════ MATERIALS · SURFACES ═══════════════ */
+
+.dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+}
+
+.blueprint-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+
+.scanlines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px);
+  mix-blend-mode: overlay;
+}
+
+.mask-fade-x {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+.vignette {
+  background: radial-gradient(120% 90% at 50% 10%, transparent 40%, rgba(4, 7, 17, 0.9) 100%);
+}
+
+/* ═══════════════ BORDER BEAM (Kokonut-style) ═══════════════ */
+
+@property --beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.beam-border {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.2px;
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 0deg,
+    transparent 290deg,
+    rgba(0, 240, 255, 0.05) 312deg,
+    #00f0ff 342deg,
+    #7df9ff 352deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: beam-spin 4.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes beam-spin {
+  to { --beam-angle: 360deg; }
+}
+
+/* soft ambient beam (slower, emerald) */
+.beam-border-soft {
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 0deg,
+    transparent 300deg,
+    rgba(16, 185, 129, 0.04) 326deg,
+    #10b981 344deg,
+    transparent 360deg
+  );
+  animation-duration: 7s;
+}
+
+/* ═══════════════ HOLO BORDER (iridescent, vault / intake) ═══════════════ */
+
+.holo-border {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.2px;
+  background: conic-gradient(
+    from var(--beam-angle),
+    rgba(0, 240, 255, 0.55),
+    rgba(139, 123, 255, 0.5),
+    rgba(16, 185, 129, 0.55),
+    rgba(0, 240, 255, 0.1),
+    rgba(0, 240, 255, 0.55)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: beam-spin 9s linear infinite;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.5s var(--ease-observe);
+}
+.group\/holo:hover .holo-border,
+.holo-border:hover {
+  opacity: 1;
+}
+
+/* specular sheen that follows cursor — set --mx/--my on parent */
+.specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.09),
+    rgba(0, 240, 255, 0.05) 34%,
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.45s var(--ease-observe);
+}
+.parent-specular:hover .specular {
+  opacity: 1;
+}
+
+/* ═══════════════ KEYFRAMES ═══════════════ */
+
+@keyframes ping-dot {
+  0% { transform: scale(1); opacity: 0.9; }
+  80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  50% { opacity: 0.75; box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+
+@keyframes radar-sweep {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -28; }
+}
+
+@keyframes blink-caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes mesh-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(4%, -6%, 0) scale(1.08); }
+  66% { transform: translate3d(-5%, 4%, 0) scale(0.96); }
+}
+
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -2%); }
+  80% { transform: translate(3%, 3%); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes ecg-dash {
+  0% { stroke-dashoffset: 240; }
+  100% { stroke-dashoffset: -240; }
+}
+
+@keyframes hue-cycle {
+  to { filter: hue-rotate(360deg); }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════ MISC ANIM CLASSES ═══════════════ */
+
+.anim-ping-dot {
+  animation: ping-dot 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.anim-pulse-dot {
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+.anim-radar {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: center;
+}
+.anim-dash-flow {
+  stroke-dasharray: 6 8;
+  animation: dash-flow 1.1s linear infinite;
+}
+.anim-blink {
+  animation: blink-caret 1.05s steps(1) infinite;
+}
+.anim-float-soft {
+  animation: float-soft 7s ease-in-out infinite;
+}
+.anim-mesh {
+  animation: mesh-drift 18s ease-in-out infinite;
+}
+.anim-ecg {
+  stroke-dasharray: 240;
+  animation: ecg-dash 3.2s linear infinite;
+}
+.anim-hue {
+  animation: hue-cycle 6s linear infinite;
+}
+.anim-spin-slow {
+  animation: spin-slow 22s linear infinite;
+}
+
+/* ═══════════════ CUSTOM CURSOR ═══════════════ */
+
+@media (pointer: fine) {
+  html.custom-cursor-active,
+  html.custom-cursor-active * {
+    cursor: none !important;
+  }
+  html.custom-cursor-active input,
+  html.custom-cursor-active textarea {
+    cursor: text !important;
+  }
+}
+
+/* ═══════════════ RANGE / SLIDER POLISH ═══════════════ */
+
+.medsync-range [data-slot="range-track"] {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 99px;
+}
+.medsync-range [data-slot="range-range"] {
+  background: linear-gradient(90deg, #00f0ff, #34d399);
+  border-radius: 99px;
+}
+.medsync-range [data-slot="range-thumb"] {
+  height: 18px;
+  width: 18px;
+  border-radius: 99px;
+  background: #040711;
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+}
+
+/* ═══════════════ REDUCED MOTION ═══════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

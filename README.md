@@ -67,6 +67,7 @@
   - [🤖 AI Vision OCR Prescription Scanner](#-ai-vision-ocr-prescription-scanner)
 - [System Architecture](#-system-architecture)
 - [Tech Stack](#-tech-stack)
+- [🌐 Web Experience](#-web-experience)
 - [Security, Privacy & Compliance](#-security-privacy--compliance)
   - [Security Policy & Disclosures](SECURITY.md)
 - [Getting Started](#-getting-started)
@@ -211,6 +212,28 @@ flowchart TD
 | **Voice & Accessibility** | [Expo Speech](https://docs.expo.dev/versions/latest/sdk/speech/) & [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/) | `57.0.3` | Accessible spoken audio directions & tactile confirmation |
 | **Reports** | [Expo Print](https://docs.expo.dev/versions/latest/sdk/print/) | `57.0.2` | Native PDF generation & Android Print Spooler |
 | **CI/CD** | [GitHub Actions](https://github.com/features/actions) & [EAS Build](https://expo.dev/eas) | `v4` | Automated typechecking, security testing, cloud builds |
+
+---
+
+## 🌐 Web Experience
+
+MedSync includes a standalone, award-winning web showcase located in [`website/`](website/):
+
+- **Live URL**: [https://breathtaker-adi.github.io/Medsync/](https://breathtaker-adi.github.io/Medsync/)
+- **Built With**: Next.js 16 (App Router), React 19, Tailwind CSS v4, Lenis smooth scrolling, Three.js / React Three Fiber, GSAP ScrollTrigger, and Lucide icons.
+- **Highlights**:
+  - 🧬 **3D Glass DNA Capsule**: Interactive WebGL hero scene with physics-based cursor orbits.
+  - 📊 **Interactive Bento Modules**: Live dose simulator, tri-party sync bridge, refill radar, and weight-based dose calculator.
+  - 🎬 **Custom Pitch Film Player**: Built-in video player with chapter seeking and telemetry badges.
+  - 💻 **Live WebSocket Console Drawer**: Simulated real-time clinical packet stream.
+
+```bash
+# Run website locally in development mode (port 3000)
+npm run site:dev
+
+# Build and export directly to docs/ for GitHub Pages
+npm run site:build
+```
 
 ---
 
