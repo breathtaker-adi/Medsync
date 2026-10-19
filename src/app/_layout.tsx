@@ -167,7 +167,7 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         // Role protection: Patient users cannot access clinical oversight screens
         const isCaregiverOrDoctor = profile.role === 'caregiver' || profile.role === 'doctor';
 
-        const currentTabRoute = segments.length > 1 ? segments[1] : undefined;
+        const currentTabRoute = segments.at(1);
         const currentActiveRoute = currentTabRoute || currentRoute;
         const caregiverRestrictedRoutes = [
           'caregiver-dashboard',
