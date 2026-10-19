@@ -194,16 +194,55 @@ html.lenis body {
   text-shadow: 0 0 14px rgba(255, 92, 92, 0.55), 0 0 42px rgba(255, 92, 92, 0.25);
 }
 
+/* Word-level ambient glows: rendered via filter drop-shadow so glyph interiors remain razor-sharp */
+.word-glow-bio {
+  filter: drop-shadow(0 0 16px rgba(0, 240, 255, 0.45)) drop-shadow(0 0 42px rgba(0, 240, 255, 0.2));
+}
+.word-glow-pulse {
+  filter: drop-shadow(0 0 16px rgba(52, 211, 153, 0.45)) drop-shadow(0 0 42px rgba(16, 185, 129, 0.2));
+}
+
 .text-outline {
   color: transparent;
   -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14);
 }
 
+/* Continuous high-luminance gradient across 'Sync.' letters with ice-white highlights */
 .text-gradient-sync {
-  background: linear-gradient(92deg, #eafcff 8%, #00f0ff 44%, #34d399 92%);
+  background: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    #d4f8ff 24%,
+    #00f0ff 62%,
+    #34d399 100%
+  );
+  background-size: calc(var(--char-total, 5) * 100%) 100%;
+  background-position: calc(var(--char-idx, 0) * 100% / max(1, var(--char-total, 5) - 1)) 0%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Continuous vibrant gradient across 'Schedule.' letters */
+.text-gradient-schedule {
+  background: linear-gradient(
+    100deg,
+    #f0fdf4 0%,
+    #a7f3d0 25%,
+    #34d399 65%,
+    #10b981 100%
+  );
+  background-size: calc(var(--char-total, 9) * 100%) 100%;
+  background-position: calc(var(--char-idx, 0) * 100% / max(1, var(--char-total, 9) - 1)) 0%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* shimmering sweep across text (for revealed headlines) */

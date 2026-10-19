@@ -114,24 +114,24 @@ function CapsuleGlassShell() {
         <meshPhysicalMaterial
           color="#ffffff"
           transparent
-          opacity={0.2}
-          roughness={0.06}
-          metalness={0.12}
+          opacity={0.07}
+          roughness={0.03}
+          metalness={0.05}
           clearcoat={1.0}
-          clearcoatRoughness={0.05}
-          ior={1.48}
-          specularIntensity={1.4}
+          clearcoatRoughness={0.03}
+          ior={1.46}
+          specularIntensity={1.8}
           depthWrite={false}
         />
       </mesh>
 
       {/* Subtle Capsule Cap Joint Seam */}
       <mesh position={[0, 0, 0]}>
-        <torusGeometry args={[CAPSULE_RADIUS + 0.002, 0.005, 12, 64]} />
+        <torusGeometry args={[CAPSULE_RADIUS + 0.002, 0.004, 12, 64]} />
         <meshStandardMaterial
           color="#00f0ff"
           transparent
-          opacity={0.35}
+          opacity={0.25}
           metalness={0.8}
           roughness={0.2}
         />
