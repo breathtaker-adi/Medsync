@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { KineticHeadline, type HeadlineWord } from "./kinetic-headline";
 import { TelemetryBadge } from "./telemetry-badge";
 import { CapsuleScene } from "./capsule-scene";
+import { HeroParticles } from "./hero-particles";
 import { SyncButton, SlideLink } from "@/components/fx/sync-button";
 import { scrollToId } from "@/lib/scroll";
 import { BUS, isReady, on } from "@/lib/events";
@@ -78,6 +79,7 @@ export function Hero() {
         <div className="absolute top-1/3 left-1/3 h-[50vh] w-[40vw] -translate-x-1/4 rounded-full bg-gradient-to-r from-bio/[0.05] via-bio/[0.08] to-transparent blur-[90px]" />
         <div className="dot-grid absolute inset-0 opacity-70 [mask-image:radial-gradient(75%_60%_at_50%_40%,#000,transparent)]" />
         <div className="vignette absolute inset-0" />
+        <HeroParticles />
       </div>
 
       {/* ── content ── */}
