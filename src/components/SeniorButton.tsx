@@ -147,15 +147,9 @@ export const SeniorButton: React.FC<SeniorButtonProps> = ({
               style={[
                 styles.text,
                 size === 'large' ? styles.textLarge : styles.textNormal,
-                {
-                  color: getTextColor(),
-                  paddingHorizontal: 6,
-                  flexShrink: 0,
-                  includeFontPadding: false,
-                },
+                { color: getTextColor() },
                 textStyle,
               ]}
-              numberOfLines={1}
             >
               {title}
             </Text>
@@ -171,15 +165,13 @@ const styles = StyleSheet.create({
     borderRadius: Theme.rounded.md,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     width: '100%',
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
-    paddingHorizontal: 12,
   },
   iconWrapper: {
     marginRight: 8,
@@ -190,7 +182,6 @@ const styles = StyleSheet.create({
     fontFamily: 'PublicSans-Bold',
     textAlignVertical: 'center',
     textAlign: 'center',
-    paddingHorizontal: 4,
     includeFontPadding: false,
   },
   textNormal: {
