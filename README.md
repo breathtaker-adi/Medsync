@@ -55,9 +55,50 @@
 
 ---
 
+## 📱 Mobile Interface Showcase
+
+<p align="center">
+  <em>Accessible Senior UI • AI Vision OCR Scanner • Caregiver Remote Telemetry</em>
+</p>
+
+<table align="center" width="100%">
+  <tr>
+    <td width="33.3%" align="center" valign="top">
+      <a href="assets/images/mockup-patient.jpg" target="_blank">
+        <img src="assets/images/mockup-patient.jpg" width="100%" alt="Senior Patient Dashboard" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);" />
+      </a>
+      <br /><br />
+      <strong>👵 Senior Patient Dashboard</strong>
+      <br />
+      <sub>High contrast (WCAG AAA), 64px touch targets, spoken audio guidance &amp; one-tap dose logging</sub>
+    </td>
+    <td width="33.3%" align="center" valign="top">
+      <a href="assets/images/mockup-scanner.jpg" target="_blank">
+        <img src="assets/images/mockup-scanner.jpg" width="100%" alt="AI Prescription OCR Intake" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);" />
+      </a>
+      <br /><br />
+      <strong>🤖 AI Prescription Scanner</strong>
+      <br />
+      <sub>Multi-modal computer vision parsing handwritten scripts into structured medication regimens</sub>
+    </td>
+    <td width="33.3%" align="center" valign="top">
+      <a href="assets/images/mockup-caregiver.jpg" target="_blank">
+        <img src="assets/images/mockup-caregiver.jpg" width="100%" alt="Caregiver Telemetry & Alerts" style="border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);" />
+      </a>
+      <br /><br />
+      <strong>👨‍👩‍👧 Caregiver Telemetry Hub</strong>
+      <br />
+      <sub>Real-time adherence telemetry, 14-day streak tracking, and automated missed-dose family alerts</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 📑 Table of Contents
 
 - [Overview](#-overview)
+- [📱 Mobile Interface Showcase](#-mobile-interface-showcase)
 - [Why MedSync?](#-why-medsync)
 - [📲 Download Android App (.apk)](#-download-the-android-app-apk)
 - [Key Features](#-key-features)
@@ -113,40 +154,68 @@ MedSync solves this with:
 
 ## 📲 Download the Android App (.apk)
 
-Want to try MedSync directly on your physical Android phone without building from source?
+Experience MedSync natively on your physical Android phone without building from source. Verified standalone `.apk` binaries are published directly under [GitHub Releases](https://github.com/breathtaker-adi/Medsync/releases):
 
-1. Head over to our **[Releases Page](https://github.com/breathtaker-adi/Medsync/releases)**.
-2. Download the latest standalone **`MedSync-vX.X.X.apk`** installer under the Assets section.
-3. Open the APK on your device and tap **Install** (allow *Install from Unknown Sources* if prompted).
-4. Launch MedSync and experience the high-contrast senior dashboard and AI prescription scanner!
+| Version | Status | Target OS | Direct Binary Link | Highlights |
+| :--- | :---: | :---: | :---: | :--- |
+| **v1.2.0** *(Latest)* | 🟢 Production | Android 8.0 - 15 | [📥 **MedSync-v1.2.0.apk**](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk) | Full AI Vision OCR Scanner, Senior UI, Caregiver Telemetry, 67 passing security tests |
+| **v1.1** | ⚪ Stable | Android 8.0+ | [📥 MedSync-v1.1.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.1/MedSync-v1.1.apk) | Manual medication entry, contact directory, daily streaks |
+| **v1.0** | ⚪ Pre-Release | Android 8.0+ | [📥 MedSync-v1.0.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.0/MedSync-v1.0.apk) | Baseline adherence scheduler & background alarms |
+
+> [!TIP]
+> **Direct Installation Steps**:
+> 1. Download **[MedSync-v1.2.0.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk)** directly to your Android device.
+> 2. Open the downloaded `.apk` file from your device notifications or file manager.
+> 3. If prompted by Android, toggle **"Allow from this source"** to permit the sideload.
+> 4. Launch MedSync to explore the high-contrast dashboard, spoken voice guidance, and prescription scanner.
 
 ---
 
 ## ✨ Key Features
 
-### 👵 Patient & Senior Experience
-- **Senior-Optimized Interface**: High-contrast color palettes, large typography, and zero confusing nested menus.
+<details open>
+<summary><h3>👵 Patient & Senior Experience</h3></summary>
+
+Designed specifically for aging eyes, motor tremors, and cognitive comfort:
+- **Senior-Optimized Interface**: High-contrast color palettes (WCAG AAA), 24px+ typography, and zero confusing nested menus.
 - **Text-to-Speech (TTS) Voice Guidance**: Native voice announcements (`expo-speech`) speak aloud exact medication names and instructions (e.g., *"Take 500mg Metformin with a glass of water"*).
 - **Haptic Tactile Confirmations**: Multi-stage haptic vibration feedback (`expo-haptics`) confirms actions for users with tremors or visual limitations.
-- **One-Tap Actions**: Big, bold `TAKEN`, `SNOOZE (15m)`, and `SKIP` buttons.
-- **Adherence Reports & PDF Export**: Generates professional clinical adherence PDF summaries integrated directly into the native Android OS Print Spooler (`expo-print`).
+- **Oversized 64px Touch Targets**: Big, bold `TAKEN`, `SNOOZE (15m)`, and `SKIP` buttons prevent accidental mis-taps.
+- **Clinical Adherence Reports & PDF Export**: Generates standardized adherence summaries integrated directly into the native Android OS Print Spooler (`expo-print`).
 
-### 👨‍👩‍👧 Caregiver Ecosystem
+</details>
+
+<details open>
+<summary><h3>👨‍👩‍👧 Caregiver Ecosystem</h3></summary>
+
+Gives adult children and professional caregivers total peace of mind:
 - **Remote Telemetry Dashboard**: Live insight into family members' medication intake, streak scores, and adherence rates.
-- **Automated Missed-Dose Notifications**: Push alerts triggered if a senior fails to acknowledge medication within the safety grace window.
+- **Automated Missed-Dose Notifications**: Push alerts triggered automatically if a senior fails to acknowledge medication within the safety grace window.
 - **Multi-Patient Support**: Caregivers can monitor multiple aging parents or dependents from a single unified view.
 - **Secure Pairing**: Connect with patients in seconds using short alphanumeric pairing codes.
 
-### 🩺 Doctor & Clinical Portal
+</details>
+
+<details open>
+<summary><h3>🩺 Doctor & Clinical Portal</h3></summary>
+
+Bridges clinical regimens directly into patients' daily habits:
 - **Physician Credentialing & Registry Verification**: Robust multi-step verification against state/national medical registries.
 - **Prescription Review Queue**: Doctors inspect patient-uploaded prescription images alongside AI-extracted metadata before approving regimens.
 - **Patient Directory & Regimen Management**: Directly adjust active dosages, pause medications for lab tests, and track compliance trends.
-- **Defense-in-Depth Clinical Security**: Role-based access control guarantees patient confidentiality.
+- **Defense-in-Depth Clinical Security**: Row-level access control guarantees strict patient confidentiality.
 
-### 🤖 AI Vision OCR Prescription Scanner
-- **Computer Vision Extraction**: Edge functions powered by multi-modal AI analyze prescription labels and handwriting.
-- **Structured Output**: Converts raw camera captures into structured JSON: medication name, dosage strength, unit, route, frequency, and custom clinical notes.
+</details>
+
+<details open>
+<summary><h3>🤖 AI Vision OCR Prescription Scanner</h3></summary>
+
+Eliminates manual regimen typing with edge-accelerated computer vision:
+- **Computer Vision Extraction**: Edge functions powered by multi-modal AI analyze prescription labels and doctor handwriting.
+- **Structured JSON Output**: Converts raw camera captures into structured data: medication name, dosage strength, unit, route, frequency, and clinical notes.
 - **Confidence Scoring & Doctor Sign-Off**: Prevents misread dosages by tagging AI suggestions for patient or physician confirmation.
+
+</details>
 
 ---
 

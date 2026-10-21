@@ -24,8 +24,8 @@ function DownloadBlock() {
               Direct APK installation for Android devices. Full offline vault, AI camera prescription intake, and instant caregiver alerts.
             </p>
             <div className="mt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2 font-telemetry text-[9px] text-slate-400">
-              <span className="rounded bg-white/5 px-2 py-0.5">v1.0.0-rc</span>
-              <span className="rounded bg-white/5 px-2 py-0.5">Android 8.0+</span>
+              <span className="rounded bg-bio/15 text-bio font-semibold px-2 py-0.5">v1.2.0 (Latest)</span>
+              <span className="rounded bg-white/5 px-2 py-0.5">Android 8.0 - 15</span>
               <span className="rounded bg-white/5 px-2 py-0.5">~48 MB</span>
               <span className="rounded bg-white/5 px-2 py-0.5">Open Source MIT</span>
             </div>
@@ -34,14 +34,14 @@ function DownloadBlock() {
           <div className="flex flex-col gap-3 w-full sm:w-auto shrink-0">
             <Magnetic strength={0.25}>
               <a
-                href="https://github.com/breathtaker-adi/Medsync/releases/latest"
+                href="https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-bio to-pulse px-6 py-3.5 font-telemetry text-[11px] font-bold tracking-[0.14em] text-obsidian uppercase transition-all duration-300 hover:brightness-110 hover:shadow-[0_0_24px_rgba(0,240,255,0.4)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
-                aria-label="Download MedSync Android APK from latest GitHub release"
+                aria-label="Download MedSync Android APK (v1.2.0 Production Release)"
               >
                 <Download size={15} className="transition-transform duration-300 group-hover:-translate-y-0.5" />
-                Download APK
+                Download APK (v1.2.0)
               </a>
             </Magnetic>
             <a

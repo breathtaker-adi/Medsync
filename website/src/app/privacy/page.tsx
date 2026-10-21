@@ -66,7 +66,7 @@ export default function PrivacyPolicyPage() {
           <div className="mt-4 flex flex-wrap items-center gap-4 font-telemetry text-xs text-slate-400">
             <span>Last Updated: {lastUpdated}</span>
             <span>·</span>
-            <span>Version: 1.0.0-rc</span>
+            <span>Version: 1.2.0 (Production)</span>
             <span>·</span>
             <span className="text-pulse-bright">Status: Active &amp; Enforced</span>
           </div>

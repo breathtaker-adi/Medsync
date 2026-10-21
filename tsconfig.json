@@ -19,6 +19,7 @@
   ],
   "exclude": [
     "supabase/functions",
-    "website"
+    "website",
+    "docs"
   ]
 }

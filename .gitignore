@@ -35,6 +35,7 @@ Thumbs.db
 # IDE & Tooling
 .vscode/
 .idea/
+.claude/
 
 # typescript
 *.tsbuildinfo
@@ -70,12 +71,18 @@ med sync ui/
 graphify-out/
 un-used files/
 security/
+docs/*Audit*.docx
+docs/*plan*.html
+docs/*roadmap*.html
+docs/*status*.html
+docs/website elder/
 
 # Video Launch Artifacts & Compositions (/brag)
 brag-output/
 brag-output-*/
 
-# Agent Skills (temporary/downloaded on demand)
-.agents/skills/brag/
-.agents/skills/brag-slim/
+# AI Agent Scaffolding & Internal Development Rules (Keep local only)
+.agents/
+AGENTS.md
+CLAUDE.md
 
