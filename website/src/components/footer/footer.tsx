@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, type MouseEvent } from "react";
-import { motion } from "motion/react";
-import { ArrowUp, Download, Github, Smartphone, ShieldCheck } from "lucide-react";
 import { Magnetic } from "@/components/fx/magnetic";
 import { scrollToTop } from "@/lib/scroll";
+import { ArrowUp, Download, Github, ShieldCheck, Smartphone } from "lucide-react";
+import { motion } from "motion/react";
+import { useRef, type MouseEvent } from "react";
 
 /* ── download release block ─────────────────────────────────── */
 
@@ -119,7 +119,7 @@ export function Footer() {
         >
           <div className="flex items-center gap-3 font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase">
             <span className="inline-block h-px w-8 bg-gradient-to-r from-transparent to-bio" aria-hidden="true" />
-            05 / DOWNLOAD
+            06 / DOWNLOAD
             <span className="inline-block h-px w-8 bg-gradient-to-l from-transparent to-bio" aria-hidden="true" />
           </div>
           <h2 className="max-w-2xl text-3xl font-extrabold tracking-[-0.03em] text-white text-balance md:text-5xl">
