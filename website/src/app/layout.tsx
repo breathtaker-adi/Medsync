@@ -71,10 +71,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "https://breathtaker-adi.github.io/Medsync/medsync-logo.png", type: "image/png" },
-      { url: "https://breathtaker-adi.github.io/Medsync/logo.svg", type: "image/svg+xml" },
+      { url: "/Medsync/favicon.ico", sizes: "any" },
+      { url: "/Medsync/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/Medsync/logo.svg", type: "image/svg+xml" },
     ],
-    apple: "https://breathtaker-adi.github.io/Medsync/medsync-logo.png",
+    shortcut: "/Medsync/favicon.ico",
+    apple: "/Medsync/medsync-logo.png",
   },
   openGraph: {
     title: "Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety",
@@ -270,6 +272,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <head>
+        <link rel="icon" href="/Medsync/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/Medsync/favicon.png" />
+        <link rel="icon" type="image/svg+xml" href="/Medsync/logo.svg" />
+        <link rel="shortcut icon" href="/Medsync/favicon.ico" />
+        <link rel="apple-touch-icon" href="/Medsync/medsync-logo.png" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

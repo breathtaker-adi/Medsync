@@ -70,8 +70,12 @@ export function DayInMedsync() {
         const idx = progress < 0.333 ? 0 : progress < 0.665 ? 1 : 2;
         railItems.forEach((item, i) => {
           const on = i === idx;
-          item.style.opacity = on ? "1" : "0.55";
+          item.style.opacity = on ? "1" : "0.6";
           item.setAttribute("data-active", on ? "true" : "false");
+          const detail = item.querySelector<HTMLElement>("[data-rail-detail]");
+          if (detail) {
+            detail.setAttribute("data-active", on ? "true" : "false");
+          }
           const dot = item.querySelector<HTMLElement>("[data-rail-dot]");
           if (dot) {
             dot.style.background = on ? "#00f0ff" : "rgba(255,255,255,0.3)";
@@ -177,7 +181,7 @@ export function DayInMedsync() {
           </div>
 
           {/* section heading */}
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pt-10 md:px-8 md:pt-14">
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pt-6 md:px-8 md:pt-8">
             <SectionHeading
               index="02"
               eyebrow="A DAY IN MEDSYNC"
@@ -192,23 +196,23 @@ export function DayInMedsync() {
           </div>
 
           {/* stage grid: rail on left, phone shifted center-to-right */}
-          <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-start px-5 pt-2 pb-6 md:px-8 lg:grid-cols-[380px_1fr] lg:gap-10">
-            {/* milestone rail (positioned upper side, enlarged with complete details) */}
-            <div className="hidden flex-col gap-4 self-start pt-2 border-l-2 border-white/10 pl-6 lg:flex">
+          <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-start px-5 pt-1 pb-4 md:px-8 lg:grid-cols-[380px_1fr] lg:gap-10">
+            {/* milestone rail (positioned upper side, adaptive accordion expansion) */}
+            <div className="hidden flex-col gap-2.5 self-start pt-1 border-l-2 border-white/10 pl-6 lg:flex">
               {PHASES.map((p, i) => (
                 <div
                   key={p.time}
                   data-rail-item
                   data-active={i === 0 ? "true" : "false"}
-                  className="relative rounded-2xl border border-transparent p-3.5 transition-all duration-300 data-[active=true]:border-bio/35 data-[active=true]:bg-bio/[0.06] data-[active=true]:shadow-[0_10px_30px_-10px_rgba(0,240,255,0.2)]"
-                  style={{ opacity: i === 0 ? 1 : 0.55 }}
+                  className="group relative rounded-2xl border border-transparent p-3 transition-all duration-300 data-[active=true]:border-bio/35 data-[active=true]:bg-bio/[0.06] data-[active=true]:shadow-[0_8px_24px_-8px_rgba(0,240,255,0.2)]"
+                  style={{ opacity: i === 0 ? 1 : 0.6 }}
                 >
                   <span
                     data-rail-dot
                     aria-hidden
-                    className="absolute top-4.5 -left-[31px] h-3.5 w-3.5 rounded-full border-2 border-obsidian bg-white/30 transition-all duration-300"
+                    className="absolute top-3.5 -left-[31px] h-3.5 w-3.5 rounded-full border-2 border-obsidian bg-white/30 transition-all duration-300"
                   />
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2">
                     <span className="font-telemetry text-xs font-bold tracking-[0.22em] text-bio">
                       {p.time}
                     </span>
@@ -216,21 +220,31 @@ export function DayInMedsync() {
                       {p.tag}
                     </span>
                   </div>
-                  <div className="mt-1.5 text-sm sm:text-[15px] font-bold text-white">
+                  <div className="mt-1 text-sm font-bold text-white transition-colors group-data-[active=true]:text-white group-data-[active=false]:text-slate-300">
                     {p.title}
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                    {p.body}
-                  </p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {p.tags.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded-md border border-white/8 bg-white/[0.04] px-2 py-0.5 font-telemetry text-[8.5px] font-medium tracking-[0.12em] text-slate-400"
-                      >
-                        {t}
-                      </span>
-                    ))}
+
+                  {/* Accordion detail: smoothly visible on active phase */}
+                  <div
+                    data-rail-detail
+                    className="grid transition-all duration-300 ease-out grid-rows-[0fr] opacity-0 data-[active=true]:grid-rows-[1fr] data-[active=true]:opacity-100"
+                    data-active={i === 0 ? "true" : "false"}
+                  >
+                    <div className="overflow-hidden">
+                      <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+                        {p.body}
+                      </p>
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 pb-0.5">
+                        {p.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-md border border-white/8 bg-white/[0.04] px-2 py-0.5 font-telemetry text-[8.5px] font-medium tracking-[0.12em] text-slate-400"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -240,7 +254,7 @@ export function DayInMedsync() {
             <div className="flex w-full items-center justify-center lg:justify-center lg:pl-6">
               <div
                 data-phone
-                className="relative mx-auto aspect-[9/18.4] w-full max-w-[290px] rounded-[2.6rem] border border-white/12 bg-[#05070d] p-2.5 shadow-[0_30px_100px_-30px_rgba(0,240,255,0.22),0_40px_120px_-60px_rgba(0,0,0,0.95)] sm:max-w-[315px] max-h-[calc(100svh-220px)]"
+                className="relative mx-auto aspect-[9/18.4] w-full max-w-[280px] rounded-[2.6rem] border border-white/12 bg-[#05070d] p-2.5 shadow-[0_30px_100px_-30px_rgba(0,240,255,0.22),0_40px_120px_-60px_rgba(0,0,0,0.95)] sm:max-w-[310px] max-h-[calc(100svh-190px)]"
               >
                 {/* phone hardware accents */}
                 <span aria-hidden className="absolute top-24 -right-[2.5px] h-12 w-[3px] rounded-full bg-white/15" />
