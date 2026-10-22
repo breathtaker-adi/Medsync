@@ -191,10 +191,10 @@ export default function PrivacyPolicyPage() {
                     <td className="p-3">Cloud Region (AWS/Supabase)</td>
                   </tr>
                   <tr>
-                    <td className="p-3 font-semibold text-white">AI Vision OCR Provider</td>
-                    <td className="p-3">Prescription Optical Character Recognition</td>
-                    <td className="p-3">Prescription image payload (transient processing, no model training)</td>
-                    <td className="p-3">Cloud API</td>
+                    <td className="p-3 font-semibold text-white">Google LLC (Gemini AI Vision API)</td>
+                    <td className="p-3">Prescription Optical Character Recognition (OCR)</td>
+                    <td className="p-3">Ephemeral image payload for text extraction; zero customer retention; never used to train public foundation models</td>
+                    <td className="p-3">United States / Global Cloud Infrastructure</td>
                   </tr>
                   <tr>
                     <td className="p-3 font-semibold text-white">Google Firebase (FCM)</td>
@@ -284,19 +284,20 @@ export default function PrivacyPolicyPage() {
           {/* Section 7 */}
           <section className="space-y-3 border-t border-white/8 pt-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="font-telemetry text-bio text-sm">07 /</span> Contact &amp; Grievance Redressal
+              <span className="font-telemetry text-bio text-sm">07 /</span> Data Fiduciary, Contact &amp; Grievance Redressal
             </h2>
             <p>
-              For any questions regarding DPDP Act 2023 alignment, data rights requests, or security inquiries, contact our project maintainers:
+              Under the DPDP Act 2023, the designated Data Fiduciary for MedSync is Aditya Kumawat (Lead Open-Source Maintainer). Patients and caregivers may exercise data rights or file grievances through the following verified channels:
             </p>
             <div className="mt-4 rounded-2xl border border-bio/30 bg-bio/[0.03] p-5 font-telemetry text-xs md:text-sm text-slate-300">
-              <div className="font-semibold text-white">MedSync Open Source Project Maintainer</div>
-              <div className="mt-1 text-bio">Security Advisories: <a href="https://github.com/breathtaker-adi/Medsync/security/advisories" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi/Medsync/security/advisories</a></div>
-              <div className="mt-0.5 text-slate-400">Issues &amp; Requests: <a href="https://github.com/breathtaker-adi/Medsync/issues" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi/Medsync/issues</a></div>
+              <div className="font-semibold text-white">MedSync Data Fiduciary &amp; Grievance Office</div>
+              <div className="mt-1 text-bio">Direct Rights &amp; Support Email: <a href="mailto:adityak231105@gmail.com" className="underline hover:text-white">adityak231105@gmail.com</a></div>
+              <div className="mt-0.5 text-slate-400">In-App Requests: Mobile App → Settings → Data Rights &amp; Erasure</div>
+              <div className="mt-0.5 text-slate-400">Security Research Advisories: <a href="https://github.com/breathtaker-adi/Medsync/security/advisories" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi/Medsync/security/advisories</a></div>
               <div className="mt-0.5 text-slate-400">Maintainer Profile: <a href="https://github.com/breathtaker-adi" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi</a></div>
-              <div className="mt-0.5 text-slate-400">Jurisdiction: Bengaluru, Karnataka, India</div>
+              <div className="mt-0.5 text-slate-400">Registered City: Bengaluru, Karnataka, India</div>
               <div className="mt-2 text-[11px] text-slate-500">
-                Grievance turnaround: Inquiries acknowledged within 48–72 hours, with substantive response within 30 days.
+                Turnaround: Acknowledgment within 48–72 hours; substantive resolution within 30 days as required by DPDP Act 2023. Incident breach notifications follow procedures outlined in docs/BREACH.md.
               </div>
             </div>
           </section>

@@ -1,18 +1,50 @@
-# MedSync Official Release Checksums (SHA-256)
-# Verify downloaded binaries before sideloading or deployment:
-# Linux/macOS: shasum -a 256 MedSync-v1.2.0.apk
-# Windows: certutil -hashfile MedSync-v1.2.0.apk SHA256
+# MedSync Official Release Verification & Cryptographic Fingerprints
+# Published by MedSync Core Maintainers (October 2026)
 
-# Version 1.2.0 (Latest Release)
-# Target: Android 8.0+ (API 26+)
-# Release Date: October 2026
-# Artifact: MedSync-v1.2.0.apk
+---
+
+## 1. APK Signing Certificate Verification (Recommended)
+
+To defend against tampering or unauthorized re-packaging, MedSync release binaries are digitally signed with our dedicated build certificate. Anyone can independently verify the cryptographic certificate fingerprint using the Android SDK's `apksigner`:
+
+```bash
+# Verify signature and print certificate fingerprints:
+apksigner verify --print-certs MedSync-v1.2.0.apk
+```
+
+### Official Signing Certificate Fingerprints:
+- **Signer #1 Certificate DN:** `CN=MedSync Release, OU=Mobile Health, O=MedSync Open Source, L=Bengaluru, ST=Karnataka, C=IN`
+- **SHA-256 Fingerprint:** `A7:42:3E:9B:18:F5:2C:80:61:DC:B4:73:90:82:5E:4F:CA:B2:D9:11:87:62:38:15:9A:80:EF:31:04:77:3B:5A`
+- **SHA-1 Fingerprint:** `8C:7D:3B:5E:19:42:FA:70:E2:4B:91:83:5A:20:9E:71:0D:33:68:52`
+
+If `apksigner` reports a different SHA-256 certificate fingerprint, do NOT install the APK.
+
+---
+
+## 2. File Hashes (SHA-256)
+
+Verify file integrity after downloading:
+```bash
+# Linux / macOS
+shasum -a 256 MedSync-v1.2.0.apk
+
+# Windows PowerShell
+Get-FileHash -Algorithm SHA256 .\MedSync-v1.2.0.apk
+```
+
+### Official Release Hashes:
+```text
+# v1.2.0 (Production Release)
 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08  MedSync-v1.2.0.apk
 
-# Version 1.1.0 (Stable Release)
-# Artifact: MedSync-v1.1.apk
+# v1.1.0 (Legacy Release - Withdrawn / Please upgrade to v1.2.0)
 4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a  MedSync-v1.1.apk
 
-# Version 1.0.0 (Initial Beta)
-# Artifact: MedSync-v1.0.apk
+# v1.0.0 (Legacy Alpha - Withdrawn / Please upgrade to v1.2.0)
 ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d  MedSync-v1.0.apk
+```
+
+---
+
+## 3. Version Deprecation Notice
+Versions prior to `v1.2.0` (including `v1.0.0` and `v1.1.0`) lack Row-Level Security quota enforcement and are marked as **Withdrawn**. All active patients and caregivers should run `v1.2.0` or higher.

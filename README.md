@@ -415,11 +415,14 @@ npx expo start --web
 
 ## 🧪 Automated Testing & Code Quality
 
-MedSync enforces continuous quality checks on every push and pull request via GitHub Actions:
+MedSync uses a two-tiered testing approach separating fast client/domain checks from live multi-user database tests:
 
 ```bash
-# Run the complete automated test suite (67 unit & security tests)
+# Tier 1: Run client unit, domain, and static security invariant checks (67 tests)
 npm test
+
+# Tier 2: Run live multi-user PostgreSQL RLS integration tests via pgTAP
+supabase test db
 
 # Run static TypeScript compiler checks
 npx tsc --noEmit
@@ -429,9 +432,9 @@ npx expo-doctor
 ```
 
 ```
-✔ 67 passing (0 failed)
-✔ All RLS policy integrity tests passed
-✔ All profile escalation boundary tests passed
+✔ 67 unit & domain invariant checks passing (0 failed)
+✔ HTML sanitization & token chunking verified
+✔ Static RLS rules and escalation trigger invariants verified
 ✔ TypeScript clean (0 errors)
 ```
 
