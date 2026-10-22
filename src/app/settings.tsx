@@ -726,7 +726,7 @@ export default function SettingsScreen() {
         {/* Branded Vector Logo App Footer */}
         <View style={styles.appFooter}>
           <MedSyncLogo size={48} variant="horizontal" />
-          <Text style={styles.appVersionText}>Version 1.0.0 (Build 57)</Text>
+          <Text style={styles.appVersionText}>Version 1.2.0 (Build 57)</Text>
           <Text style={styles.appMissionText}>Accessible & Secure Healthcare Companion</Text>
         </View>
       </ScrollView>

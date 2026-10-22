@@ -132,8 +132,8 @@ const METRICS: MetricDef[] = [
   },
   {
     value: 0,
-    label: "CLOUD LOCK-IN",
-    caption: "local SQLite offline storage",
+    label: "DATA BROKERS",
+    caption: "zero tracking SDKs or ad networks",
   },
   {
     value: 3,
@@ -144,7 +144,7 @@ const METRICS: MetricDef[] = [
 ];
 
 function Counter({ metric, started }: { metric: MetricDef; started: boolean }) {
-  const [animated, setAnimated] = useState(0);
+  const [animated, setAnimated] = useState(metric.value);
   const reduced = useReducedMotion();
 
   useEffect(() => {
