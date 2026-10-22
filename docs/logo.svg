@@ -1,29 +1,76 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 30 30" style="enable-background:new 0 0 30 30;" xml:space="preserve">
-<defs>
-  <style type="text/css">
-    .st194{fill:#2D2D2D;stroke:#FFFFFF;stroke-width:0.6317;stroke-miterlimit:10;}
-    .st23{fill:#FFFFFF;}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#071520" />
+      <stop offset="100%" stop-color="#020810" />
+    </linearGradient>
 
-    .z-breathe {
-      animation: breathe 2.5s ease-in-out infinite;
-    }
+    <!-- Border Glow Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#10B981" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#00F0FF" stop-opacity="0.2" />
+    </linearGradient>
 
-    @keyframes breathe {
-      0%, 100% { opacity: 0.7; }
-      50% { opacity: 1; }
-    }
-  </style>
-</defs>
+    <!-- Capsule Cyan Top -->
+    <linearGradient id="capsuleTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#70F8FF" />
+      <stop offset="45%" stop-color="#00F0FF" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
 
-<g>
-  <path class="st194" d="M24.51,28.51H5.49c-2.21,0-4-1.79-4-4V5.49c0-2.21,1.79-4,4-4h19.03c2.21,0,4,1.79,4,4v19.03
-    C28.51,26.72,26.72,28.51,24.51,28.51z"/>
-  <g class="z-breathe">
-    <path class="st23" d="M15.47,7.1l-1.3,1.85c-0.2,0.29-0.54,0.47-0.9,0.47h-7.1V7.09C6.16,7.1,15.47,7.1,15.47,7.1z"/>
-    <polygon class="st23" points="24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"/>
-    <path class="st23" d="M14.53,22.91l1.31-1.86c0.2-0.29,0.54-0.47,0.9-0.47h7.09v2.33H14.53z"/>
+    <!-- Capsule Mint Bottom -->
+    <linearGradient id="capsuleBottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="50%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+
+    <!-- Orbit Sync Gradient -->
+    <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" />
+      <stop offset="50%" stop-color="#38BDF8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+
+    <!-- Specular Highlight -->
+    <linearGradient id="specular" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle Base for tab visibility -->
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#bgGrad)" />
+  <rect x="2" y="2" width="60" height="60" rx="15" stroke="url(#borderGrad)" stroke-width="1.6" />
+
+  <!-- Back half of orbital sync ring -->
+  <path d="M12 38 C 16 48, 48 48, 52 38" stroke="url(#orbitGrad)" stroke-width="2.4" stroke-dasharray="3 2" opacity="0.5" />
+
+  <!-- Tilted Medical Capsule (32, 32 center, tilted -35deg) -->
+  <g transform="rotate(-35 32 32)">
+    <!-- Entire Capsule Pill Silhouette -->
+    <rect x="23" y="14" width="18" height="36" rx="9" fill="#031E2C" />
+
+    <!-- Top Cap (Cyan) -->
+    <path d="M 23 28 L 23 23 A 9 9 0 0 1 41 23 L 41 28 Z" fill="url(#capsuleTop)" />
+    
+    <!-- Specular Reflection on Cap -->
+    <path d="M 25 21 A 7 7 0 0 1 39 21" stroke="url(#specular)" stroke-width="1.8" stroke-linecap="round" fill="none" />
+
+    <!-- Bottom Cap (Mint) -->
+    <path d="M 23 29 L 23 41 A 9 9 0 0 0 41 41 L 41 29 Z" fill="url(#capsuleBottom)" />
+
+    <!-- Waist Joint Seam Band -->
+    <rect x="22" y="27.5" width="20" height="3" rx="1.5" fill="#040F18" stroke="#00F0FF" stroke-width="1" />
   </g>
-</g>
+
+  <!-- Front half of orbital sync ring (wrapping in front of capsule) -->
+  <path d="M10 28 C 14 16, 50 16, 54 28" stroke="url(#orbitGrad)" stroke-width="2.6" fill="none" stroke-linecap="round" />
+
+  <!-- Orbital Synced Node (Living satellite pulse dot) -->
+  <circle cx="51" cy="24" r="3.2" fill="#00F0FF" />
+  <circle cx="51" cy="24" r="1.5" fill="#FFFFFF" />
+  <circle cx="13" cy="32" r="2.2" fill="#10B981" />
 </svg>

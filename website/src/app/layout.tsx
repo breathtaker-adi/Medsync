@@ -71,12 +71,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/Medsync/favicon.ico", sizes: "any" },
-      { url: "/Medsync/favicon.png", type: "image/png", sizes: "32x32" },
-      { url: "/Medsync/logo.svg", type: "image/svg+xml" },
+      { url: "/Medsync/logo.svg?v=2", type: "image/svg+xml" },
+      { url: "/Medsync/favicon.png?v=2", type: "image/png", sizes: "32x32" },
+      { url: "/Medsync/favicon.ico?v=2", sizes: "any" },
     ],
-    shortcut: "/Medsync/favicon.ico",
-    apple: "/Medsync/medsync-logo.png",
+    shortcut: "/Medsync/favicon.ico?v=2",
+    apple: "/Medsync/medsync-logo.png?v=2",
   },
   openGraph: {
     title: "Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety",
@@ -272,11 +272,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <head>
-        <link rel="icon" href="/Medsync/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/Medsync/favicon.png" />
-        <link rel="icon" type="image/svg+xml" href="/Medsync/logo.svg" />
-        <link rel="shortcut icon" href="/Medsync/favicon.ico" />
-        <link rel="apple-touch-icon" href="/Medsync/medsync-logo.png" />
+        <link rel="icon" type="image/svg+xml" href="/Medsync/logo.svg?v=2" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/Medsync/favicon.png?v=2" />
+        <link rel="icon" href="/Medsync/favicon.ico?v=2" sizes="any" />
+        <link rel="shortcut icon" href="/Medsync/favicon.ico?v=2" />
+        <link rel="apple-touch-icon" href="/Medsync/medsync-logo.png?v=2" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
