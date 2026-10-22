@@ -14,9 +14,18 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | MedSync - DPDP Act 2023 Compliance & Data Protection",
+  title: "Privacy Policy | Medsync — DPDP Act 2023 Compliance & Data Protection",
   description:
     "Learn how MedSync protects patient privacy, enforces local-first encryption, and complies with India's Digital Personal Data Protection (DPDP) Act 2023.",
+  alternates: {
+    canonical: "https://breathtaker-adi.github.io/Medsync/privacy",
+  },
+  openGraph: {
+    title: "Privacy Policy | Medsync — DPDP Act 2023 Compliance & Data Protection",
+    description:
+      "Learn how MedSync protects patient privacy, enforces local-first encryption, and complies with India's Digital Personal Data Protection (DPDP) Act 2023.",
+    url: "https://breathtaker-adi.github.io/Medsync/privacy",
+  },
 };
 
 export default function PrivacyPolicyPage() {

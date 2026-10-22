@@ -26,7 +26,7 @@ function DownloadBlock() {
             <div className="mt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2 font-telemetry text-[9px] text-slate-400">
               <span className="rounded bg-bio/15 text-bio font-semibold px-2 py-0.5">v1.2.0 (Latest)</span>
               <span className="rounded bg-white/5 px-2 py-0.5">Android 8.0 - 15</span>
-              <span className="rounded bg-white/5 px-2 py-0.5">~48 MB</span>
+              <span className="rounded bg-white/5 px-2 py-0.5">~100 MB</span>
               <span className="rounded bg-white/5 px-2 py-0.5">Open Source MIT</span>
             </div>
           </div>

@@ -69,12 +69,14 @@ export function DayInMedsync() {
       const setRail = (progress: number) => {
         const idx = progress < 0.333 ? 0 : progress < 0.665 ? 1 : 2;
         railItems.forEach((item, i) => {
-          item.style.opacity = i === idx ? "1" : "0.32";
+          const on = i === idx;
+          item.style.opacity = on ? "1" : "0.55";
+          item.setAttribute("data-active", on ? "true" : "false");
           const dot = item.querySelector<HTMLElement>("[data-rail-dot]");
           if (dot) {
-            const on = i === idx;
-            dot.style.background = on ? "#00f0ff" : "rgba(255,255,255,0.25)";
-            dot.style.boxShadow = on ? "0 0 12px rgba(0,240,255,0.8)" : "none";
+            dot.style.background = on ? "#00f0ff" : "rgba(255,255,255,0.3)";
+            dot.style.boxShadow = on ? "0 0 16px rgba(0,240,255,0.95)" : "none";
+            dot.style.transform = on ? "scale(1.2)" : "scale(1)";
           }
         });
       };
@@ -133,11 +135,26 @@ export function DayInMedsync() {
               key={p.time}
               className="glass rounded-2xl border border-white/8 p-6"
             >
-              <span className="font-telemetry text-[11px] tracking-[0.24em] text-bio uppercase">
-                {p.time} · {p.tag}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-telemetry text-xs tracking-[0.24em] text-bio uppercase font-bold">
+                  {p.time}
+                </span>
+                <span className="rounded bg-white/8 px-1.5 py-0.5 font-telemetry text-[9px] font-semibold tracking-[0.2em] text-slate-300 uppercase">
+                  {p.tag}
+                </span>
+              </div>
               <h3 className="mt-2 text-xl font-bold text-white">{p.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-400">{p.body}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">{p.body}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {p.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-md border border-white/8 bg-white/[0.03] px-2.5 py-1 font-telemetry text-[9px] text-slate-400"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
             </article>
           ))}
         </div>
@@ -160,7 +177,7 @@ export function DayInMedsync() {
           </div>
 
           {/* section heading */}
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pt-16 md:px-8 md:pt-20">
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pt-10 md:px-8 md:pt-14">
             <SectionHeading
               index="02"
               eyebrow="A DAY IN MEDSYNC"
@@ -175,34 +192,55 @@ export function DayInMedsync() {
           </div>
 
           {/* stage grid: rail on left, phone shifted center-to-right */}
-          <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-center px-5 pb-10 md:px-8 lg:grid-cols-[200px_1fr] lg:gap-8">
-            {/* milestone rail */}
-            <div className="hidden flex-col gap-9 self-center border-l border-white/10 pl-5 lg:flex">
-              {PHASES.map((p) => (
-                <div key={p.time} data-rail-item className="relative pl-4" style={{ opacity: 0.32 }}>
+          <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-start px-5 pt-2 pb-6 md:px-8 lg:grid-cols-[380px_1fr] lg:gap-10">
+            {/* milestone rail (positioned upper side, enlarged with complete details) */}
+            <div className="hidden flex-col gap-4 self-start pt-2 border-l-2 border-white/10 pl-6 lg:flex">
+              {PHASES.map((p, i) => (
+                <div
+                  key={p.time}
+                  data-rail-item
+                  data-active={i === 0 ? "true" : "false"}
+                  className="relative rounded-2xl border border-transparent p-3.5 transition-all duration-300 data-[active=true]:border-bio/35 data-[active=true]:bg-bio/[0.06] data-[active=true]:shadow-[0_10px_30px_-10px_rgba(0,240,255,0.2)]"
+                  style={{ opacity: i === 0 ? 1 : 0.55 }}
+                >
                   <span
                     data-rail-dot
                     aria-hidden
-                    className="absolute top-1 -left-[26.5px] h-2.5 w-2.5 rounded-full bg-white/25"
+                    className="absolute top-4.5 -left-[31px] h-3.5 w-3.5 rounded-full border-2 border-obsidian bg-white/30 transition-all duration-300"
                   />
-                  <span className="font-telemetry text-[11px] tracking-[0.2em] text-bio">
-                    {p.time}
-                  </span>
-                  <div className="mt-0.5 font-telemetry text-[9px] tracking-[0.22em] text-slate-400 uppercase">
-                    {p.tag}
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-telemetry text-xs font-bold tracking-[0.22em] text-bio">
+                      {p.time}
+                    </span>
+                    <span className="rounded bg-white/8 px-2 py-0.5 font-telemetry text-[9px] font-semibold tracking-[0.2em] text-slate-300 uppercase">
+                      {p.tag}
+                    </span>
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-300 font-medium">
+                  <div className="mt-1.5 text-sm sm:text-[15px] font-bold text-white">
                     {p.title}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                    {p.body}
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {p.tags.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-md border border-white/8 bg-white/[0.04] px-2 py-0.5 font-telemetry text-[8.5px] font-medium tracking-[0.12em] text-slate-400"
+                      >
+                        {t}
+                      </span>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
 
             {/* phone mock shifted center-to-right */}
-            <div className="flex w-full items-center justify-center lg:justify-center lg:pl-10">
+            <div className="flex w-full items-center justify-center lg:justify-center lg:pl-6">
               <div
                 data-phone
-                className="relative mx-auto aspect-[9/18.4] w-full max-w-[310px] rounded-[2.6rem] border border-white/12 bg-[#05070d] p-2.5 shadow-[0_30px_100px_-30px_rgba(0,240,255,0.22),0_40px_120px_-60px_rgba(0,0,0,0.95)] sm:max-w-[330px]"
+                className="relative mx-auto aspect-[9/18.4] w-full max-w-[290px] rounded-[2.6rem] border border-white/12 bg-[#05070d] p-2.5 shadow-[0_30px_100px_-30px_rgba(0,240,255,0.22),0_40px_120px_-60px_rgba(0,0,0,0.95)] sm:max-w-[315px] max-h-[calc(100svh-220px)]"
               >
                 {/* phone hardware accents */}
                 <span aria-hidden className="absolute top-24 -right-[2.5px] h-12 w-[3px] rounded-full bg-white/15" />

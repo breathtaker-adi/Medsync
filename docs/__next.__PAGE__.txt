@@ -1,53 +1,29 @@
-1:"$Sreact.fragment"
-4:"/Medsync/_next/static/chunks/0i26gtfhnr8y3.js"
-5:"/Medsync/_next/static/chunks/2i12urmu_7w4r.js"
-6:"/Medsync/_next/static/chunks/2n-akgs5cd5xk.js"
-7:I[12585,["$4","$5","$6"],"Providers"]
-8:I[87180,["$4","$5","$6"],"default"]
-9:I[42045,["$4","$5","$6"],"default"]
-a:"/Medsync/_next/static/chunks/3_ik98uxptci6.js"
-b:I[54249,["$4","$5","$6","$a"],""]
-f:I[30101,["$4","$5","$6"],"ClientPageRoot"]
-10:"/Medsync/_next/static/chunks/0oudu-yhtt44r.js"
-11:"/Medsync/_next/static/chunks/3u64biv206p0i.js"
-12:I[16965,["$4","$5","$6","$10","$11"],"default"]
-15:I[19400,["$4","$5","$6"],"OutletBoundary"]
-16:"$Sreact.suspense"
-19:"ViewportBoundary"
-1a:I[19400,["$4","$5","$6"],"$19"]
-1b:"MetadataBoundary"
-1c:I[19400,["$4","$5","$6"],"$1b"]
-:HL["/Medsync/_next/static/chunks/0ue21dmj8xnx1.css","style"]
-2:["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n              .boot-overlay, [aria-label*=\"boot screen\"] { display: none !important; }\n              .noscript-fallback {\n                display: flex !important;\n                min-height: 100vh;\n                flex-direction: column;\n                align-items: center;\n                justify-content: center;\n                padding: 2rem;\n                text-align: center;\n                background: #040711;\n                color: #e6edf7;\n              }\n            "}}]
-3:["$","div",null,{"className":"noscript-fallback","children":[["$","h1",null,{"style":{"fontSize":"2rem","marginBottom":"1rem"},"children":"Medsync: Medicine in Sync. Life on Schedule."}],["$","p",null,{"style":{"maxWidth":"32rem","color":"#90989f","marginBottom":"1.5rem"},"children":"Medsync is an open-source prescription adherence platform connecting patients, doctors, and family caregivers in real time. This interactive marketing site requires JavaScript. You can read the project documentation and download releases on GitHub."}],["$","a",null,{"href":"https://github.com/breathtaker-adi/Medsync","style":{"display":"inline-block","padding":"0.75rem 1.5rem","background":"#00f0ff","color":"#040711","borderRadius":"0.5rem","textDecoration":"none","fontWeight":600},"children":"View on GitHub →"}]]}]
-d:X
-e:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","$Lf",null,{"Component":"$12","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@13","$@14"]}}],[["$","script","script-0",{"src":"/Medsync/_next/static/chunks/0oudu-yhtt44r.js","async":true}],["$","script","script-1",{"src":"/Medsync/_next/static/chunks/3u64biv206p0i.js","async":true}]],["$","$L15",null,{"children":["$","$16",null,{"name":"Next.MetadataOutlet","children":"$@17"}]}]]}],"p":"$@18","v":null,"s":"$d"}}]]
-0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/Medsync/_next/static/chunks/0ue21dmj8xnx1.css","precedence":"next"}],["$","script","script-0",{"src":"/Medsync/_next/static/chunks/0i26gtfhnr8y3.js","async":true}],["$","script","script-1",{"src":"/Medsync/_next/static/chunks/2i12urmu_7w4r.js","async":true}],["$","script","script-2",{"src":"/Medsync/_next/static/chunks/2n-akgs5cd5xk.js","async":true}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"className":"dark","children":[["$","head",null,{"children":[["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"Organization\",\"@id\":\"https://breathtaker-adi.github.io/Medsync/#org\",\"name\":\"Medsync\",\"url\":\"https://breathtaker-adi.github.io/Medsync/\",\"logo\":\"https://breathtaker-adi.github.io/Medsync/medsync-logo.png\",\"description\":\"Smart Medication Adherence, AI Prescription OCR & Caregiver Platform\",\"sameAs\":[\"https://github.com/breathtaker-adi/Medsync\"]},{\"@type\":\"SoftwareApplication\",\"name\":\"Medsync\",\"applicationCategory\":\"HealthApplication\",\"operatingSystem\":\"ANDROID\",\"offers\":{\"@type\":\"Offer\",\"price\":\"0\",\"priceCurrency\":\"USD\"},\"publisher\":{\"@id\":\"https://breathtaker-adi.github.io/Medsync/#org\"}}]}"}}],["$","noscript",null,{"children":"$2"}]]}],["$","body",null,{"className":"Xf24RG_variable TIR3ba_variable bg-obsidian text-foreground antialiased","children":[["$","a",null,{"href":"#main-content","className":"sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-bio focus:px-5 focus:py-3 focus:font-telemetry focus:text-sm focus:tracking-[0.18em] focus:text-obsidian focus:shadow-lg focus:outline-none","children":"Skip to main content"}],["$","noscript",null,{"children":"$3"}],["$","$L7",null,{"children":["$","$L8",null,{"parallelRouterKey":"children","template":["$","$L9",null,{}],"notFound":[["$","main",null,{"className":"flex min-h-screen flex-col items-center justify-center bg-obsidian px-6 text-center","children":[["$","div",null,{"className":"relative mb-6","children":["$","span",null,{"className":"font-telemetry text-[11px] tracking-[0.32em] text-bio uppercase","children":"404 · signal lost"}]}],["$","h1",null,{"className":"text-4xl font-extrabold tracking-tight text-white md:text-6xl","children":"This page fell out of sync."}],["$","p",null,{"className":"mt-4 max-w-md text-slate-400","children":"The URL you followed is no longer in the adherence loop. Let us get you back to the timeline."}],["$","$Lb",null,{"href":"/","className":"mt-8 inline-flex items-center gap-2 rounded-xl bg-bio px-6 py-3 font-telemetry text-sm font-semibold tracking-[0.18em] text-obsidian transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio","children":"← BACK TO MEDSYNC"}]]}],[]]}]}]]}]]}]]}],"p":"$@c","v":null,"s":"$d"},"c":"$Qe"},"h":{"r":["$","$1","h",{"children":[null,["$","$L1a",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#040711"}]]}],["$","$L1c",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$16",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Medsync: Medicine in Sync. Life on Schedule."}],["$","meta","1",{"name":"description","content":"Medsync is an open-source prescription adherence platform connecting patients, doctors and caregivers in real time. One living timeline. Zero dropped doses."}],["$","meta","2",{"name":"author","content":"Medsync"}],["$","meta","3",{"name":"keywords","content":"Medsync,medication adherence,prescription sync,AI prescription OCR,caregiver alerts,digital health,offline-first,DPDP Act"}],["$","link","4",{"rel":"canonical","href":"https://breathtaker-adi.github.io/Medsync/"}],["$","meta","5",{"name":"google-site-verification","content":"cijZUqVXSewGSRzBuGO07uehW-a3QU3TtkRFOJ96ewY"}],"$L1d","$L1e","$L1f","$L20","$L21","$L22","$L23","$L24","$L25","$L26","$L27","$L28","$L29","$L2a","$L2b","$L2c"]}]}],null]}],"$L2d"]}],"p":"$@2e","v":null,"s":"$d"}},"a":"$@2f","u":"$@30","b":"J3aCpn94oMxKsm5WdFYAG"}
-31:I[18516,["$4","$5","$6"],"IconMark"]
-13:{}
-14:"$e:0:1:d:r:props:children:0:props:serverProvidedParams:params"
-17:null
-1d:["$","meta","6",{"property":"og:title","content":"Medsync: Medicine in Sync. Life on Schedule."}]
-1e:["$","meta","7",{"property":"og:description","content":"An open-source prescription adherence platform connecting patients, doctors and caregivers in real time."}]
-1f:["$","meta","8",{"property":"og:url","content":"https://breathtaker-adi.github.io/Medsync/"}]
-20:["$","meta","9",{"property":"og:site_name","content":"Medsync"}]
-21:["$","meta","10",{"property":"og:image","content":"https://breathtaker-adi.github.io/Medsync/film-poster.jpg"}]
-22:["$","meta","11",{"property":"og:image:width","content":"1200"}]
-23:["$","meta","12",{"property":"og:image:height","content":"630"}]
-24:["$","meta","13",{"property":"og:image:alt","content":"Medsync: Medicine in Sync. Life on Schedule."}]
-25:["$","meta","14",{"property":"og:type","content":"website"}]
-26:["$","meta","15",{"name":"twitter:card","content":"summary_large_image"}]
-27:["$","meta","16",{"name":"twitter:title","content":"Medsync: Medicine in Sync. Life on Schedule."}]
-28:["$","meta","17",{"name":"twitter:description","content":"An open-source prescription adherence platform connecting patients, doctors and caregivers in real time."}]
-29:["$","meta","18",{"name":"twitter:image","content":"https://breathtaker-adi.github.io/Medsync/film-poster.jpg"}]
-2a:["$","link","19",{"rel":"icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}]
-2b:["$","link","20",{"rel":"apple-touch-icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}]
-2c:["$","$L31","21",{}]
-2d:["$","meta",null,{"name":"next-size-adjust","content":""}]
-d:300
-30:true
-d:C
-2f:0
-c:"$undefined"
-2e:"$undefined"
-18:"$undefined"
+2:"$Sreact.fragment"
+3:"/Medsync/_next/static/chunks/0i26gtfhnr8y3.js"
+4:"/Medsync/_next/static/chunks/2i12urmu_7w4r.js"
+5:"/Medsync/_next/static/chunks/2n-akgs5cd5xk.js"
+6:I[30101,["$3","$4","$5"],"ClientPageRoot"]
+7:"/Medsync/_next/static/chunks/0oudu-yhtt44r.js"
+8:"/Medsync/_next/static/chunks/2bh9y39p6-rih.js"
+9:I[16965,["$3","$4","$5","$7","$8"],"default"]
+c:I[19400,["$3","$4","$5"],"OutletBoundary"]
+d:"$Sreact.suspense"
+11:"ViewportBoundary"
+12:I[19400,["$3","$4","$5"],"$11"]
+13:"MetadataBoundary"
+14:I[19400,["$3","$4","$5"],"$13"]
+10:X
+1:[["children",{"s":"__PAGE__","h":128,"d":{"r":["$","$2","c",{"children":[["$","$L6",null,{"Component":"$9","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@a","$@b"]}}],[["$","script","script-0",{"src":"/Medsync/_next/static/chunks/0oudu-yhtt44r.js","async":true}],["$","script","script-1",{"src":"/Medsync/_next/static/chunks/2bh9y39p6-rih.js","async":true}]],["$","$Lc",null,{"children":["$","$d",null,{"name":"Next.MetadataOutlet","children":"$@e"}]}]]}],"p":"$@f","v":null,"s":"$10"}}]]
+0:{"t":{"t":{"s":"","h":16,"c":"$Q1"},"h":{"r":["$","$2","h",{"children":[null,["$","$L12",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#040711"}]]}],["$","$L14",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$d",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety"}],["$","meta","1",{"name":"description","content":"Medsync is an open-source, offline-first medication adherence platform for Android. Features AI camera prescription OCR intake, 64px high-contrast senior mode, encrypted local vault, and real-time family caregiver alerts. DPDP Act 2023 compliant."}],["$","link","2",{"rel":"author","href":"https://github.com/breathtaker-adi/Medsync"}],["$","meta","3",{"name":"author","content":"Medsync Open Source Health Project"}],["$","meta","4",{"name":"keywords","content":"Medsync,medication adherence app,prescription reminder android,AI prescription OCR scanner,senior medication reminder,caregiver medicine alert,offline pill tracker,DPDP Act healthcare compliance,elderly high contrast medicine app,open source medical app,MedSync APK download,chronic therapy schedule,SQLCipher encrypted health vault,doctor verification loop,patient prescription sync,medication schedule tracker,digital health open source"}],["$","meta","5",{"name":"creator","content":"Medsync Core Team"}],["$","meta","6",{"name":"publisher","content":"Medsync"}],["$","meta","7",{"name":"robots","content":"index, follow"}],["$","meta","8",{"name":"googlebot","content":"index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1"}],["$","meta","9",{"name":"category","content":"HealthApplication"}],["$","meta","10",{"name":"classification","content":"Healthcare Software & Digital Health Platform"}],["$","link","11",{"rel":"canonical","href":"https://breathtaker-adi.github.io/Medsync/"}],["$","meta","12",{"name":"google-site-verification","content":"cijZUqVXSewGSRzBuGO07uehW-a3QU3TtkRFOJ96ewY"}],["$","meta","13",{"property":"og:title","content":"Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety"}],["$","meta","14",{"property":"og:description","content":"Open-source, offline-first medication adherence connecting patients, doctors, and caregivers in real time. One living timeline. Zero dropped doses."}],["$","meta","15",{"property":"og:url","content":"https://breathtaker-adi.github.io/Medsync/"}],["$","meta","16",{"property":"og:site_name","content":"Medsync"}],["$","meta","17",{"property":"og:locale","content":"en_US"}],["$","meta","18",{"property":"og:image","content":"https://breathtaker-adi.github.io/Medsync/film-poster.jpg"}],["$","meta","19",{"property":"og:image:width","content":"1200"}],["$","meta","20",{"property":"og:image:height","content":"630"}],["$","meta","21",{"property":"og:image:alt","content":"Medsync Medication Adherence Platform — AI Prescription Scanner and Caregiver Safety Loop"}],["$","meta","22",{"property":"og:type","content":"website"}],["$","meta","23",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","24",{"name":"twitter:title","content":"Medsync — Smart Medication Adherence & Prescription OCR"}],["$","meta","25",{"name":"twitter:description","content":"Open-source medication adherence app for Android. AI camera prescription intake, encrypted offline vault, and instant caregiver alerts."}],["$","meta","26",{"name":"twitter:image","content":"https://breathtaker-adi.github.io/Medsync/film-poster.jpg"}],["$","link","27",{"rel":"icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png","type":"image/png"}],["$","link","28",{"rel":"icon","href":"https://breathtaker-adi.github.io/Medsync/logo.svg","type":"image/svg+xml"}],["$","link","29",{"rel":"apple-touch-icon","href":"https://breathtaker-adi.github.io/Medsync/medsync-logo.png"}],"$L15"]}]}],null]}],"$L16"]}],"p":"$@17","v":null,"s":"$10"}},"a":"$@18","u":"$@19","b":"c9NGNt3ugSx2Hcwrd2eZD"}
+1a:I[18516,["$3","$4","$5"],"IconMark"]
+a:{}
+b:"$1:0:1:d:r:props:children:0:props:serverProvidedParams:params"
+e:null
+15:["$","$L1a","30",{}]
+16:["$","meta",null,{"name":"next-size-adjust","content":""}]
+19:true
+10:300
+10:C
+18:0
+f:"$undefined"
+17:"$undefined"

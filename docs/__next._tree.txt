@@ -1,5 +1,5 @@
-:HL["/Medsync/_next/static/chunks/0ue21dmj8xnx1.css","style"]
+:HL["/Medsync/_next/static/chunks/100oyg8lftvdo.css","style"]
 :HL["/Medsync/_next/static/media/051742360c26797e-s.p.1bkzbscqrt8rl.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/Medsync/_next/static/media/fba5a26ea33df6a3-s.p.18rizl4rsrl42.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
-1:[["children",{"s":"__PAGE__","h":160}]]
-0:{"b":"J3aCpn94oMxKsm5WdFYAG","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+1:[["children",{"s":"__PAGE__","h":128}]]
+0:{"b":"c9NGNt3ugSx2Hcwrd2eZD","t":{"t":{"s":"","h":16,"c":"$Q1"}}}

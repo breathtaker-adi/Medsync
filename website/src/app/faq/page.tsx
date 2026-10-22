@@ -4,9 +4,18 @@ import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { FAQSection } from "@/components/faq/faq";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions | MedSync",
+  title: "Frequently Asked Questions | Medsync",
   description:
     "Common questions about MedSync: DPDP Act 2023 compliance, offline vault, AI prescription verification, and caregiver safety loops.",
+  alternates: {
+    canonical: "https://breathtaker-adi.github.io/Medsync/faq",
+  },
+  openGraph: {
+    title: "Frequently Asked Questions | Medsync",
+    description:
+      "Common questions about MedSync: DPDP Act 2023 compliance, offline vault, AI prescription verification, and caregiver safety loops.",
+    url: "https://breathtaker-adi.github.io/Medsync/faq",
+  },
 };
 
 export default function FAQPage() {
