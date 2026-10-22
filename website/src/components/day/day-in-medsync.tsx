@@ -348,7 +348,7 @@ export function DayInMedsync() {
                           <span className="flex items-center gap-1.5">
                             <ScanText size={10} /> Camera Rx Scan
                           </span>
-                          <span className="text-pulse-bright">99.1% Confidence</span>
+                          <span className="text-pulse-bright">99.1% (Sample Extraction)</span>
                         </div>
 
                         {/* Scanned medicine card */}
@@ -358,13 +358,13 @@ export function DayInMedsync() {
                             Extracted: 1 tablet daily · Bedtime
                           </div>
                           <div className="mt-2 flex items-center gap-1.5 rounded bg-pulse/10 px-2 py-1 font-telemetry text-[7.5px] text-pulse-bright">
-                            <CheckCircle2 size={9} /> Verified by Dr. Anand (Cardiology)
+                            <CheckCircle2 size={9} /> Sample Verification · Dr. Anand (Cardiology)
                           </div>
                         </div>
 
                         <div className="mt-2.5 flex items-center justify-between font-telemetry text-[7.5px] text-slate-400">
                           <span>Contraindication Check</span>
-                          <span className="text-pulse-bright">0 Conflicts Detected</span>
+                          <span className="text-amber-clin/80">Coming in v1.3</span>
                         </div>
                       </div>
 
@@ -379,7 +379,7 @@ export function DayInMedsync() {
                     <div className="flex items-center gap-2 rounded-xl border border-white/6 bg-white/[0.02] px-3 py-2">
                       <ShieldCheck size={12} className="text-pulse-bright" />
                       <span className="font-telemetry text-[8px] tracking-[0.12em] text-slate-400">
-                        Saved to local vault · Zero data shared
+                        Encrypted via TLS 1.3 · Row-Level Security
                       </span>
                     </div>
                   </div>

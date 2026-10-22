@@ -41,45 +41,45 @@ const EVENT_POOL: Array<{
 }> = [
   {
     event: "PRESCRIPTION_SYNCED",
-    detail: () => `rx:#${randHex(4)} → local_vault 1.2kb · verified`,
+    detail: () => `rx:#${randHex(4)} → supabase_storage (sample) · verified`,
     tone: "info",
     category: "OCR",
   },
   {
     event: "OCR_VISION_PARSE",
-    detail: () => `med:metformin 500mg · confidence:99.4% · dosage:2x/day`,
+    detail: () => `med:metformin 500mg · confidence:99.4% (sample) · dosage:2x/day`,
     tone: "ok",
     category: "OCR",
   },
   {
     event: "DOSE_REMINDER_DISPATCH",
-    detail: () => `patient:#${randHex(4)} · channel:push+alarm · 08:00 AM window`,
+    detail: () => `patient:#${randHex(4)} · channel:fcm_push+alarm · 08:00 AM window`,
     tone: "ok",
     category: "DOSES",
   },
   {
     event: "DOCTOR_REVIEW_STATUS",
-    detail: () => `clinician:Dr. Anand (Reg #MMC-84920) · verified`,
+    detail: () => `clinician:Dr. Anand (Sample Review · Reg #MMC-84920) · verified`,
     tone: "info",
     category: "SECURITY",
   },
   {
-    event: "VAULT_LOCAL_ENCRYPT",
-    detail: () => `sqlite:SQLCipher AES-256 · 0 pending sync ops`,
+    event: "VAULT_KEYSTORE_AUTH",
+    detail: () => `keystore:hardware_secure_store · rls:enforced`,
     tone: "ok",
     category: "SECURITY",
   },
   {
     event: "CAREGIVER_NOTIFICATION",
-    detail: () => `recipient:Ananya (Daughter) · status:delivered 12ms`,
+    detail: () => `recipient:Ananya (Daughter) · fcm_status:delivered 12ms`,
     tone: "ok",
     category: "CAREGIVER",
   },
   {
-    event: "INTERACTION_CHECK",
-    detail: () => `pairs:42 checked against DPDP formulary · 0 conflicts`,
+    event: "DOSE_LOGGED",
+    detail: () => `dose:metformin 500mg · status:confirmed · adherence:100%`,
     tone: "ok",
-    category: "SECURITY",
+    category: "DOSES",
   },
   {
     event: "CAREGIVER_DIGEST",
@@ -88,14 +88,14 @@ const EVENT_POOL: Array<{
     category: "CAREGIVER",
   },
   {
-    event: "WS_HEARTBEAT",
-    detail: () => `ping 11ms · wss://live.medsync.health/v3`,
+    event: "API_HEARTBEAT",
+    detail: () => `ping 11ms · https://api.supabase.co/rest/v1`,
     tone: "info",
     category: "SECURITY",
   },
   {
     event: "RECONNECT_BACKOFF",
-    detail: () => `attempt:1 · socket resilient · reconnecting in 90ms`,
+    detail: () => `attempt:1 · channel resilient · reconnecting in 90ms`,
     tone: "warn",
     category: "SECURITY",
   },
@@ -344,8 +344,8 @@ export function TerminalDrawer() {
                   </span>
                   <span className="flex items-center gap-2 font-telemetry text-[10.5px] tracking-[0.14em] text-slate-300">
                     <Radio size={12} className="text-bio" aria-hidden="true" />
-                    <span className="font-semibold text-white">medsync://telemetry-mesh</span>
-                    <span className="hidden text-slate-500 sm:inline">· wss://live.medsync.health/v3</span>
+                    <span className="font-semibold text-white">medsync://sample-telemetry</span>
+                    <span className="hidden text-slate-500 sm:inline">· simulated packet feed</span>
                   </span>
                 </div>
 

@@ -1,0 +1,18 @@
+# MedSync Official Release Checksums (SHA-256)
+# Verify downloaded binaries before sideloading or deployment:
+# Linux/macOS: shasum -a 256 MedSync-v1.2.0.apk
+# Windows: certutil -hashfile MedSync-v1.2.0.apk SHA256
+
+# Version 1.2.0 (Latest Release)
+# Target: Android 8.0+ (API 26+)
+# Release Date: October 2026
+# Artifact: MedSync-v1.2.0.apk
+9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08  MedSync-v1.2.0.apk
+
+# Version 1.1.0 (Stable Release)
+# Artifact: MedSync-v1.1.apk
+4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a  MedSync-v1.1.apk
+
+# Version 1.0.0 (Initial Beta)
+# Artifact: MedSync-v1.0.apk
+ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d  MedSync-v1.0.apk

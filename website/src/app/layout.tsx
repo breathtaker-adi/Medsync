@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s | Medsync",
   },
   description:
-    "Medsync is an open-source, offline-first medication adherence platform for Android. Features AI camera prescription OCR intake, 64px high-contrast senior mode, encrypted local vault, and real-time family caregiver alerts. DPDP Act 2023 compliant.",
+    "Medsync is an open-source medication adherence platform for Android with AI prescription OCR intake, 64px high-contrast senior mode, and real-time family caregiver alerts. Designed in alignment with India's DPDP Act 2023.",
   keywords: [
     "Medsync",
     "medication adherence app",
@@ -40,13 +40,13 @@ export const metadata: Metadata = {
     "AI prescription OCR scanner",
     "senior medication reminder",
     "caregiver medicine alert",
-    "offline pill tracker",
-    "DPDP Act healthcare compliance",
+    "pill reminder and tracker",
+    "DPDP Act aligned health app",
     "elderly high contrast medicine app",
     "open source medical app",
     "MedSync APK download",
     "chronic therapy schedule",
-    "SQLCipher encrypted health vault",
+    "secure hardware keystore auth",
     "doctor verification loop",
     "patient prescription sync",
     "medication schedule tracker",
@@ -81,7 +81,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety",
     description:
-      "Open-source, offline-first medication adherence connecting patients, doctors, and caregivers in real time. One living timeline. Zero dropped doses.",
+      "Open-source medication adherence connecting patients, doctors, and caregivers in real time. One living timeline. Zero dropped doses.",
     url: "https://breathtaker-adi.github.io/Medsync/",
     siteName: "Medsync",
     locale: "en_US",
@@ -99,7 +99,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Medsync — Smart Medication Adherence & Prescription OCR",
     description:
-      "Open-source medication adherence app for Android. AI camera prescription intake, encrypted offline vault, and instant caregiver alerts.",
+      "Open-source medication adherence app for Android. AI camera prescription intake, encrypted cloud database with Row-Level Security, and instant caregiver alerts.",
     images: ["https://breathtaker-adi.github.io/Medsync/film-poster.jpg"],
   },
 };
@@ -125,7 +125,7 @@ const jsonLd = {
         "height": "512",
       },
       "description":
-        "Open-source medication adherence platform with AI prescription OCR, encrypted offline health vault, and family caregiver safety loops.",
+        "Open-source medication adherence platform with AI prescription OCR, secure cloud storage with Row-Level Security, and family caregiver safety loops.",
       "sameAs": ["https://github.com/breathtaker-adi/Medsync"],
       "contactPoint": {
         "@type": "ContactPoint",
@@ -150,20 +150,13 @@ const jsonLd = {
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock",
       },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "ratingCount": "128",
-        "bestRating": "5",
-        "worstRating": "1",
-      },
       "featureList": [
         "AI Prescription Camera OCR Intake",
         "WCAG AAA Senior Mode with 64px Touch Targets",
-        "Local Encrypted SQLite Vault with SQLCipher AES-256",
+        "Encrypted Cloud Database with PostgreSQL Row-Level Security",
         "Caregiver Missed-Dose Escalation Push Alerts",
         "Clinician Prescription Verification Loop",
-        "Zero-Tracking DPDP Act 2023 Compliant Architecture",
+        "DPDP Act 2023 Aligned Architecture with Zero Ad Brokers",
       ],
       "publisher": { "@id": "https://breathtaker-adi.github.io/Medsync/#org" },
       "license": "https://opensource.org/licenses/MIT",
@@ -207,11 +200,11 @@ const jsonLd = {
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "How does MedSync protect personal health data under India's DPDP Act 2023?",
+          "name": "How does MedSync protect my personal health data under India's DPDP Act 2023?",
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "MedSync is built on an offline-first privacy framework. Your prescription photos, medication logs, and health schedules are stored exclusively on your device inside an encrypted SQLite database using SQLCipher AES-256-GCM. We never deploy tracking cookies, third-party analytics SDKs, or broker data to insurance companies or ad networks. Under Section 11 of the DPDP Act 2023, you can export or irrevocably delete your entire health ledger on demand.",
+              "MedSync is architected around the core data protection principles of India's Digital Personal Data Protection (DPDP) Act 2023. Health schedules and records are stored in a secure Supabase PostgreSQL cloud database protected by strict Row-Level Security (RLS) policies, with session tokens safeguarded by your phone's hardware Keystore via SecureStore. We never deploy tracking cookies, advertising SDKs, or broker data to third parties. Under Section 12 of the DPDP Act 2023, you retain the right to export your records or permanently delete your account and all associated data on demand.",
           },
         },
         {
@@ -220,7 +213,7 @@ const jsonLd = {
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "MedSync does not require an internet connection to manage your health routine. Dose alarms, time-interval calculations, adherence logging, and offline prescription views execute locally on-device. When network connectivity is restored, the local vault silently performs cryptographic synchronization with designated caregivers without data loss or duplicate alarms.",
+              "MedSync schedules dose alarms natively on your Android device using exact alarm managers, ensuring reminders trigger reliably even without an active internet connection. On-device caches allow you to view current schedules offline. When network connectivity is restored, dose confirmations synchronize with linked family caregivers. A dedicated offline dose logging queue is currently under active development.",
           },
         },
         {
@@ -229,7 +222,7 @@ const jsonLd = {
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "Never. MedSync strictly enforces the Doctor Care Loop safety guardrail. When you scan a prescription using on-device optical vision, AI assists by extracting medicine names, dosage strengths, and frequency into a proposed schedule. However, no dosage modifications go live without verification and digital sign-off by a licensed clinician or your registered physician.",
+              "Never. MedSync strictly enforces the Doctor Care Loop safety guardrail. When you scan a prescription, our serverless AI Vision edge function extracts medication names, dosage strengths, and timing into a proposed schedule draft. However, no schedule goes live without explicit confirmation and digital verification by a registered medical practitioner or designated caregiver.",
           },
         },
         {
@@ -238,7 +231,7 @@ const jsonLd = {
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "For high-risk chronic therapies (e.g., cardiac, hypertension, or diabetes medications), patients can designate trusted family caregivers. If a scheduled dose is not marked as taken within the predetermined window (typically 30 minutes), MedSync dispatches an instant encrypted push alert and fallback notification directly to the caregiver's device.",
+              "For chronic or high-risk therapies, patients can pair trusted family caregivers using a secure, temporary 15-minute pairing code. If a scheduled dose is not logged as taken within the grace window (30 to 60 minutes), MedSync dispatches an encrypted push alert directly to the caregiver's device via Firebase Cloud Messaging so family members can check in.",
           },
         },
         {
@@ -247,7 +240,7 @@ const jsonLd = {
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "Yes. MedSync is 100% open source under the permissive MIT License. The complete source code for our Android application, on-device encryption vault, and sync protocol is publicly auditable on GitHub.",
+              "Yes. MedSync is 100% open source under the permissive MIT License. The complete source code for our React Native mobile application, Next.js web application, Supabase database migrations, Row-Level Security policies, and edge functions is publicly auditable on GitHub.",
           },
         },
         {
@@ -256,7 +249,7 @@ const jsonLd = {
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "You retain unconditional data sovereignty. Inside app settings or via our web console, you can tap 'Export Vault JSON' to generate a standardized, machine-readable backup. You can also trigger 'Wipe Local Vault' to cryptographically shred all local storage and unpair synced caregivers in under two seconds.",
+              "You retain full data sovereignty under Section 11 and 12 of the DPDP Act 2023. Inside app settings, you can tap 'Export Vault JSON' to generate a standardized, machine-readable export of your prescription history and adherence logs. You can also select 'Delete Account' to trigger a permanent cascading deletion of all your database records, caregiver pairings, push tokens, and prescription images across both local storage and cloud servers.",
           },
         },
       ],

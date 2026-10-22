@@ -21,19 +21,19 @@ We actively provide security updates and patches for the following versions:
 MedSync implements comprehensive security controls across all architectural layers:
 
 ### 1. Row Level Security (RLS)
-- Every single table in the Supabase PostgreSQL database enforces strict Row Level Security.
-- Patients are cryptographically restricted to querying and updating only their own records.
-- Caregivers can only read telemetry for verified paired dependents.
-- Clinicians can only review prescriptions and patient directories for individuals under their direct clinical care.
+- Application tables in the Supabase PostgreSQL database enforce Row Level Security, validated by 67 automated test suites.
+- Patients are scoped to querying and updating their own health records (`auth.uid() = id`).
+- Caregivers can only read telemetry for paired dependents where an active linkage exists (`status = 'active'`).
+- Clinicians access prescriptions and patient queues for individuals associated with their clinical review workflow. Doctor credential badges are verified through manual review before clinical access is granted.
 
 ### 2. Privilege Escalation Prevention
-- Database-level trigger functions (`protect_profile_fields`) run with `SECURITY DEFINER` privileges to prevent malicious users from modifying restricted columns (e.g., self-assigning `is_verified_doctor` status or altering verification badges via direct client requests).
+- Database-level trigger functions (`protect_profile_fields`) run with `SECURITY DEFINER` privileges to prevent users from modifying restricted columns via client requests (such as self-assigning `is_verified_doctor` status).
 
 ### 3. Hardware-Backed Keychain Storage
-- Sensitive session tokens and cryptographic materials are stored exclusively using `expo-secure-store`, utilizing the Android Keystore and iOS Keychain.
+- Session tokens and authentication state are stored using `expo-secure-store`, backed by the Android Keystore and iOS Keychain.
 
-### 4. Zero Hardcoded Secrets
-- All production credentials, push certificates, and service account keys are stored in encrypted EAS secrets and injected at runtime. `google-services.json` and `.env` are strictly excluded from source control.
+### 4. Secret Separation
+- Cloud API keys and service configurations are injected via EAS build secrets and serverless environment variables. `google-services.json` and `.env` are excluded from source control.
 
 ---
 
@@ -50,8 +50,8 @@ If you discover a security vulnerability within MedSync, please help us protect 
    - Navigate to the [MedSync Security Tab](https://github.com/breathtaker-adi/Medsync/security).
    - Click **"Report a vulnerability"** to submit a private report directly to repository maintainers.
 
-2. **Email Disclosure:**
-   - Alternatively, send a detailed advisory to the project maintainers via GitHub profile contact: [`@breathtaker-adi`](https://github.com/breathtaker-adi).
+2. **Alternative Contact:**
+   - Maintainer profile: [`@breathtaker-adi`](https://github.com/breathtaker-adi).
 
 ### What to Include
 To expedite triage and resolution, please include:
@@ -60,15 +60,16 @@ To expedite triage and resolution, please include:
 - Potential impact and affected roles (Patient, Caregiver, Doctor).
 - Any proposed remediation or suggested patch.
 
-### Our Commitment
-- **Initial Response:** Within 48 hours of report submission.
-- **Triage & Assessment:** Within 5 business days with a severity rating (CVSS).
-- **Patch & Deployment:** Critical vulnerabilities are addressed with emergency hotfixes and public security advisories crediting the researcher (if desired).
+### Response Commitment
+As a community open-source project:
+- **Initial Acknowledgment:** Typically within 72 hours of report submission.
+- **Triage & Assessment:** Within 7 business days with an assessment of severity.
+- **Patch & Deployment:** Confirmed security issues are prioritized for the next release, with public release notes thanking the researcher.
 
 ---
 
-## Bug Bounty & Recognition
+## Recognition
 
-MedSync is an open-source initiative. While we do not currently operate a paid monetary bug bounty program, we proudly credit security researchers in our release notes and repository security hall of fame.
+We sincerely appreciate responsible security research that helps protect patients and caregivers. Researchers who responsibly disclose confirmed vulnerabilities will be credited in our GitHub release notes.
 
 Thank you for helping us keep healthcare safe and accessible! 🩺❤️

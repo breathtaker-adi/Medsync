@@ -125,11 +125,11 @@
 
 ## 🌟 Overview
 
-**MedSync** is an enterprise-grade mobile health (mHealth) application engineered with **React Native (Expo SDK 57)** and **Supabase (PostgreSQL 15 + Edge Functions)**. Designed to tackle the global $300B crisis of medication non-adherence, MedSync unifies three critical healthcare pillars into a synchronized real-time ecosystem:
+**MedSync** is an open-source mobile health (mHealth) application engineered with **React Native (Expo SDK 57)** and **Supabase (PostgreSQL 15 + Edge Functions)**. Designed to address medication non-adherence (an estimated $100B–$300B annual burden in healthcare systems; *NEHI / CDC*), MedSync unifies three critical healthcare pillars into a synchronized real-time ecosystem:
 
 1. **Patients / Seniors**: Simplified, high-contrast, voice-guided medication reminders with zero friction.
 2. **Family Caregivers**: Remote adherence telemetry, streak metrics, and real-time missed-dose emergency alerts.
-3. **Doctors / Clinicians**: Prescription validation, dosage regimen management, and official medical credentialing.
+3. **Doctors / Clinicians**: Prescription validation, dosage regimen management, and clinical review workflows.
 
 ```mermaid
 graph LR
@@ -143,7 +143,7 @@ graph LR
 
 ## 💡 Why MedSync?
 
-Medication non-adherence leads to over **125,000 preventable deaths** and up to **25% of hospital admissions** each year. Existing reminder apps fail seniors because of tiny fonts, convoluted navigation, lack of caregiver accountability, and tedious manual data entry.
+Medication non-adherence leads to over **125,000 preventable deaths** and up to **25% of hospital admissions** each year in the United States alone (Sources: *CDC / Annals of Internal Medicine, 2012; NEHI Research*). Existing reminder apps fail seniors because of tiny fonts, convoluted navigation, lack of caregiver accountability, and tedious manual data entry.
 
 MedSync solves this with:
 - **Zero-Typing Regimen Onboarding**: Snap a photo of a doctor's handwritten or printed prescription; our AI Vision OCR engine extracts medications, dosages, and schedules in seconds.
@@ -308,17 +308,27 @@ npm run site:build
 
 ## 🔒 Security, Privacy & Compliance
 
-MedSync adheres to defense-in-depth principles and core HIPAA / GDPR data privacy guidelines:
+MedSync adheres to defense-in-depth engineering principles and aligns with Indian DPDP Act 2023 data fiduciary obligations:
 
 > [!IMPORTANT]
-> **Strict Row Level Security (RLS)**: Every single table in the PostgreSQL database enforces isolated RLS policies. Patients can only query their own records, caregivers can only inspect linked dependents, and doctors can only access patients under active clinical care.
+> **Enforced Row Level Security (RLS)**: Tables in the PostgreSQL database enforce isolated RLS policies verified by automated integration tests. Patients query their own records, caregivers only inspect dependents with active pairings (`status = 'active'`), and verified doctors review regimens assigned to their clinical care queue.
 
-- **Impenetrable Privilege Safeguards**: Database triggers (`protect_profile_fields`) mathematically prevent clients from escalating their own privileges (such as self-granting `is_verified_doctor` status).
-- **Hardware-Backed Cryptographic Storage**: Sensitive session tokens and encryption keys are stored inside device hardware keystores via `expo-secure-store`.
-- **Zero Hardcoded Secrets**: All cloud API keys and project configurations are dynamically injected via EAS secret variables (`GOOGLE_SERVICES_JSON`, Supabase anon keys).
-- **Sanitized Audit Logging**: Health reports and edge functions scrub sensitive medical telemetry to prevent PII/PHI leakage.
+- **Automated Privilege Safeguards**: Database triggers (`protect_profile_fields`) run with `SECURITY DEFINER` privileges to prevent clients from directly escalating user roles or self-granting `is_verified_doctor` status.
+- **Hardware-Backed Cryptographic Storage**: Sensitive session tokens and authentication state are stored inside device hardware keystores via `expo-secure-store`.
+- **Secret Separation**: API keys and backend service tokens are injected via EAS secrets and serverless environment variables. `google-services.json` and `.env` are excluded from version control.
+- **Sanitized Telemetry**: Medical telemetry and adherence reports sanitize patient identity hashes to prevent sensitive clinical leakage.
 
-For vulnerability disclosure procedures and our security response SLA, please review our full **[Security Policy (SECURITY.md)](SECURITY.md)**.
+For vulnerability disclosure procedures and our response target, please review our **[Security Policy (SECURITY.md)](SECURITY.md)**.
+
+---
+
+## ⚠️ Medical & Clinical Disclaimer
+
+> [!WARNING]
+> **MedSync is a medication adherence tracking and caregiver reminder tool, NOT a diagnostic medical device or emergency dispatch system.**
+> - AI-assisted prescription scans extract proposed regimen drafts only. All medication schedules should be confirmed by a licensed physician or registered pharmacist before dosing.
+> - Never adjust prescribed medication doses or discontinue treatment without direct clinical consultation.
+> - In medical emergencies, contact local emergency services immediately (112 in India, 911 in the US).
 
 ---
 
@@ -329,10 +339,11 @@ For vulnerability disclosure procedures and our security response SLA, please re
 Ensure you have the following installed:
 - [Node.js](https://nodejs.org) `v20.x` or higher
 - [npm](https://www.npmjs.com) or `yarn` / `pnpm`
-- [Expo Go](https://expo.dev/go) on your physical device, or an Android/iOS emulator
+- [Android Studio & SDK](https://developer.android.com/studio) (with Android SDK platform-tools and an emulator or physical USB-debugging device)
 - [Git](https://git-scm.com)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (optional, for local database testing)
 
-### Quickstart Installation
+### 1. Repository Setup
 
 1. **Clone the repository:**
    ```bash
@@ -349,21 +360,56 @@ Ensure you have the following installed:
    ```bash
    cp .env.example .env
    ```
-   Fill in your Supabase credentials:
+   Fill in your Supabase project credentials in `.env`:
    ```env
    EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX...
    EXPO_PUBLIC_EAS_PROJECT_ID=your-eas-project-id
    ```
 
-4. **Launch the development server:**
+### 2. Backend & Database Setup
+
+MedSync utilizes Supabase for authentication, PostgreSQL storage with RLS, and Deno edge functions:
+
+1. **Link your Supabase project:**
    ```bash
-   npx expo start
+   npx supabase link --project-ref your-project-ref
    ```
-   - Press <kbd>a</kbd> for Android Emulator
-   - Press <kbd>i</kbd> for iOS Simulator
-   - Press <kbd>w</kbd> for Web Browser
-   - Scan the QR code using the **Expo Go** app on your physical mobile device.
+
+2. **Apply Database Migrations:**
+   Run all SQL migration scripts in order from `supabase/migrations/`:
+   ```bash
+   npx supabase db push
+   ```
+   This provisions all tables (`profiles`, `prescriptions`, `doses`, `caregiver_links`, `adherence_logs`, `ocr_scans`), sets up `protect_profile_fields` triggers, and enforces Row-Level Security policies.
+
+3. **Deploy Edge Functions & Configure Secrets:**
+   ```bash
+   # Deploy prescription scanner and missed-dose cron functions
+   npx supabase functions deploy scan-prescription
+   npx supabase functions deploy check-missed-doses
+
+   # Set serverless secrets for AI Vision processing
+   npx supabase secrets set GEMINI_API_KEY=your-gemini-ai-key
+   ```
+
+### 3. Running the App (Development Build)
+
+> [!NOTE]
+> Because MedSync relies on native background exact alarms (`SCHEDULE_EXACT_ALARM`) and custom notification channels for elderly care, **Expo Go cannot execute native background scheduling**. You must generate a local development build:
+
+```bash
+# Prebuild native Android project & launch on emulator/device
+npx expo run:android
+
+# Or start the Metro bundler with the development client
+npx expo start --dev-client
+```
+
+Alternatively, to test the web dashboard:
+```bash
+npx expo start --web
+```
 
 ---
 

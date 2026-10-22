@@ -79,15 +79,16 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
     setExported(true);
 
     const vaultData = {
-      standard: "DPDP_ACT_2023_INDIA",
+      standard: "DPDP_ACT_2023_ALIGNED",
       compliance: {
         consent_model: "EXPLICIT_REVOCABLE",
-        local_encryption: "AES-256-GCM_SQLCIPHER",
-        zero_third_party_telemetry: true,
+        in_transit_encryption: "TLS_1_3",
+        database_security: "SUPABASE_POSTGRES_RLS",
+        zero_ad_brokers: true,
       },
       patient: {
         id_hash: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        vault_version: "1.0.0-rc",
+        vault_version: "1.2.0",
         exported_at: new Date().toISOString(),
       },
       active_prescriptions: [
@@ -95,23 +96,23 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
           medication: "Metformin Hydrochloride",
           dosage: "500 mg",
           frequency: "Twice daily after meals",
-          prescribed_by: "Dr. Anand (Cardiology)",
-          verified_status: rxConfirmed ? "VERIFIED" : "PENDING_REVIEW",
-          local_integrity: "SHA256_VALID",
+          prescribed_by: "Dr. Anand (Cardiology - Sample)",
+          verified_status: rxConfirmed ? "VERIFIED_SAMPLE" : "PENDING_REVIEW",
+          integrity: "VALID",
         },
         {
           medication: "Atorvastatin Calcium",
           dosage: "20 mg",
           frequency: "Once daily at bedtime",
-          prescribed_by: "Dr. Anand (Cardiology)",
-          verified_status: rxConfirmed ? "VERIFIED" : "PENDING_REVIEW",
-          local_integrity: "SHA256_VALID",
+          prescribed_by: "Dr. Anand (Cardiology - Sample)",
+          verified_status: rxConfirmed ? "VERIFIED_SAMPLE" : "PENDING_REVIEW",
+          integrity: "VALID",
         },
       ],
       caregiver_linkages: [
         {
           relation: "Daughter (Ananya)",
-          channel: "ENCRYPTED_PUSH_WEBSOCKET",
+          channel: "FIREBASE_CLOUD_MESSAGING",
           escalation_window_mins: 30,
           status: "ACTIVE",
         },
@@ -132,7 +133,7 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
 
     emit(BUS.consoleLog, {
       event: "DPDP_DATA_EXPORT_GENERATED",
-      detail: "export:sanitized_vault.json · patient_rights:DPDP_SEC_11 · 0 cloud leakage",
+      detail: "export:sanitized_vault.json · patient_rights:DPDP_SEC_11_12 · zero_ad_tracking",
       status: "200 OK",
       latency: 8,
       tone: "ok",
@@ -164,7 +165,7 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
         </div>
         <div className="flex items-center gap-2 font-telemetry text-[10px] tracking-[0.14em] text-slate-400">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-pulse animate-pulse" />
-          <span>REACTIVE TELEMETRY ACTIVE</span>
+          <span>SIMULATION DEMO</span>
         </div>
       </div>
 
@@ -192,7 +193,7 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
             </div>
             <div className="mt-2 text-sm font-semibold text-white">Ananya (Daughter)</div>
             <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
-              Push alert dispatches automatically if morning dose isn't logged within 30 minutes of the window.
+              Push alert dispatches automatically if morning dose isn't logged within 30 to 60 minutes of the window.
             </p>
 
             <AnimatePresence>
@@ -232,7 +233,7 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
               </button>
             )}
             <span className="ml-auto font-telemetry text-[9px] text-slate-500">
-              {escalated ? "Triggered" : "30m window"}
+              {escalated ? "Triggered" : "30-60m window"}
             </span>
           </div>
         </div>
@@ -255,10 +256,10 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
                   rxConfirmed ? "bg-pulse/15 text-pulse-bright" : "bg-amber-clin/20 text-amber-clin"
                 }`}
               >
-                {rxConfirmed ? "VERIFIED" : "PENDING"}
+                {rxConfirmed ? "VERIFIED (SAMPLE)" : "PENDING"}
               </span>
             </div>
-            <div className="mt-2 text-sm font-semibold text-white">Dr. Anand (Cardiology)</div>
+            <div className="mt-2 text-sm font-semibold text-white">Dr. Anand (Cardiology - Sample)</div>
             <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
               Prescriptions scanned via AI require clinician confirmation. No automatic dosage changes without sign-off.
             </p>
@@ -267,7 +268,7 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
               <CheckCircle2 size={12} className={rxConfirmed ? "text-pulse-bright" : "text-amber-clin"} />
               <span>
                 {rxConfirmed
-                  ? "Digital signature verified · MMC-84920"
+                  ? "Sample verified state · Registration #MMC-84920"
                   : "Awaiting practitioner sign-off review"}
               </span>
             </div>
@@ -283,7 +284,7 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
               {rxConfirmed ? "Simulate Review Request" : "Confirm Regimen"}
             </button>
             <span className="ml-auto font-telemetry text-[9px] text-slate-500">
-              Portal v2.4
+              Demo Portal
             </span>
           </div>
         </div>
@@ -299,13 +300,13 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
                 DPDP 2023
               </span>
             </div>
-            <div className="mt-2 text-sm font-semibold text-white">Encrypted &amp; DPDP Ready</div>
+            <div className="mt-2 text-sm font-semibold text-white">Encrypted &amp; DPDP Aligned</div>
             <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
-              You own your data. End-to-end encrypted in transit, cached locally, and fully exportable on demand.
+              You own your data. Encrypted in transit with TLS 1.3, secured with PostgreSQL RLS, and exportable on demand.
             </p>
 
             <div className="mt-2.5 font-telemetry text-[10px] text-slate-400">
-              <span>On-device SQLite · AES-256-GCM cipher</span>
+              <span>Encrypted in transit · PostgreSQL Row-Level Security</span>
             </div>
           </div>
 

@@ -40,7 +40,7 @@ export function OcrScannerCard({ className = "" }: { className?: string }) {
         <div className="flex items-center justify-between">
           <CardHeader
             icon={<ScanText size={13} />}
-            title="AI Prescription OCR"
+            title="AI Prescription OCR (Sample Demo)"
             chip={scanning ? "SCANNING" : "READY"}
             chipTone={scanning ? "pulse" : "bio"}
           />
@@ -84,8 +84,8 @@ export function OcrScannerCard({ className = "" }: { className?: string }) {
               className="flex flex-col gap-1.5"
             >
               <div className="flex items-center justify-between font-telemetry text-[8px] tracking-[0.14em] text-slate-400 uppercase">
-                <span>DETECTED MEDICATION</span>
-                <span className="text-pulse-bright">{current.confidence}% CONFIDENCE</span>
+                <span>DETECTED MEDICATION (SAMPLE)</span>
+                <span className="text-pulse-bright">{current.confidence}% CONFIDENCE (SAMPLE)</span>
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-sm font-bold text-white">{current.name}</span>

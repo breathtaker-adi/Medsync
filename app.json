@@ -2,21 +2,28 @@
   "expo": {
     "name": "MedSync",
     "slug": "medsync",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "scheme": "medsync",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.medsync.app"
+      "bundleIdentifier": "com.medsync.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "MedSync requires camera access to capture prescription photos for AI medication intake.",
+        "NSPhotoLibraryUsageDescription": "MedSync requires photo library access to upload prescription images for verification."
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
       "package": "com.medsync.app",
       "allowBackup": false,
       "permissions": [
-        "android.permission.SCHEDULE_EXACT_ALARM"
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
@@ -34,7 +41,7 @@
         {
           "image": "./assets/splash.png",
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
+          "backgroundColor": "#0D7377"
         }
       ],
       [

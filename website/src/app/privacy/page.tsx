@@ -6,30 +6,31 @@ import {
   Lock,
   FileText,
   UserCheck,
-  ServerOff,
+  Cloud,
   BellRing,
   Download,
   AlertCircle,
   HelpCircle,
+  Database,
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Medsync — DPDP Act 2023 Compliance & Data Protection",
+  title: "Privacy Policy | Medsync — Privacy Architecture & Data Charter",
   description:
-    "Learn how MedSync protects patient privacy, enforces local-first encryption, and complies with India's Digital Personal Data Protection (DPDP) Act 2023.",
+    "Learn how MedSync protects patient privacy, secures cloud health data, and aligns with India's Digital Personal Data Protection (DPDP) Act 2023.",
   alternates: {
     canonical: "https://breathtaker-adi.github.io/Medsync/privacy",
   },
   openGraph: {
-    title: "Privacy Policy | Medsync — DPDP Act 2023 Compliance & Data Protection",
+    title: "Privacy Policy | Medsync — Privacy Architecture & Data Charter",
     description:
-      "Learn how MedSync protects patient privacy, enforces local-first encryption, and complies with India's Digital Personal Data Protection (DPDP) Act 2023.",
+      "Learn how MedSync protects patient privacy, secures cloud health data, and aligns with India's Digital Personal Data Protection (DPDP) Act 2023.",
     url: "https://breathtaker-adi.github.io/Medsync/privacy",
   },
 };
 
 export default function PrivacyPolicyPage() {
-  const lastUpdated = "October 20, 2026";
+  const lastUpdated = "October 23, 2026";
 
   return (
     <div className="relative min-h-screen bg-[#040711] text-slate-200">
@@ -52,7 +53,7 @@ export default function PrivacyPolicyPage() {
           </Link>
           <div className="flex items-center gap-2 font-telemetry text-[11px] text-bio">
             <ShieldCheck size={14} className="text-pulse-bright" />
-            <span>DPDP ACT 2023 CERTIFIED</span>
+            <span>DPDP ACT 2023 ALIGNED</span>
           </div>
         </div>
       </header>
@@ -70,12 +71,12 @@ export default function PrivacyPolicyPage() {
             Privacy Policy &amp; Data Charter
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-300">
-            MedSync is engineered around a simple premise: your medical data belongs to you alone. We implement strict on-device encryption, zero third-party telemetry, and full alignment with India&apos;s Digital Personal Data Protection Act, 2023.
+            MedSync is engineered around a core principle: your medical data belongs to you alone. We practice strict data minimization, granular Row-Level Security, zero advertising tracking, and transparent alignment with India&apos;s Digital Personal Data Protection Act, 2023.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-4 font-telemetry text-xs text-slate-400">
             <span>Last Updated: {lastUpdated}</span>
             <span>·</span>
-            <span>Version: 1.2.0 (Production)</span>
+            <span>Version: 1.2.0</span>
             <span>·</span>
             <span className="text-pulse-bright">Status: Active &amp; Enforced</span>
           </div>
@@ -84,24 +85,24 @@ export default function PrivacyPolicyPage() {
         {/* Quick Highlights Grid */}
         <div className="mb-14 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
-            <ServerOff size={20} className="text-bio mb-2" />
-            <h2 className="text-sm font-semibold text-white">Local-First Storage</h2>
+            <Database size={20} className="text-bio mb-2" />
+            <h2 className="text-sm font-semibold text-white">Row-Level Security</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              Prescriptions, dose history, and notes live in an encrypted SQLite database on your device.
+              Cloud health records in Supabase PostgreSQL are cryptographically isolated per user with strict database policies.
             </p>
           </div>
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
             <Lock size={20} className="text-pulse-bright mb-2" />
-            <h2 className="text-sm font-semibold text-white">AES-256-GCM Cipher</h2>
+            <h2 className="text-sm font-semibold text-white">TLS 1.3 &amp; SecureStore</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              State-of-the-art encryption secures records at rest and during authenticated peer sync.
+              Encrypted in transit with TLS 1.3. Device session keys are stored in hardware-backed Android Keystore / iOS Keychain.
             </p>
           </div>
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
             <UserCheck size={20} className="text-bio mb-2" />
             <h2 className="text-sm font-semibold text-white">DPDP 2023 Rights</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              Instant machine-readable JSON data export and one-tap cryptographic erasure on demand.
+              Machine-readable data export and permanent server account deletion under Section 12 of the DPDP Act 2023.
             </p>
           </div>
         </div>
@@ -111,36 +112,36 @@ export default function PrivacyPolicyPage() {
           {/* Section 1 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="font-telemetry text-bio text-sm">01 /</span> Introduction &amp; Core Philosophy
+              <span className="font-telemetry text-bio text-sm">01 /</span> Data Fiduciary &amp; Core Philosophy
             </h2>
             <p>
-              MedSync (&quot;we&quot;, &quot;our&quot;, or &quot;the platform&quot;) is an open-source medical schedule and adherence management platform. Traditional health applications funnel sensitive patient information into centralized cloud warehouses for behavioral profiling, monetization, or insurance telemetry. MedSync repudiates this paradigm.
+              MedSync (&quot;we&quot;, &quot;our&quot;, or &quot;the platform&quot;) operates as an open-source medication adherence and caregiver safety platform. Under India&apos;s Digital Personal Data Protection Act, 2023 (Act No. 22 of 2023, Republic of India), MedSync acts as the Data Fiduciary regarding the personal health data processed within the application.
             </p>
             <p>
-              We adhere strictly to data minimization and purposeful processing as established under the Digital Personal Data Protection Act, 2023 (Act No. 22 of 2023, Republic of India). All patient records remain sovereign property of the data principal.
+              We adhere strictly to purpose limitation and data minimization. We do not sell, broker, or monetize your health data, nor do we build behavioral profiles for insurance or commercial advertising purposes.
             </p>
           </section>
 
           {/* Section 2 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="font-telemetry text-bio text-sm">02 /</span> Categories of Data We Process
+              <span className="font-telemetry text-bio text-sm">02 /</span> Categories of Data We Process &amp; How It Works
             </h2>
             <p>
-              To provide offline schedule reminders and dosage validation, MedSync processes the following limited information:
+              To deliver medication alarms, caregiver alerts, and prescription digitization, MedSync processes the following categories of data:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-slate-400">
               <li>
-                <strong className="text-white">Prescription Documents &amp; OCR Imagery:</strong> Images captured via the in-app camera to identify medication names, strengths, and dosage intervals. OCR extraction executes locally on your hardware. Images are never uploaded to public AI training corpuses.
+                <strong className="text-white">Prescription Documents &amp; AI OCR:</strong> When you snap a prescription photo, the image is transmitted securely over TLS 1.3 to Supabase Storage and parsed by our serverless AI Vision edge function to extract medication names, dosage strengths, and schedules. Images are stored securely in your private storage bucket and queued for clinician review before schedules become active. Informed consent is gathered prior to your first scan.
               </li>
               <li>
-                <strong className="text-white">Adherence Telemetry:</strong> Timestamps when doses are marked as taken, snoozed, or missed.
+                <strong className="text-white">Medication Schedules &amp; Adherence Logs:</strong> Timestamps when doses are logged as taken, missed, or snoozed, along with medication inventory counts.
               </li>
               <li>
-                <strong className="text-white">Caregiver Linkage Data:</strong> Pseudonymized device identifiers and cryptographic tokens used exclusively to route push notifications when critical doses are unlogged.
+                <strong className="text-white">Caregiver &amp; Doctor Pairings:</strong> Cryptographic 8-character pairing codes with 15-minute expiry, status indicators, and permission links between patients, family caregivers, and verified clinicians.
               </li>
               <li>
-                <strong className="text-white">Practitioner Signatures:</strong> Digital confirmation signatures verifying prescription modifications by registered medical practitioners.
+                <strong className="text-white">Device Push Tokens:</strong> FCM and Expo notification tokens used strictly to dispatch urgent missed-dose notifications and refill alerts.
               </li>
             </ul>
           </section>
@@ -148,22 +149,68 @@ export default function PrivacyPolicyPage() {
           {/* Section 3 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="font-telemetry text-bio text-sm">03 /</span> Cryptographic Security &amp; Storage Architecture
+              <span className="font-telemetry text-bio text-sm">03 /</span> Cloud Architecture, Storage &amp; Sub-processors
             </h2>
             <p>
-              Your personal health data is guarded with defense-in-depth:
+              MedSync uses a defense-in-depth architecture combining cloud security with on-device hardware protections:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-slate-400">
               <li>
-                <strong className="text-white">At Rest:</strong> Stored locally using SQLCipher with AES-256-GCM authenticated encryption. The encryption key is derived using PBKDF2 with 250,000 iterations and protected by device biometric hardware (Android Keystore / Secure Enclave).
+                <strong className="text-white">In Transit:</strong> All communications between the mobile application and backend services are encrypted using Transport Layer Security (TLS 1.3 / HTTPS).
               </li>
               <li>
-                <strong className="text-white">In Transit:</strong> Synchronized peer-to-peer or over encrypted TLS 1.3 / WebSocket channels with mutual certificate authentication.
+                <strong className="text-white">At Rest (Cloud):</strong> Stored in an encrypted Supabase PostgreSQL database protected by Row-Level Security (RLS) policies. Patients can only query their own records, caregivers can only inspect actively linked dependents, and doctors can only access patients under clinical care.
               </li>
               <li>
-                <strong className="text-white">Zero Third-Party SDKs:</strong> We do not embed Google Analytics, Facebook Pixel, Mixpanel, Crashlytics, or any ad telemetry brokers in the application.
+                <strong className="text-white">At Rest (Device):</strong> Authentication session tokens are stored using <code className="text-xs text-bio">expo-secure-store</code>, backed by the hardware-isolated Android Keystore and iOS Keychain.
+              </li>
+              <li>
+                <strong className="text-white">Zero Advertising SDKs:</strong> We never integrate Google AdMob, Facebook Pixel, Mixpanel, AppsFlyer, or data brokers.
               </li>
             </ul>
+
+            <h3 className="pt-2 text-base font-semibold text-white">Authorized Sub-processors</h3>
+            <p className="text-xs text-slate-400">
+              The following service providers assist in providing core platform infrastructure:
+            </p>
+            <div className="overflow-x-auto rounded-xl border border-white/8 bg-white/[0.02]">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/8 text-slate-400">
+                    <th className="p-3">Processor</th>
+                    <th className="p-3">Role</th>
+                    <th className="p-3">Data Processed</th>
+                    <th className="p-3">Location</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-slate-300">
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Supabase Inc.</td>
+                    <td className="p-3">Database, Auth, Storage, Edge Functions</td>
+                    <td className="p-3">Encrypted health schedules, user profiles, prescription photos</td>
+                    <td className="p-3">Cloud Region (AWS/Supabase)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">AI Vision OCR Provider</td>
+                    <td className="p-3">Prescription Optical Character Recognition</td>
+                    <td className="p-3">Prescription image payload (transient processing, no model training)</td>
+                    <td className="p-3">Cloud API</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Google Firebase (FCM)</td>
+                    <td className="p-3">Push Notification Gateway</td>
+                    <td className="p-3">Device push tokens, dose alert titles</td>
+                    <td className="p-3">Global Infrastructure</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">Expo (650 Industries)</td>
+                    <td className="p-3">Mobile Build Pipeline &amp; Push Relay</td>
+                    <td className="p-3">App build artifacts, notification routing</td>
+                    <td className="p-3">United States</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </section>
 
           {/* Section 4 */}
@@ -172,11 +219,11 @@ export default function PrivacyPolicyPage() {
               <span className="font-telemetry text-bio text-sm">04 /</span> The Doctor Care Loop &amp; Clinical Safety
             </h2>
             <p>
-              In strict accordance with Indian medical ethics guidelines and clinical safety norms, MedSync does not permit automated prescription changes without human confirmation:
+              In accordance with medical safety ethics, MedSync does not permit unverified automated prescription modifications:
             </p>
             <p className="rounded-xl border border-white/8 bg-white/[0.02] p-4 text-xs md:text-sm text-slate-300">
               <strong className="text-pulse-bright block mb-1">CLINICAL SAFETY MANDATE</strong>
-              AI transcription is treated purely as a draft recommendation. Medication schedules generated from scanned prescriptions require explicit verification and sign-off by a verified medical practitioner before dosage intervals become binding in the timeline.
+              AI transcription is treated strictly as an initial draft. Scanned prescriptions are queued for verification by a licensed medical practitioner or confirmed by an active caregiver before dosage regimens become active in the medication schedule.
             </p>
           </section>
 
@@ -186,31 +233,31 @@ export default function PrivacyPolicyPage() {
               <span className="font-telemetry text-bio text-sm">05 /</span> Your Rights as a Data Principal (DPDP Act 2023)
             </h2>
             <p>
-              Under Chapter III of the Digital Personal Data Protection Act, 2023, you hold enforceable rights regarding your health data:
+              Under Chapter III of India&apos;s Digital Personal Data Protection Act, 2023, you retain enforceable rights:
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-2">
               <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
                 <h3 className="font-semibold text-white text-sm">Right to Access (Section 11)</h3>
                 <p className="mt-1 text-xs text-slate-400">
-                  You can inspect all recorded health data at any time and export a standardized JSON ledger with one click.
+                  Inspect all recorded medication data at any time and export a standardized machine-readable JSON health report.
                 </p>
               </div>
               <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
                 <h3 className="font-semibold text-white text-sm">Right to Correction &amp; Erasure (Section 12)</h3>
                 <p className="mt-1 text-xs text-slate-400">
-                  You have the unconditional right to correct inaccurate records or trigger complete cryptographic deletion of all local and synced data.
+                  Correct inaccurate health records or trigger complete deletion of your account, database records, and prescription images.
                 </p>
               </div>
               <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
                 <h3 className="font-semibold text-white text-sm">Right to Nominate (Section 14)</h3>
                 <p className="mt-1 text-xs text-slate-400">
-                  You may designate a nominee (family member or legal guardian) to manage your health timeline in the event of death or incapacity.
+                  Designate a family caregiver or legal guardian to access and manage your adherence schedule in the event of incapacity.
                 </p>
               </div>
               <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
                 <h3 className="font-semibold text-white text-sm">Right of Grievance Redressal (Section 13)</h3>
                 <p className="mt-1 text-xs text-slate-400">
-                  Direct access to our designated Data Protection Officer with mandatory response timelines under Indian law.
+                  Direct grievance redressal through our designated security channel with resolution procedures under Indian law.
                 </p>
               </div>
             </div>
@@ -219,31 +266,37 @@ export default function PrivacyPolicyPage() {
           {/* Section 6 */}
           <section className="space-y-3">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="font-telemetry text-bio text-sm">06 /</span> Data Retention &amp; Permanent Shredding
+              <span className="font-telemetry text-bio text-sm">06 /</span> Data Retention, Uninstall vs. Account Deletion
             </h2>
             <p>
-              Because MedSync prioritizes on-device storage, data retention is entirely governed by the patient. If you uninstall the application, all local SQLCipher database files and cryptographic key rings are immediately purged by the operating system sandbox.
+              It is important to understand the difference between uninstalling the mobile app and deleting your account:
             </p>
-            <p>
-              To manually purge all logs without uninstalling, open Settings in MedSync and select <span className="font-mono text-xs text-coral">Purge Local Health Ledger</span>.
-            </p>
+            <ul className="list-disc pl-6 space-y-2 text-slate-400">
+              <li>
+                <strong className="text-white">Uninstalling the App:</strong> Removes local app sandbox storage, cached schedules, and hardware keychain tokens from your physical phone. However, encrypted records in Supabase remain associated with your registered account so your schedule is preserved if you reinstall.
+              </li>
+              <li>
+                <strong className="text-white">Deleting Your Account (Permanent Erasure):</strong> To permanently purge all records from both your phone and cloud servers under Section 12 of the DPDP Act 2023, navigate to <span className="font-mono text-xs text-coral">Settings &rarr; Delete Account</span>. This triggers our database procedure (<code className="text-xs text-bio">delete_user_account</code>) which cascades deletion across prescriptions, logs, paired links, push tokens, and storage buckets.
+              </li>
+            </ul>
           </section>
 
           {/* Section 7 */}
           <section className="space-y-3 border-t border-white/8 pt-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="font-telemetry text-bio text-sm">07 /</span> Contact Our Data Protection Officer
+              <span className="font-telemetry text-bio text-sm">07 /</span> Contact &amp; Grievance Redressal
             </h2>
             <p>
-              For any questions regarding DPDP Act 2023 compliance, data rights requests, or security audits, contact our designated Grievance Officer:
+              For any questions regarding DPDP Act 2023 alignment, data rights requests, or security inquiries, contact our project maintainers:
             </p>
             <div className="mt-4 rounded-2xl border border-bio/30 bg-bio/[0.03] p-5 font-telemetry text-xs md:text-sm text-slate-300">
-              <div className="font-semibold text-white">Grievance &amp; Data Protection Officer</div>
-              <div className="mt-1 text-bio">Email: privacy@medsync.health</div>
-              <div className="mt-0.5 text-slate-400">Repository: github.com/breathtaker-adi/Medsync</div>
-              <div className="mt-0.5 text-slate-400">Location: Bengaluru, Karnataka, India</div>
+              <div className="font-semibold text-white">MedSync Open Source Project Maintainer</div>
+              <div className="mt-1 text-bio">Security Advisories: <a href="https://github.com/breathtaker-adi/Medsync/security/advisories" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi/Medsync/security/advisories</a></div>
+              <div className="mt-0.5 text-slate-400">Issues &amp; Requests: <a href="https://github.com/breathtaker-adi/Medsync/issues" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi/Medsync/issues</a></div>
+              <div className="mt-0.5 text-slate-400">Maintainer Profile: <a href="https://github.com/breathtaker-adi" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">github.com/breathtaker-adi</a></div>
+              <div className="mt-0.5 text-slate-400">Jurisdiction: Bengaluru, Karnataka, India</div>
               <div className="mt-2 text-[11px] text-slate-500">
-                Statutory turnaround for DPDP inquiries: within 7 business days.
+                Grievance turnaround: Inquiries acknowledged within 48–72 hours, with substantive response within 30 days.
               </div>
             </div>
           </section>
