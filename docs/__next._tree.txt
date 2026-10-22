@@ -2,4 +2,4 @@
 :HL["/Medsync/_next/static/media/051742360c26797e-s.p.1bkzbscqrt8rl.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/Medsync/_next/static/media/fba5a26ea33df6a3-s.p.18rizl4rsrl42.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 1:[["children",{"s":"__PAGE__","h":128}]]
-0:{"b":"y4Ah-l6dUQ2H1CPnuVTec","t":{"t":{"s":"","h":16,"c":"$Q1"}}}
+0:{"b":"1x8fHpTfx4aHuoU8WxJ_9","t":{"t":{"s":"","h":16,"c":"$Q1"}}}

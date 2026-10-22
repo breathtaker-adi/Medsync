@@ -1,4 +1,4 @@
 :HL["/Medsync/_next/static/chunks/0fpujpjb1csgd.css","style"]
 2:[["children",{"s":"__PAGE__","h":160}]]
 1:[["children",{"s":"/_not-found","h":64,"c":"$Q2"}]]
-0:{"b":"y4Ah-l6dUQ2H1CPnuVTec","t":{"t":{"s":"","h":16,"c":"$Q1"}}}
+0:{"b":"1x8fHpTfx4aHuoU8WxJ_9","t":{"t":{"s":"","h":16,"c":"$Q1"}}}

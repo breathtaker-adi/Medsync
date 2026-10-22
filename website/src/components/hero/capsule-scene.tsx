@@ -42,7 +42,7 @@ export function CapsuleScene() {
   }, []);
 
   return (
-    <div ref={ref} className="absolute inset-0" aria-label="Interactive 3D medicine capsule with granular beads">
+    <div ref={ref} className="absolute inset-0 touch-none select-none" aria-label="Interactive 3D medicine capsule with granular beads">
       <CapsuleCanvas frameloop={inView ? "always" : "never"} reduced={reduced} />
 
       {/* 360° interactive drag hint badge */}
