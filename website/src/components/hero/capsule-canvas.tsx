@@ -2,14 +2,14 @@
 
 import { Float } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 // ── Dimensions & Physics Constants ──────────────────────────────
 const CAPSULE_RADIUS = 0.54;
 const CYLINDER_HALF_HEIGHT = 0.68;
-const BEAD_COUNT = 2000;
-const BEAD_BASE_RADIUS = 0.050;
+const BEAD_COUNT = 1800;
+const BEAD_BASE_RADIUS = 0.048;
 
 interface PhysicalBead {
   x: number;
@@ -23,7 +23,7 @@ interface PhysicalBead {
 }
 
 /**
- * Initializes independent, free-floating physical beads filling up to ~60% of the capsule.
+ * Initializes independent, free-floating physical beads filling ~55% of the capsule.
  * Brand palette: Cyan (#00F0FF), Mint (#10B981), Royal Blue (#2563EB), Crisp White (#FFFFFF).
  */
 function initPhysicalBeads(): PhysicalBead[] {
@@ -51,8 +51,8 @@ function initPhysicalBeads(): PhysicalBead[] {
         ? colorBlue
         : colorWhite;
 
-    // Distribute vertically in lower 60% of capsule from y = -1.14 to +0.24 (60% fill)
-    const y = -1.14 + rand() * 1.38;
+    // Distribute vertically in lower 55% of capsule from y = -1.14 to +0.10
+    const y = -1.14 + rand() * 1.24;
     const effR = Math.max(0.02, (CAPSULE_RADIUS - BEAD_BASE_RADIUS - 0.02) * Math.sqrt(rand()));
     const angle = rand() * Math.PI * 2;
 
@@ -60,9 +60,9 @@ function initPhysicalBeads(): PhysicalBead[] {
       x: Math.cos(angle) * effR,
       y,
       z: Math.sin(angle) * effR,
-      vx: (rand() - 0.5) * 0.005,
-      vy: (rand() - 0.5) * 0.005,
-      vz: (rand() - 0.5) * 0.005,
+      vx: (rand() - 0.5) * 0.002,
+      vy: (rand() - 0.5) * 0.002,
+      vz: (rand() - 0.5) * 0.002,
       radius: BEAD_BASE_RADIUS * (0.94 + rand() * 0.12),
       color,
     });
@@ -95,10 +95,10 @@ function PhysicalBeadsLayer({
       </sphereGeometry>
       <meshStandardMaterial
         vertexColors
-        roughness={0.2}
-        metalness={0.24}
+        roughness={0.18}
+        metalness={0.16}
         emissive="#001824"
-        emissiveIntensity={0.26}
+        emissiveIntensity={0.25}
       />
     </instancedMesh>
   );
@@ -110,11 +110,11 @@ function CapsuleGlassShell() {
     <group renderOrder={2}>
       {/* Layer 1: Luminous Outer Silhouette Contour (Inverted Hull) */}
       <mesh renderOrder={4}>
-        <capsuleGeometry args={[CAPSULE_RADIUS + 0.007, CYLINDER_HALF_HEIGHT * 2, 32, 64]} />
+        <capsuleGeometry args={[CAPSULE_RADIUS + 0.008, CYLINDER_HALF_HEIGHT * 2, 32, 64]} />
         <meshBasicMaterial
           color="#00f0ff"
           transparent
-          opacity={0.32}
+          opacity={0.30}
           side={THREE.BackSide}
           depthWrite={false}
         />
@@ -126,16 +126,31 @@ function CapsuleGlassShell() {
         <meshPhysicalMaterial
           color="#00f0ff"
           transparent
-          opacity={0.2}
-          roughness={0.03}
-          metalness={0.1}
+          opacity={0.22}
+          roughness={0.025}
+          metalness={0.08}
           clearcoat={1.0}
           clearcoatRoughness={0.02}
           ior={1.52}
-          specularIntensity={3.0}
+          specularIntensity={3.2}
           specularColor="#ffffff"
           emissive="#002b3d"
-          emissiveIntensity={0.24}
+          emissiveIntensity={0.22}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Layer 3: Central Pharmaceutical Capsule Seam Band */}
+      <mesh position={[0, 0, 0]} renderOrder={3}>
+        <torusGeometry args={[CAPSULE_RADIUS + 0.003, 0.007, 16, 64]} />
+        <meshStandardMaterial
+          color="#00f0ff"
+          transparent
+          opacity={0.65}
+          roughness={0.1}
+          metalness={0.8}
+          emissive="#00f0ff"
+          emissiveIntensity={0.3}
           depthWrite={false}
         />
       </mesh>
@@ -143,18 +158,24 @@ function CapsuleGlassShell() {
   );
 }
 
-// ── Dynamic Capsule Rig with Fast Spatial-Grid Granular Physics ──
+// ── Dynamic Capsule Rig with Unrestricted 360° Drag & True Granular Physics ──
 function CapsuleRig({ reduced }: { reduced: boolean }) {
   const group = useRef<THREE.Group>(null);
   const instancedMesh = useRef<THREE.InstancedMesh>(null);
 
-  const tilt = useRef({ x: 0.16, z: -0.36 });
+  // Full 3D orientation quaternion for unrestricted 360° rotation in all directions
+  const orientation = useRef(
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0.2, -0.32, -0.28))
+  );
+  const angularVelocity = useRef(new THREE.Vector2(0, 0));
+  const isDragging = useRef(false);
+  const pointerStart = useRef({ x: 0, y: 0 });
   const pointerPrev = useRef({ x: 0, y: 0 });
-  const mouseImpulse = useRef({ x: 0, y: 0 });
+  const userDragAccel = useRef(new THREE.Vector3(0, 0, 0));
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  // Initialize beads array with their own independent state
+  // Initialize beads array
   const beads = useMemo(() => initPhysicalBeads(), []);
 
   // Spatial grid partitioning buffers (12 x 26 x 12 cells)
@@ -173,74 +194,148 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     return arr;
   }, [beads]);
 
-  const { viewport } = useThree();
+  const { gl, viewport } = useThree();
   const responsiveScale = Math.min(1.04, Math.max(0.78, viewport.width / 4.8));
 
-  useFrame((state, delta) => {
-    const dt = Math.min(delta, 0.035);
+  // ── Unrestricted 360° Pointer & Touch Drag Handlers ───────────
+  useEffect(() => {
+    const dom = gl.domElement;
+    if (!dom) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      isDragging.current = true;
+      pointerStart.current = { x: e.clientX, y: e.clientY };
+      pointerPrev.current = { x: e.clientX, y: e.clientY };
+      angularVelocity.current.set(0, 0);
+      dom.style.cursor = "grabbing";
+      try {
+        dom.setPointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isDragging.current) return;
+      const dx = e.clientX - pointerPrev.current.x;
+      const dy = e.clientY - pointerPrev.current.y;
+      pointerPrev.current = { x: e.clientX, y: e.clientY };
+
+      // Sensitivity: ~0.007 rad per pixel
+      const rotY = dx * 0.007;
+      const rotX = dy * 0.007;
+
+      // Unrestricted 360° spherical rotation in world space (premultiply)
+      const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
+      const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rotX);
+      orientation.current.premultiply(qYaw).premultiply(qPitch);
+
+      // Track angular velocity and drag acceleration for bead inertia
+      angularVelocity.current.set(rotX, rotY);
+      userDragAccel.current.set(dx * 0.15, -dy * 0.15, 0);
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      dom.style.cursor = "grab";
+      try {
+        dom.releasePointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    dom.style.cursor = "grab";
+    dom.style.touchAction = "none";
+    dom.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+
+    return () => {
+      dom.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [gl]);
+
+  // ── Physics Simulation Frame Loop ─────────────────────────────
+  useFrame((_state, delta) => {
+    const dt = Math.min(delta, 0.033);
     const g = group.current;
 
-    // Track mouse velocity
-    const pX = state.pointer.x;
-    const pY = state.pointer.y;
-    const dX = pX - pointerPrev.current.x;
-    const dY = pY - pointerPrev.current.y;
-    pointerPrev.current = { x: pX, y: pY };
-
     if (g && !reduced) {
-      // Autonomous smooth spin & cursor tilt with ultra-high responsiveness
-      g.rotation.y += dt * 0.22;
-      const targetX = 0.22 + pY * -0.52;
-      const targetZ = -0.38 + pX * 0.48;
-      tilt.current.x = THREE.MathUtils.lerp(tilt.current.x, targetX, 0.18);
-      tilt.current.z = THREE.MathUtils.lerp(tilt.current.z, targetZ, 0.18);
-      g.rotation.x = tilt.current.x;
-      g.rotation.z = tilt.current.z;
+      if (!isDragging.current) {
+        // Smooth rotational inertia with exponential decay
+        if (angularVelocity.current.lengthSq() > 0.000001) {
+          const qPitch = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(1, 0, 0),
+            angularVelocity.current.x
+          );
+          const qYaw = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            angularVelocity.current.y
+          );
+          orientation.current.premultiply(qYaw).premultiply(qPitch);
+          angularVelocity.current.multiplyScalar(0.94);
+        } else {
+          // Living ambient spin: gentle 360° yaw spin around vertical axis
+          const qAuto = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            dt * 0.22
+          );
+          orientation.current.premultiply(qAuto);
+        }
 
-      mouseImpulse.current.x = THREE.MathUtils.lerp(mouseImpulse.current.x, dX * 5.5, 0.14);
-      mouseImpulse.current.y = THREE.MathUtils.lerp(mouseImpulse.current.y, -dY * 5.5, 0.14);
+        // Decay user drag acceleration
+        userDragAccel.current.multiplyScalar(0.85);
+      }
+
+      g.quaternion.copy(orientation.current);
     }
 
-    // ── Free Particle Physics Step with Fast Spatial Grid Collisions ──
+    // ── Free Particle Granular Physics Step ───────────────────────
     const mesh = instancedMesh.current;
-    if (mesh) {
-      const rotX = g ? g.rotation.x : 0;
-      const rotZ = g ? g.rotation.z : 0;
+    if (mesh && g) {
+      // World gravity always pulls straight down toward earth: (0, -20.0, 0)
+      const worldGravity = new THREE.Vector3(
+        userDragAccel.current.x * 0.8,
+        -20.0 + userDragAccel.current.y * 0.8,
+        0
+      );
 
-      // 3 sub-steps per frame for rock-solid stability and zero-jitter granular packing
+      // Transform world gravity into capsule's local coordinate system:
+      // When capsule inverts upside-down (180°), local gravity inverts to +y!
+      // When capsule tilts sideways (90°), local gravity points along x/z!
+      const invOrientation = orientation.current.clone().invert();
+      const localGravity = worldGravity.applyQuaternion(invOrientation);
+
+      const gx = localGravity.x;
+      const gy = localGravity.y;
+      const gz = localGravity.z;
+
+      // 3 sub-steps per frame for rock-solid stability and realistic granular pile formation
       const subSteps = 3;
       const subDt = dt / subSteps;
-
-      // Local gravity vector inside rotating capsule frame
-      const gx = -10.5 * Math.sin(rotZ) + mouseImpulse.current.x * 0.5;
-      const gy = -10.5 * Math.cos(rotX) * Math.cos(rotZ);
-      const gz = 10.5 * Math.sin(rotX) + mouseImpulse.current.y * 0.5;
-
       const N = beads.length;
 
       for (let s = 0; s < subSteps; s++) {
-        // 1. Position integration with depth-dependent damping
-        // (Surface beads roll freely; bottom beads are calm and settled)
+        // 1. Velocity & Position Integration with natural air friction
         for (let i = 0; i < N; i++) {
           const b = beads[i];
           b.vx += gx * subDt;
           b.vy += gy * subDt;
           b.vz += gz * subDt;
 
-          // Depth factor: 0 near upper surface, 1 at bottom cup
-          const depthFactor = Math.max(0, Math.min(1, (-b.y - 0.2) / 0.9));
-          const damp = 0.94 - depthFactor * 0.12; // 0.94 at top, 0.82 deep at bottom
-          b.vx *= damp;
-          b.vy *= damp;
-          b.vz *= damp;
+          // Air damping
+          b.vx *= 0.985;
+          b.vy *= 0.985;
+          b.vz *= 0.985;
 
-          // Integrate position
           b.x += b.vx * subDt;
           b.y += b.vy * subDt;
           b.z += b.vz * subDt;
         }
 
-        // 2. Build spatial grid index
+        // 2. Spatial Grid Indexing (12 x 26 x 12 cells, width = 0.10)
         gridHead.fill(-1);
         for (let i = 0; i < N; i++) {
           const b = beads[i];
@@ -252,7 +347,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           gridHead[cell] = i;
         }
 
-        // 3. Resolve inter-bead collisions: complete separation & elastic bounce (no sticking!)
+        // 3. Inter-bead Collisions with Elastic Rebound & Granular Shear Friction
         for (let i = 0; i < N; i++) {
           const bi = beads[i];
           const cx = Math.max(0, Math.min(11, Math.floor((bi.x + 0.6) * 10)));
@@ -289,7 +384,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             const ny = dy / dist;
                             const nz = dz / dist;
 
-                            // 100% full geometric separation: each bead moves 50% of overlap away
+                            // Full geometric separation
                             const sep = overlap * 0.5;
                             bi.x += nx * sep;
                             bi.y += ny * sep;
@@ -299,14 +394,14 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                             bj.y -= ny * sep;
                             bj.z -= nz * sep;
 
-                            // Elastic bounce: beads rebound off each other (never stick like molecules)
+                            // Collision impulse with realistic restitution
                             const relVx = bi.vx - bj.vx;
                             const relVy = bi.vy - bj.vy;
                             const relVz = bi.vz - bj.vz;
                             const normalVel = relVx * nx + relVy * ny + relVz * nz;
 
                             if (normalVel < 0) {
-                              const restitution = 0.32;
+                              const restitution = 0.28;
                               const impulse = -(1 + restitution) * normalVel * 0.5;
                               bi.vx += nx * impulse;
                               bi.vy += ny * impulse;
@@ -315,6 +410,20 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
                               bj.vx -= nx * impulse;
                               bj.vy -= ny * impulse;
                               bj.vz -= nz * impulse;
+
+                              // Granular shear friction (creates realistic angle of repose and bead tumbling)
+                              const tangVx = relVx - normalVel * nx;
+                              const tangVy = relVy - normalVel * ny;
+                              const tangVz = relVz - normalVel * nz;
+                              const fCoeff = 0.16;
+
+                              bi.vx -= tangVx * fCoeff;
+                              bi.vy -= tangVy * fCoeff;
+                              bi.vz -= tangVz * fCoeff;
+
+                              bj.vx += tangVx * fCoeff;
+                              bj.vy += tangVy * fCoeff;
+                              bj.vz += tangVz * fCoeff;
                             }
                           }
                         }
@@ -328,11 +437,13 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           }
         }
 
-        // 4. Wall containment with strong floor dampening for down capsule
+        // 4. Symmetrical Glass Capsule Boundary Containment (Full 360° Support)
         for (let i = 0; i < N; i++) {
           const b = beads[i];
           const effR = CAPSULE_RADIUS - b.radius - 0.002;
+
           if (b.y < -CYLINDER_HALF_HEIGHT) {
+            // Bottom hemisphere dome
             const capCenterY = -CYLINDER_HALF_HEIGHT;
             const dy = b.y - capCenterY;
             const dist = Math.hypot(b.x, dy, b.z);
@@ -346,15 +457,17 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx -= vDotN * nx;
-                b.vy -= vDotN * ny;
-                b.vz -= vDotN * nz;
+                b.vx -= (1 + 0.25) * vDotN * nx;
+                b.vy -= (1 + 0.25) * vDotN * ny;
+                b.vz -= (1 + 0.25) * vDotN * nz;
               }
-              // Strong bottom cup friction to calm down capsule activity
-              b.vx *= 0.55;
-              b.vz *= 0.55;
+              // Wall roll friction
+              b.vx *= 0.82;
+              b.vy *= 0.82;
+              b.vz *= 0.82;
             }
           } else if (b.y > CYLINDER_HALF_HEIGHT) {
+            // Top hemisphere dome (supports upside-down 180° rotation!)
             const capCenterY = CYLINDER_HALF_HEIGHT;
             const dy = b.y - capCenterY;
             const dist = Math.hypot(b.x, dy, b.z);
@@ -368,15 +481,17 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vy * ny + b.vz * nz;
               if (vDotN > 0) {
-                b.vx -= vDotN * nx;
-                b.vy -= vDotN * ny;
-                b.vz -= vDotN * nz;
+                b.vx -= (1 + 0.25) * vDotN * nx;
+                b.vy -= (1 + 0.25) * vDotN * ny;
+                b.vz -= (1 + 0.25) * vDotN * nz;
               }
-              b.vx *= 0.70;
-              b.vy *= 0.70;
-              b.vz *= 0.70;
+              // Wall roll friction
+              b.vx *= 0.82;
+              b.vy *= 0.82;
+              b.vz *= 0.82;
             }
           } else {
+            // Cylindrical body
             const rCyl = Math.hypot(b.x, b.z);
             if (rCyl > effR && rCyl > 0.0001) {
               const nx = b.x / rCyl;
@@ -386,22 +501,25 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
               const vDotN = b.vx * nx + b.vz * nz;
               if (vDotN > 0) {
-                b.vx -= vDotN * nx;
-                b.vz -= vDotN * nz;
+                b.vx -= (1 + 0.25) * vDotN * nx;
+                b.vz -= (1 + 0.25) * vDotN * nz;
               }
-              b.vx *= 0.70;
-              b.vz *= 0.70;
+              // Wall roll friction along cylinder axis
+              b.vy *= 0.85;
+              b.vx *= 0.85;
+              b.vz *= 0.85;
             }
           }
         }
 
-        // 5. Rest threshold: calm down beads settled in lower capsule
+        // 5. Rest threshold: calm down fully settled beads to eliminate jitter
         for (let i = 0; i < N; i++) {
           const b = beads[i];
-          if (b.y < -0.45 && b.vx * b.vx + b.vy * b.vy + b.vz * b.vz < 0.0006) {
-            b.vx = 0;
-            b.vy = 0;
-            b.vz = 0;
+          const vSq = b.vx * b.vx + b.vy * b.vy + b.vz * b.vz;
+          if (vSq < 0.0004) {
+            b.vx *= 0.7;
+            b.vy *= 0.7;
+            b.vz *= 0.7;
           }
         }
       }
@@ -419,11 +537,11 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
   });
 
   return (
-    <group ref={group} scale={responsiveScale} rotation={[0.18, -0.28, -0.36]}>
+    <group ref={group} scale={responsiveScale}>
       <Float
-        speed={reduced ? 0 : 1.7}
-        rotationIntensity={reduced ? 0 : 0.16}
-        floatIntensity={reduced ? 0 : 0.55}
+        speed={reduced ? 0 : 1.4}
+        rotationIntensity={reduced ? 0 : 0.08}
+        floatIntensity={reduced ? 0 : 0.35}
       >
         {/* Layer 1: Free Physical Beads (renderOrder=1) */}
         <PhysicalBeadsLayer
@@ -432,7 +550,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
           colorsArray={colorsArray}
         />
 
-        {/* Layer 2: Crystal Glass Capsule Shell with Luminous Silhouette Rim */}
+        {/* Layer 2: Crystal Glass Capsule Shell with Luminous Silhouette Rim & Center Seam */}
         <CapsuleGlassShell />
       </Float>
     </group>
@@ -443,19 +561,19 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 function StudioLights() {
   return (
     <>
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[-4, 4, 4]} intensity={2.6} color="#ffffff" />
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[-4, 4, 4]} intensity={2.8} color="#ffffff" />
       <directionalLight position={[4, -2, 3]} intensity={1.8} color="#00f0ff" />
       <directionalLight position={[0, -4, -3]} intensity={1.6} color="#10b981" />
-      <pointLight position={[2, 3, 2]} intensity={1.4} color="#eafcff" />
+      <pointLight position={[2, 3, 2]} intensity={1.5} color="#eafcff" />
     </>
   );
 }
 
 /**
  * Hero WebGL Scene: Free-flowing, independent granular beads inside a
- * crystal-clear transparent capsule with realistic physical collisions,
- * tumbling reaction, and ambient 3D sparkles.
+ * crystal-clear transparent capsule with unrestricted 360° interactive rotation,
+ * realistic granular physics, cascading avalanches, and ambient 3D sparkles.
  */
 export default function CapsuleCanvas({
   frameloop = "always",

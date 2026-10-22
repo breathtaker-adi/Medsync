@@ -42,8 +42,16 @@ export function CapsuleScene() {
   }, []);
 
   return (
-    <div ref={ref} className="absolute inset-0" aria-hidden>
+    <div ref={ref} className="absolute inset-0" aria-label="Interactive 3D medicine capsule with granular beads">
       <CapsuleCanvas frameloop={inView ? "always" : "never"} reduced={reduced} />
+
+      {/* 360° interactive drag hint badge */}
+      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full border border-white/10 bg-[#040812]/80 px-3.5 py-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-md">
+        <span className="h-1.5 w-1.5 rounded-full bg-bio animate-pulse shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
+        <span className="font-telemetry text-[9px] tracking-[0.22em] text-slate-300 uppercase">
+          DRAG TO ROTATE 360° · REAL-TIME BEAD PHYSICS
+        </span>
+      </div>
     </div>
   );
 }
