@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.storage_deletion_queue (
 
 ALTER TABLE public.storage_deletion_queue ENABLE ROW LEVEL SECURITY;
 
--- Only service role can read or mutate the deletion queue
+DROP POLICY IF EXISTS "Service role manages storage deletion queue" ON public.storage_deletion_queue;
 CREATE POLICY "Service role manages storage deletion queue"
   ON public.storage_deletion_queue
   FOR ALL
@@ -28,66 +28,93 @@ CREATE OR REPLACE FUNCTION public.cleanup_expired_scans()
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth, storage
 AS $$
 DECLARE
   v_count integer := 0;
   v_rec record;
 BEGIN
-  -- Identify unverified scans or temporary drafts older than 90 days
+  -- Identify pending_reviews older than 90 days that have image_url
   FOR v_rec IN
-    SELECT id, user_id, image_path
-    FROM public.ocr_scans
+    SELECT id, image_url
+    FROM public.pending_reviews
     WHERE created_at < (timezone('utc'::text, now()) - INTERVAL '90 days')
-      AND image_path IS NOT NULL
+      AND image_url IS NOT NULL
   LOOP
     -- Queue file for physical storage removal
     INSERT INTO public.storage_deletion_queue (bucket_id, file_path)
-    VALUES ('prescriptions', v_rec.image_path)
-    ON CONFLICT DO NOTHING;
+    VALUES ('prescriptions', v_rec.image_url);
 
-    -- Delete metadata record
-    DELETE FROM public.ocr_scans WHERE id = v_rec.id;
+    -- Delete physical object from storage.objects if present
+    DELETE FROM storage.objects 
+    WHERE bucket_id = 'prescriptions' AND name = v_rec.image_url;
+
+    -- Delete review metadata record
+    DELETE FROM public.pending_reviews WHERE id = v_rec.id;
     v_count := v_count + 1;
   END LOOP;
+
+  -- Also clean up scan_usage logs older than 90 days
+  DELETE FROM public.scan_usage WHERE scan_date < (CURRENT_DATE - 90);
 
   RETURN v_count;
 END;
 $$;
 
--- 3. Enhance delete_user_account to queue all prescription photos for storage deletion
+-- 3. Enhance delete_user_account to queue storage deletions and purge user data
+DROP FUNCTION IF EXISTS public.delete_user_account() CASCADE;
+DROP FUNCTION IF EXISTS public.delete_user_account CASCADE;
+
 CREATE OR REPLACE FUNCTION public.delete_user_account()
-RETURNS void
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, auth, storage
 AS $$
 DECLARE
-  v_user_id UUID;
-  v_rec record;
+  v_user_id UUID := auth.uid();
 BEGIN
-  v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Authentication required to delete account.';
   END IF;
 
-  -- Queue all user prescription images for physical file deletion
-  FOR v_rec IN
-    SELECT image_url FROM public.prescriptions WHERE patient_id = v_user_id AND image_url IS NOT NULL
-    UNION
-    SELECT image_path FROM public.ocr_scans WHERE user_id = v_user_id AND image_path IS NOT NULL
-  LOOP
-    INSERT INTO public.storage_deletion_queue (bucket_id, file_path)
-    VALUES ('prescriptions', v_rec.image_url);
-  END LOOP;
+  -- 1. Queue user prescription photos for physical file deletion
+  INSERT INTO public.storage_deletion_queue (bucket_id, file_path)
+  SELECT 'prescriptions', name
+  FROM storage.objects
+  WHERE bucket_id = 'prescriptions'
+    AND (storage.foldername(name))[1] = v_user_id::text;
 
-  -- Cascade delete application rows
-  DELETE FROM public.caregiver_links WHERE patient_id = v_user_id OR caregiver_id = v_user_id;
-  DELETE FROM public.doses WHERE patient_id = v_user_id;
-  DELETE FROM public.prescriptions WHERE patient_id = v_user_id;
-  DELETE FROM public.adherence_logs WHERE patient_id = v_user_id;
-  DELETE FROM public.ocr_scans WHERE user_id = v_user_id;
+  -- Purge physical storage photos directly
+  DELETE FROM storage.objects 
+  WHERE bucket_id = 'prescriptions' 
+    AND (storage.foldername(name))[1] = v_user_id::text;
+
+  -- 2. Cascade delete application rows
+  DELETE FROM public.medication_logs WHERE patient_id = v_user_id;
+  DELETE FROM public.medications WHERE patient_id = v_user_id;
+
+  -- 3. If patient deletes account, delete their reviews.
+  --    If doctor deletes account, NULL their assignment without destroying patient's prescription slip
+  DELETE FROM public.pending_reviews WHERE patient_id = v_user_id;
+  UPDATE public.pending_reviews SET target_doctor_id = NULL WHERE target_doctor_id = v_user_id;
+
+  -- 4. Purge pairings, push tokens, consents, scan usage, and profile
+  DELETE FROM public.patient_caregivers WHERE patient_id = v_user_id OR caregiver_id = v_user_id;
+  DELETE FROM public.user_push_tokens WHERE user_id = v_user_id;
+  DELETE FROM public.user_consents WHERE user_id = v_user_id;
+  DELETE FROM public.scan_usage WHERE user_id = v_user_id;
   DELETE FROM public.profiles WHERE id = v_user_id;
+
+  -- 5. Purge auth identity from auth.users (permits immediate re-registration)
+  DELETE FROM auth.users WHERE id = v_user_id;
+
+  RETURN jsonb_build_object('success', true, 'message', 'Account and personal health data completely purged');
 END;
 $$;
+
+REVOKE EXECUTE ON FUNCTION public.delete_user_account() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
 
 -- 4. Register daily automated maintenance job with pg_cron if available
 DO $$
