@@ -1,6 +1,7 @@
 // src/utils/errorHandler.ts
 import { Alert } from 'react-native';
 import { crashReporter } from '../lib/crashReporter';
+import { showDialog } from '../components/MedSyncDialog';
 
 export interface AppError {
   message: string;
@@ -72,5 +73,14 @@ export function showErrorAlert(
   onDismiss?: () => void
 ): void {
   const message = getErrorMessage(error);
-  Alert.alert(title, message, [{ text: 'OK', onPress: onDismiss }]);
+  try {
+    showDialog({
+      title,
+      message,
+      type: 'error',
+      actions: [{ text: 'OK', style: 'default', onPress: onDismiss }],
+    });
+  } catch {
+    Alert.alert(title, message, [{ text: 'OK', onPress: onDismiss }]);
+  }
 }

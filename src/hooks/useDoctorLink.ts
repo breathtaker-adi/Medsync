@@ -15,6 +15,9 @@ export interface ConnectedDoctor {
   is_verified_doctor?: boolean;
   status: string;
   created_at: string;
+  email?: string;
+  phone?: string;
+  years_of_experience?: string;
 }
 
 export function useDoctorLink() {
@@ -57,7 +60,7 @@ export function useDoctorLink() {
       const { data: profiles, error: profErr } = await supabase
         .from('profiles')
         .select(
-          'id, full_name, specialty, clinic_affiliation, medical_license_number, medical_council, is_verified_doctor, role'
+          'id, full_name, specialty, clinic_affiliation, medical_license_number, medical_council, is_verified_doctor, role, email, phone, years_of_experience'
         )
         .in('id', doctorIds);
 
@@ -84,6 +87,9 @@ export function useDoctorLink() {
           is_verified_doctor: prof?.is_verified_doctor ?? false,
           status: link.status || 'active',
           created_at: link.created_at,
+          email: prof?.email || undefined,
+          phone: prof?.phone || undefined,
+          years_of_experience: prof?.years_of_experience || undefined,
         };
       });
 

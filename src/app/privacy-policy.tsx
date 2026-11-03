@@ -211,10 +211,10 @@ export default function PrivacyPolicyScreen() {
             For inquiries regarding statutory consent, rights requests, or grievance redressal, contact our designated officer:
           </Text>
           <View style={styles.dpoPlate}>
-            <Ionicons name="mail-outline" size={18} color="#0D9488" />
+            <Ionicons name="shield-checkmark-outline" size={18} color="#0D9488" />
             <View style={{ flex: 1 }}>
               <Text style={styles.dpoTitle}>MedSync Office of Data Privacy</Text>
-              <Text style={styles.dpoEmail}>privacy@medsync.health • compliance@medsync.health</Text>
+              <Text style={styles.dpoEmail}>In-App Channel: Settings → Data Rights & Grievance Redressal</Text>
             </View>
           </View>
         </View>

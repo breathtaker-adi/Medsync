@@ -149,7 +149,7 @@ export default function DoctorVerificationScreen() {
 
         const res = await fetch(url, {
           headers: {
-            'User-Agent': 'MedSyncHealthcareApp/1.0 (contact: support@medsync.io)',
+            'User-Agent': 'MedSyncHealthcareApp/1.0',
           },
         });
 
@@ -1096,15 +1096,15 @@ export default function DoctorVerificationScreen() {
         <View style={styles.pinpointModalOverlay}>
           <View style={styles.pinpointModalCard}>
             <View style={styles.pinpointModalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, marginRight: 8 }}>
                 <View style={styles.pinpointModalIconPlate}>
                   <Ionicons name="location" size={22} color="#0D9488" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pinpointModalTitle}>
+                  <Text style={styles.pinpointModalTitle} numberOfLines={1}>
                     {practiceType === 'hospital' ? 'Pinpoint Hospital Location' : 'Pinpoint Clinic Location'}
                   </Text>
-                  <Text style={styles.pinpointModalSubtitle}>
+                  <Text style={styles.pinpointModalSubtitle} numberOfLines={1}>
                     {practiceType === 'hospital'
                       ? 'Accredited hospital / medical center'
                       : 'For unlisted or private clinics'}
@@ -1114,6 +1114,9 @@ export default function DoctorVerificationScreen() {
               <TouchableOpacity
                 onPress={() => setPinpointModalVisible(false)}
                 style={styles.pinpointCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Close pinpoint location modal"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Ionicons name="close" size={22} color="#64748B" />
               </TouchableOpacity>
@@ -1874,9 +1877,12 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   pinpointCloseBtn: {
-    padding: 6,
-    borderRadius: 16,
-    backgroundColor: '#F8FAFC',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hospitalNoticeBox: {
     flexDirection: 'row',

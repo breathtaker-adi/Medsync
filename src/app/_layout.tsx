@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AccessibilityProvider } from '../context/AccessibilityContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
+import { MedSyncDialogContainer } from '../components/MedSyncDialog';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { MedSyncLogo } from '../components/MedSyncLogo';
 import { supabase } from '../lib/supabase';
@@ -222,6 +223,7 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
       <AnimatedSplashScreen isReady={isReady} />
+      <MedSyncDialogContainer />
     </View>
   );
 }

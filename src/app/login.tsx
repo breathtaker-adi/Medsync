@@ -27,10 +27,20 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   const handleAuth = async () => {
     if (!email.trim() || !password) {
       Alert.alert('Missing fields', 'Please enter both email and password.');
+      return;
+    }
+
+    if (isSignUp && !agreedToPrivacy) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'Consent Required',
+        'Please review and agree to MedSync’s Privacy Policy & DPDP Consent to create your account.'
+      );
       return;
     }
 
@@ -195,16 +205,38 @@ export default function LoginScreen() {
 
           {isSignUp && (
             <View style={styles.consentContainer}>
-              <Text style={styles.consentText} textBreakStrategy="simple">
-                By signing up, you agree to MedSync’s{' '}
-                <Text
-                  style={styles.consentLink}
-                  onPress={() => router.push('/privacy-policy' as any)}
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setAgreedToPrivacy(!agreedToPrivacy);
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreedToPrivacy }}
+                accessibilityLabel="I agree to MedSync’s Privacy Policy and DPDP Consent"
+              >
+                <View
+                  style={[
+                    styles.checkboxBox,
+                    agreedToPrivacy && styles.checkboxBoxChecked,
+                  ]}
                 >
-                  Privacy Policy & DPDP Consent
-                </Text>{' '}
-                for encrypted prescription processing.
-              </Text>
+                  {agreedToPrivacy && (
+                    <Ionicons name="checkmark" size={15} color="#FFFFFF" />
+                  )}
+                </View>
+                <Text style={styles.consentText} textBreakStrategy="simple">
+                  I agree to MedSync’s{' '}
+                  <Text
+                    style={styles.consentLink}
+                    onPress={() => router.push('/privacy-policy' as any)}
+                  >
+                    Privacy Policy & DPDP Consent
+                  </Text>{' '}
+                  for encrypted prescription processing.
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -341,13 +373,35 @@ const styles = StyleSheet.create({
   },
   consentContainer: {
     width: '100%',
-    marginBottom: 14,
-    paddingHorizontal: 2,
+    marginBottom: 16,
+    marginTop: 2,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    minHeight: 44,
+    paddingVertical: 6,
+  },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: Theme.colors.outlineVariant,
+    backgroundColor: Theme.colors.surfaceContainerLow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxBoxChecked: {
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary,
   },
   consentText: {
-    width: '100%',
+    flex: 1,
     fontFamily: 'PublicSans-Regular',
-    fontSize: 12,
+    fontSize: 12.5,
     color: Theme.colors.onSurfaceVariant,
     lineHeight: 18,
   },

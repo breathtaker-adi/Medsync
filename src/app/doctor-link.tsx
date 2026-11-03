@@ -6,6 +6,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -37,6 +39,8 @@ export default function DoctorLinkScreen() {
     generateCode,
     disconnectDoctor,
   } = useDoctorLink();
+
+  const [selectedDoctor, setSelectedDoctor] = useState<ConnectedDoctor | null>(null);
 
   const handleGenerateCode = async () => {
     triggerHaptic();
@@ -125,7 +129,17 @@ export default function DoctorLinkScreen() {
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeaderTitle}>Active Clinical Team</Text>
                 {doctors.map((doc) => (
-                  <View key={doc.link_id} style={styles.doctorCard}>
+                  <TouchableOpacity
+                    key={doc.link_id}
+                    style={styles.doctorCard}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      triggerHaptic();
+                      setSelectedDoctor(doc);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`View doctor profile for ${doc.full_name}`}
+                  >
                     <View style={styles.doctorCardTop}>
                       <View style={styles.doctorAvatar}>
                         <Text style={styles.doctorAvatarText}>
@@ -165,6 +179,10 @@ export default function DoctorLinkScreen() {
                           </View>
                         )}
                       </View>
+
+                      <View style={styles.cardChevronBox}>
+                        <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                      </View>
                     </View>
 
                     <View style={styles.cardDivider} />
@@ -184,7 +202,7 @@ export default function DoctorLinkScreen() {
                         <Text style={styles.unlinkBtnText}>Disconnect</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -234,6 +252,245 @@ export default function DoctorLinkScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Doctor Basic Information Modal */}
+      <Modal
+        visible={!!selectedDoctor}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedDoctor(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedDoctor(null)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalContent}
+          >
+            {selectedDoctor && (
+              <>
+                <View style={styles.modalHeaderRow}>
+                  <View style={styles.modalHeaderDocRow}>
+                    <View style={styles.modalDocAvatar}>
+                      <Text style={styles.modalDocAvatarText}>
+                        {selectedDoctor.full_name
+                          .replace('Dr. ', '')
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={styles.modalDocFullName} numberOfLines={1}>
+                          {selectedDoctor.full_name}
+                        </Text>
+                        {selectedDoctor.is_verified_doctor && (
+                          <View style={styles.verifiedBadge}>
+                            <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+                            <Text style={styles.verifiedBadgeText}>Verified MD</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.modalDocSpecialty}>
+                        {selectedDoctor.specialty || 'General Practitioner'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.modalCloseBtn}
+                    onPress={() => setSelectedDoctor(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close doctor information"
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={22} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView
+                  style={{ maxHeight: 420, marginVertical: 12 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* Practice Location & Address */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionLabel}>CLINICAL PRACTICE & ADDRESS</Text>
+                    <View style={styles.detailCard}>
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconCircle}>
+                          <Ionicons name="business" size={18} color={Theme.colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailTitle}>Practice Affiliation</Text>
+                          <Text style={styles.detailValue}>
+                            {selectedDoctor.clinic_affiliation || 'MedSync Verified Practice'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.innerDivider} />
+
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconCircle}>
+                          <Ionicons name="location" size={18} color={Theme.colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailTitle}>Shared Practice Address</Text>
+                          <Text style={styles.detailValue}>
+                            {selectedDoctor.clinic_affiliation || 'Clinical Consultation Facility'}
+                          </Text>
+                          <Text style={styles.detailSubtext}>
+                            Official healthcare center location shared for clinical care.
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Contact Information */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionLabel}>CONTACT INFORMATION</Text>
+                    <View style={styles.detailCard}>
+                      {/* Email */}
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconCircle}>
+                          <Ionicons name="mail" size={18} color={Theme.colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailTitle}>Clinical Email</Text>
+                          <Text style={styles.detailValue}>
+                            {selectedDoctor.email || 'Contact through MedSync Consultation'}
+                          </Text>
+                        </View>
+                        {selectedDoctor.email && (
+                          <TouchableOpacity
+                            style={styles.contactActionBtn}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              Linking.openURL(`mailto:${selectedDoctor.email}`);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Email ${selectedDoctor.full_name}`}
+                          >
+                            <Ionicons name="send" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                            <Text style={styles.contactActionBtnText}>Email</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      <View style={styles.innerDivider} />
+
+                      {/* Phone */}
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailIconCircle}>
+                          <Ionicons name="call" size={18} color={Theme.colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.detailTitle}>Clinic Phone</Text>
+                          {selectedDoctor.phone ? (
+                            <Text style={styles.detailValue}>{selectedDoctor.phone}</Text>
+                          ) : (
+                            <Text style={styles.detailPlaceholder}>
+                              Direct phone line will be added once configured by physician.
+                            </Text>
+                          )}
+                        </View>
+                        {selectedDoctor.phone && (
+                          <TouchableOpacity
+                            style={styles.contactActionBtn}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              Linking.openURL(`tel:${selectedDoctor.phone}`);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Call ${selectedDoctor.full_name}`}
+                          >
+                            <Ionicons name="call" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                            <Text style={styles.contactActionBtnText}>Call</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Credentials & Authenticity */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionLabel}>CREDENTIALS & OVERSIGHT</Text>
+                    <View style={styles.detailCard}>
+                      <View style={styles.credentialRow}>
+                        <Text style={styles.credentialKey}>Medical Council</Text>
+                        <Text style={styles.credentialVal}>
+                          {selectedDoctor.medical_council || 'State Medical Council / NMC'}
+                        </Text>
+                      </View>
+
+                      {selectedDoctor.medical_license_number && (
+                        <View style={styles.credentialRow}>
+                          <Text style={styles.credentialKey}>Registration No.</Text>
+                          <Text style={styles.credentialVal}>
+                            {selectedDoctor.medical_license_number}
+                          </Text>
+                        </View>
+                      )}
+
+                      {selectedDoctor.years_of_experience && (
+                        <View style={styles.credentialRow}>
+                          <Text style={styles.credentialKey}>Clinical Experience</Text>
+                          <Text style={styles.credentialVal}>
+                            {selectedDoctor.years_of_experience} years
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Privacy & Reciprocal Consent Notice */}
+                  <View style={styles.privacyNoticeBox}>
+                    <Ionicons name="shield-checkmark" size={18} color="#0D9488" style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.privacyNoticeTitle}>Confidential Healthcare Channel</Text>
+                      <Text style={styles.privacyNoticeText}>
+                        Only official practice details and verified contact channels are shared under reciprocal DPDP consent. Personal home addresses, private mobile numbers, and internal credentials remain strictly protected.
+                      </Text>
+                    </View>
+                  </View>
+                </ScrollView>
+
+                {/* Footer Actions */}
+                <View style={styles.modalFooterRow}>
+                  <TouchableOpacity
+                    style={styles.modalSecondaryBtn}
+                    onPress={() => {
+                      const doc = selectedDoctor;
+                      setSelectedDoctor(null);
+                      handleUnlinkDoctor(doc);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Disconnect doctor"
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#DC2626" style={{ marginRight: 4 }} />
+                    <Text style={styles.modalSecondaryBtnText}>Disconnect</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.modalDoneBtn}
+                    onPress={() => setSelectedDoctor(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Done"
+                  >
+                    <Text style={styles.modalDoneBtnText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -477,6 +734,223 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   generateButtonText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  cardChevronBox: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    maxHeight: '88%',
+    ...Theme.shadows.cardElevated,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalHeaderDocRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginRight: 8,
+  },
+  modalDocAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#0D9488',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDocAvatarText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 17,
+    color: '#FFFFFF',
+  },
+  modalDocFullName: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 17,
+    color: '#0F172A',
+  },
+  modalDocSpecialty: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 13,
+    color: '#0D9488',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailSection: {
+    marginBottom: 14,
+  },
+  detailSectionLabel: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11,
+    color: '#64748B',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  detailCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  detailIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#CCFBF1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  detailTitle: {
+    fontFamily: 'PublicSans-Medium',
+    fontSize: 11.5,
+    color: '#64748B',
+  },
+  detailValue: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13.5,
+    color: '#0F172A',
+    marginTop: 1,
+  },
+  detailSubtext: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  detailPlaceholder: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  innerDivider: {
+    height: 1,
+    backgroundColor: '#EDF2F7',
+    marginVertical: 10,
+  },
+  contactActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.primary,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignSelf: 'center',
+  },
+  contactActionBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  credentialKey: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 12.5,
+    color: '#64748B',
+  },
+  credentialVal: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12.5,
+    color: '#0F172A',
+  },
+  privacyNoticeBox: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  privacyNoticeTitle: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
+    color: '#0F766E',
+    marginBottom: 2,
+  },
+  privacyNoticeText: {
+    fontFamily: 'PublicSans-Regular',
+    fontSize: 11,
+    color: '#115E59',
+    lineHeight: 15,
+  },
+  modalFooterRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  modalSecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  modalSecondaryBtnText: {
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 13,
+    color: '#DC2626',
+  },
+  modalDoneBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+  },
+  modalDoneBtnText: {
     fontFamily: 'PublicSans-Bold',
     fontSize: 14,
     color: '#FFFFFF',

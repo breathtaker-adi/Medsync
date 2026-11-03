@@ -976,7 +976,12 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   modalCloseBtn: {
-    padding: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalDoctorItem: {
     flexDirection: 'row',

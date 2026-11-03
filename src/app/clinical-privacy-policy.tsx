@@ -94,9 +94,9 @@ export default function ClinicalPrivacyPolicyScreen() {
         {/* Section 6 */}
         <Text style={styles.sectionTitle}>6. Grievance Officer & Regulatory Inquiries</Text>
         <Text style={styles.paragraph}>
-          For institutional compliance inquiries, data protection impact assessments, or clinical audit reports, contact our Chief Compliance Officer:
+          For institutional compliance inquiries, data protection impact assessments, or clinical audit reports, contact our compliance team directly via in-app Settings or official project support channels:
         </Text>
-        <Text style={styles.contactEmail}>clinical-privacy@medsync.health</Text>
+        <Text style={styles.contactEmail}>In-App Channel: Settings → Clinical Compliance Inquiries</Text>
 
         {/* Close Button */}
         <TouchableOpacity
