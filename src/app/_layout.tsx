@@ -9,7 +9,6 @@ import { ActivityIndicator, LogBox, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AccessibilityProvider } from '../context/AccessibilityContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
 import { MedSyncDialogContainer } from '../components/MedSyncDialog';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { MedSyncLogo } from '../components/MedSyncLogo';
@@ -44,12 +43,12 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
 
   const isReady = fontsLoaded && !loading;
 
-  // Hide native OS splash screen once fonts load to transition into AnimatedSplashScreen
+  // Hide native OS splash screen once fonts and authentication state are ready
   useEffect(() => {
-    if (fontsLoaded) {
+    if (isReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [isReady]);
 
   // Handle Notification Action Buttons (Mark Taken / Snooze)
   useEffect(() => {
@@ -222,7 +221,6 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-      <AnimatedSplashScreen isReady={isReady} />
       <MedSyncDialogContainer />
     </View>
   );

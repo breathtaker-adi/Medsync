@@ -2,27 +2,27 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  BackHandler,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    BackHandler,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAccessibility } from '../context/AccessibilityContext';
@@ -590,7 +590,7 @@ export default function DoctorSettingsScreen() {
               <Ionicons name="volume-medium-outline" size={22} color={Theme.colors.primary} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingTitle}>Alert Sound &amp; Vibration</Text>
-                <Text style={styles.settingSubtitle}>Current: {selectedSound} • Tap to choose</Text>
+                <Text style={styles.settingSubtitle}>Current: {selectedSound}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

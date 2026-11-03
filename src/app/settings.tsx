@@ -8,19 +8,19 @@ import * as Print from 'expo-print';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MedSyncLogo } from '../components/MedSyncLogo';
@@ -625,7 +625,7 @@ export default function SettingsScreen() {
             <Ionicons name="notifications-outline" size={24} color={Theme.colors.primary} />
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingTitle}>Alarm & Ringtone</Text>
-              <Text style={styles.settingSubtitle}>Current: {selectedSound} • Tap to choose</Text>
+              <Text style={styles.settingSubtitle}>Current: {selectedSound}</Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
