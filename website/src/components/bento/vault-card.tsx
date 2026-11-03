@@ -39,15 +39,15 @@ export function VaultCard({ className = "" }: { className?: string }) {
             <Lock
               size={26}
               strokeWidth={1.5}
-              className="text-slate-300 transition-all duration-500 group-hover/holo:text-bio group-hover/holo:[animation:hue-cycle_4s_linear_infinite] group-hover/holo:drop-shadow-[0_0_14px_rgba(0,240,255,0.7)]"
+              className="text-slate-200 transition-all duration-500 group-hover/holo:text-bio group-hover/holo:[animation:hue-cycle_4s_linear_infinite] group-hover/holo:drop-shadow-[0_0_14px_rgba(0,240,255,0.7)]"
             />
-            <span className="font-telemetry text-[8.5px] font-medium tracking-[0.18em] text-slate-300 uppercase whitespace-nowrap pl-[0.18em]">
+            <span className="font-telemetry text-[10px] font-medium tracking-[0.18em] text-slate-200 uppercase whitespace-nowrap pl-[0.18em]">
               LOCAL · ENCRYPTED
             </span>
           </div>
         </div>
 
-        <p className="text-[12px] leading-relaxed text-slate-300">
+        <p className="text-[12.5px] leading-relaxed text-slate-200">
           Your records live safely on-device in local SQLite storage. Syncs seamlessly to the cloud when connected.
         </p>
 
@@ -55,7 +55,7 @@ export function VaultCard({ className = "" }: { className?: string }) {
           {CHIPS.map((c) => (
             <span
               key={c}
-              className="rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-0.5 font-telemetry text-[8px] tracking-[0.14em] text-slate-400"
+              className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-telemetry text-[10px] tracking-[0.14em] text-slate-300 font-medium"
             >
               {c}
             </span>
@@ -63,9 +63,9 @@ export function VaultCard({ className = "" }: { className?: string }) {
         </div>
 
         <div className="border-t border-white/6 pt-2.5">
-          <div className="mb-1 flex justify-between font-telemetry text-[8px] tracking-[0.16em] text-slate-400 uppercase">
+          <div className="mb-1.5 flex justify-between font-telemetry text-[10px] tracking-[0.16em] text-slate-300 uppercase">
             <span>Storage integrity</span>
-            <span className="text-pulse-bright">Active · 0 drops</span>
+            <span className="text-pulse-bright font-semibold">Active · 0 drops</span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-white/8">
             <div className="h-full w-full rounded-full bg-gradient-to-r from-bio to-pulse" />

@@ -108,8 +108,8 @@ export function Hero() {
           </motion.div>
 
           {/* Interactive capabilities */}
-          <motion.div {...rise(0.85)} className="relative mt-2 flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2 font-telemetry text-[10px] tracking-[0.18em] text-slate-400 uppercase">
+          <motion.div {...rise(0.85)} className="relative mt-2 flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 font-telemetry text-[11px] font-medium tracking-[0.16em] text-slate-300 uppercase">
               {CAPABILITIES.map((c) => (
                 <button
                   key={c.tag}
@@ -117,7 +117,7 @@ export function Hero() {
                   onMouseEnter={() => setActiveTip(c.tip)}
                   onMouseLeave={() => setActiveTip(null)}
                   onClick={() => setActiveTip((curr) => (curr === c.tip ? null : c.tip))}
-                  className="group relative rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 transition-all duration-300 hover:border-bio/50 hover:bg-bio/[0.08] hover:text-white"
+                  className="group relative rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 transition-all duration-300 hover:border-bio/50 hover:bg-bio/[0.08] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
                 >
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-bio/60 mr-2 group-hover:bg-bio group-hover:shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
                   {c.tag}
@@ -125,7 +125,7 @@ export function Hero() {
               ))}
             </div>
             {/* dynamic tip preview */}
-            <div className="min-h-5 px-1 font-telemetry text-[10px] tracking-[0.12em] text-bio">
+            <div className="min-h-5 px-1 font-telemetry text-xs tracking-[0.12em] text-bio">
               {activeTip ? (
                 <motion.span
                   key={activeTip}
@@ -136,7 +136,7 @@ export function Hero() {
                   <span className="text-pulse-bright">●</span> {activeTip}
                 </motion.span>
               ) : (
-                <span className="text-slate-500">Tap or hover any capability to learn how it works</span>
+                <span className="text-slate-400">Tap or hover any capability to learn how it works</span>
               )}
             </div>
           </motion.div>

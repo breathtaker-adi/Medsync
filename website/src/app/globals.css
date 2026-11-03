@@ -643,14 +643,11 @@ html.lenis body {
 /* ═══════════════ CUSTOM CURSOR ═══════════════ */
 
 @media (pointer: fine) {
-  html.custom-cursor-active,
-  html.custom-cursor-active * {
-    cursor: none !important;
-  }
+  /* Retain standard system cursors (grab, pointer, text) while ambient cursor trails softly */
   html.custom-cursor-active input,
   html.custom-cursor-active textarea,
   html.custom-cursor-active [contenteditable] {
-    cursor: text !important;
+    cursor: text;
   }
 }
 

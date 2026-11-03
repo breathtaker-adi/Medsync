@@ -257,32 +257,32 @@ export function Film() {
               <button
                 type="button"
                 onClick={togglePlay}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                 aria-label={playing ? "Pause" : "Play"}
               >
-                {playing ? <Pause size={14} aria-hidden="true" /> : <Play size={14} className="ml-0.5" aria-hidden="true" />}
+                {playing ? <Pause size={15} aria-hidden="true" /> : <Play size={15} className="ml-0.5" aria-hidden="true" />}
               </button>
               <button
                 type="button"
                 onClick={() => setMuted((m) => !m)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                 aria-label={muted ? "Unmute" : "Mute"}
               >
-                {muted ? <VolumeX size={14} aria-hidden="true" /> : <Volume2 size={14} aria-hidden="true" />}
+                {muted ? <VolumeX size={15} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}
               </button>
-              <span className="font-telemetry text-[10px] tracking-[0.14em] text-slate-400 tabular-nums">
+              <span className="font-telemetry text-[11px] font-medium tracking-[0.14em] text-slate-300 tabular-nums">
                 {fmt(progress * duration)} / {fmt(duration)}
               </span>
-              <span className="ml-auto hidden font-telemetry text-[9px] tracking-[0.24em] text-slate-500 uppercase sm:block">
+              <span className="ml-auto hidden font-telemetry text-[11px] font-semibold tracking-[0.2em] text-bio uppercase sm:block">
                 {CHAPTERS[activeChapter]?.label}
               </span>
               <button
                 type="button"
                 onClick={fullscreen}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 text-white transition-colors hover:border-bio/60 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
                 aria-label="Toggle fullscreen"
               >
-                <Maximize size={14} aria-hidden="true" />
+                <Maximize size={15} aria-hidden="true" />
               </button>
             </div>
           </div>

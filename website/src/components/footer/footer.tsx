@@ -23,7 +23,7 @@ function DownloadBlock() {
             <p className="max-w-sm text-xs leading-relaxed text-slate-400">
               Direct APK installation for Android devices. Full offline vault, AI camera prescription intake, and instant caregiver alerts.
             </p>
-            <div className="mt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2 font-telemetry text-[9px] text-slate-400">
+            <div className="mt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2 font-telemetry text-[11px] text-slate-300">
               <span className="rounded bg-bio/15 text-bio font-semibold px-2 py-0.5">v1.2.0 (Latest)</span>
               <span className="rounded bg-white/5 px-2 py-0.5">Android 8.0 - 15</span>
               <span className="rounded bg-white/5 px-2 py-0.5">~100 MB</span>
@@ -48,7 +48,7 @@ function DownloadBlock() {
               href="https://github.com/breathtaker-adi/Medsync/releases"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 font-telemetry text-[10px] tracking-[0.14em] text-slate-300 uppercase transition-colors hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+              className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 font-telemetry text-[11px] tracking-[0.14em] text-slate-200 uppercase transition-colors hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
             >
               <Github size={13} />
               Releases &amp; Changelog
@@ -56,12 +56,12 @@ function DownloadBlock() {
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between border-t border-white/6 pt-4 text-[10px] font-telemetry text-slate-400">
+        <div className="mt-6 flex items-center justify-between border-t border-white/6 pt-4 text-[11px] font-telemetry text-slate-300">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck size={12} className="text-pulse-bright" /> Verified SHA-256 Checksum on GitHub
+            <ShieldCheck size={13} className="text-pulse-bright" /> Verified SHA-256 Checksum on GitHub
           </span>
           <span className="flex items-center gap-1.5">
-            <Smartphone size={12} className="text-bio" /> Sideload Instructions Included
+            <Smartphone size={13} className="text-bio" /> Sideload Instructions Included
           </span>
         </div>
       </div>
@@ -157,7 +157,7 @@ export function Footer() {
               RHYTHM.
             </span>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 font-telemetry text-[9.5px] tracking-[0.22em] text-slate-400 uppercase">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5 font-telemetry text-[11px] font-medium tracking-[0.2em] text-slate-300 uppercase">
             <span>PATIENT-FIRST</span>
             <span className="text-bio" aria-hidden="true">·</span>
             <span>DPDP ACT 2023 READY</span>
@@ -165,7 +165,7 @@ export function Footer() {
             <span>OPEN SOURCE (MIT)</span>
           </div>
           {/* Medical disclaimer */}
-          <p className="mt-4 max-w-lg text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-4 max-w-lg text-[12px] leading-relaxed text-slate-300">
             MedSync is designed to support schedule management and adherence tracking. It does not provide medical diagnosis or replace consultation with a licensed healthcare professional.
           </p>
         </motion.div>
@@ -174,19 +174,19 @@ export function Footer() {
       {/* bottom bar */}
       <div className="relative z-10 mt-auto border-t border-white/8 bg-obsidian/80 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 px-5 py-6 sm:flex-row sm:pr-48 md:px-8 md:pr-56">
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-telemetry text-[11px] tracking-[0.18em] text-slate-300 uppercase">
             <span>© {currentYear} MEDSYNC · OPEN SOURCE (MIT)</span>
             <span className="hidden text-white/20 sm:inline" aria-hidden="true">|</span>
             <a
               href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/privacy`}
-              className="text-slate-400 transition-colors hover:text-bio"
+              className="text-slate-300 transition-colors hover:text-bio"
             >
               Privacy Policy
             </a>
             <span className="text-white/20" aria-hidden="true">·</span>
             <a
               href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/faq`}
-              className="text-slate-400 transition-colors hover:text-bio"
+              className="text-slate-300 transition-colors hover:text-bio"
             >
               FAQ
             </a>
@@ -196,21 +196,21 @@ export function Footer() {
               href="https://github.com/breathtaker-adi/Medsync"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+              className="flex items-center gap-2 font-telemetry text-[11px] tracking-[0.18em] text-slate-300 uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
             >
-              <Github size={13} aria-hidden="true" focusable="false" />
+              <Github size={14} aria-hidden="true" focusable="false" />
               <span className="hidden lg:inline">breathtaker-adi/Medsync</span>
               <span className="lg:hidden">GitHub</span>
             </a>
             <button
               type="button"
               onClick={scrollToTop}
-              className="group flex items-center gap-2 font-telemetry text-[10px] tracking-[0.2em] text-slate-400 uppercase transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+              className="group flex items-center gap-2 font-telemetry text-[11px] tracking-[0.18em] text-slate-300 uppercase transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio min-h-[44px]"
               aria-label="Back to top"
             >
               back to top
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/12 transition-colors group-hover:border-bio/60 group-hover:text-bio">
-                <ArrowUp size={13} aria-hidden="true" focusable="false" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 transition-colors group-hover:border-bio/60 group-hover:text-bio">
+                <ArrowUp size={14} aria-hidden="true" focusable="false" />
               </span>
             </button>
           </div>

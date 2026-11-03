@@ -18,7 +18,6 @@ const LINKS = [
 export function Nav() {
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navEffect, setNavEffect] = useState<"liquid-glass" | "shadow" | "glow">("liquid-glass");
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (y) => {
@@ -45,13 +44,7 @@ export function Nav() {
       >
         <nav
           aria-label="Primary"
-          className={`flex w-full max-w-5xl items-center justify-between gap-4 rounded-full py-2.5 pr-2.5 pl-3.5 md:pl-4 transition-all duration-500 ${
-            navEffect === "shadow"
-              ? "nav-effect-shadow"
-              : navEffect === "glow"
-              ? "nav-effect-glow"
-              : "nav-effect-liquid-glass"
-          }`}
+          className="nav-effect-liquid-glass flex w-full max-w-5xl items-center justify-between gap-4 rounded-full py-2.5 pr-2.5 pl-3.5 md:pl-4 transition-all duration-500"
         >
           {/* logo */}
           <a
@@ -68,15 +61,15 @@ export function Nav() {
           >
             <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-bio/40 bg-[#061016] shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-transform duration-300 group-hover:scale-105">
               <img
-                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-logo.png`}
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
                 alt="Medsync icon"
-                className="h-full w-full object-cover scale-[1.08]"
+                className="h-full w-full object-contain p-0.5"
               />
             </div>
             <span className="text-[17px] font-bold tracking-[-0.02em] text-white">
               medsync
             </span>
-            <span className="hidden items-center gap-1.5 rounded-full border border-bio/30 bg-bio/10 px-2 py-0.5 font-telemetry text-[9px] tracking-[0.16em] text-bio sm:flex">
+            <span className="hidden items-center gap-1.5 rounded-full border border-bio/30 bg-bio/10 px-2.5 py-0.5 font-telemetry text-[10px] tracking-[0.16em] text-bio sm:flex">
               <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-pulse" />
               PILOT ACTIVE
             </span>
@@ -92,38 +85,22 @@ export function Nav() {
                     e.preventDefault();
                     go(l.target);
                   }}
-                  className="group relative font-telemetry text-[11px] tracking-[0.22em] text-slate-400 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+                  className="group relative font-telemetry text-[11px] tracking-[0.22em] text-slate-300 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
                 >
                   {l.label}
                   <span className="absolute -bottom-1.5 left-0 h-px w-0 bg-bio transition-all duration-300 group-hover:w-full" />
                 </a>
               </li>
             ))}
-            <li className="flex items-center gap-2">
+            <li>
               <button
                 type="button"
                 onClick={() => emit(BUS.consoleOpen)}
-                className="group relative flex items-center gap-1.5 rounded-full border border-bio/30 bg-bio/[0.08] px-3 py-1 font-telemetry text-[10px] tracking-[0.18em] text-slate-300 transition-all duration-300 hover:border-bio/60 hover:text-bio hover:shadow-[0_0_12px_rgba(0,240,255,0.25)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+                className="group relative flex items-center gap-1.5 rounded-full border border-bio/30 bg-bio/[0.08] px-3.5 py-1.5 font-telemetry text-[11px] tracking-[0.18em] text-slate-200 transition-all duration-300 hover:border-bio/60 hover:text-bio hover:shadow-[0_0_12px_rgba(0,240,255,0.25)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
                 aria-label="Open live sync telemetry console"
               >
                 <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-bio" />
                 CONSOLE
-              </button>
-
-              {/* Navbar Effect Cycler: Liquid Glass / Shadow / Glow */}
-              <button
-                type="button"
-                onClick={() => {
-                  setNavEffect((prev) =>
-                    prev === "liquid-glass" ? "shadow" : prev === "shadow" ? "glow" : "liquid-glass"
-                  );
-                }}
-                className="group relative flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-telemetry text-[9px] tracking-[0.14em] text-slate-400 transition-all duration-300 hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
-                title="Click to cycle navbar effect: Liquid Glass -> Shadow -> Glow"
-                aria-label={`Current navbar effect: ${navEffect}. Click to switch.`}
-              >
-                <span className="text-[10px] opacity-75">✨</span>
-                <span>{navEffect === "liquid-glass" ? "LIQUID GLASS" : navEffect.toUpperCase()}</span>
               </button>
             </li>
           </ul>
@@ -150,12 +127,12 @@ export function Nav() {
             </Magnetic>
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-slate-300 md:hidden focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-slate-300 md:hidden focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
             >
-              {menuOpen ? <X size={16} aria-hidden="true" /> : <Menu size={16} aria-hidden="true" />}
+              {menuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
             </button>
           </div>
         </nav>
@@ -200,7 +177,7 @@ export function Nav() {
                 <motion.li
                   initial={{ opacity: 0, x: -28 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.24, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ delay: 0.30, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <button
                     type="button"
@@ -211,7 +188,7 @@ export function Nav() {
                     className="flex w-full items-baseline gap-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
                   >
                     <span className="font-telemetry text-[11px] text-bio">
-                      05
+                      06
                     </span>
                     <span className="text-4xl font-extrabold tracking-[-0.03em] text-white">
                       CONSOLE

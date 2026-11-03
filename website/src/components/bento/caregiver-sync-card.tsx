@@ -217,22 +217,22 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
                 type="button"
                 onClick={handleSimulateEscalation}
                 disabled={escalateCooldown}
-                className="flex items-center gap-1.5 rounded-lg border border-coral/30 bg-coral/10 px-3 py-1.5 font-telemetry text-[10px] tracking-[0.1em] text-coral uppercase transition-all duration-200 hover:bg-coral/20 hover:border-coral/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-coral"
+                className="flex items-center gap-1.5 rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 font-telemetry text-[11px] font-semibold tracking-[0.1em] text-coral uppercase transition-all duration-200 hover:bg-coral/20 hover:border-coral/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-coral"
               >
-                <BellRing size={12} />
+                <BellRing size={13} />
                 Simulate Missed Dose
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleResetEscalation}
-                className="flex items-center gap-1.5 rounded-lg border border-pulse/30 bg-pulse/10 px-3 py-1.5 font-telemetry text-[10px] tracking-[0.1em] text-pulse-bright uppercase transition-all duration-200 hover:bg-pulse/20 hover:border-pulse/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-pulse"
+                className="flex items-center gap-1.5 rounded-lg border border-pulse/30 bg-pulse/10 px-3 py-2 font-telemetry text-[11px] font-semibold tracking-[0.1em] text-pulse-bright uppercase transition-all duration-200 hover:bg-pulse/20 hover:border-pulse/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-pulse"
               >
-                <RotateCcw size={12} />
+                <RotateCcw size={13} />
                 Acknowledge Dose
               </button>
             )}
-            <span className="ml-auto font-telemetry text-[9px] text-slate-500">
+            <span className="ml-auto font-telemetry text-[10.5px] text-slate-400">
               {escalated ? "Triggered" : "30-60m window"}
             </span>
           </div>
@@ -248,11 +248,11 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
         >
           <div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-telemetry text-[10px] tracking-[0.18em] text-pulse-bright uppercase">
-                <HeartPulse size={13} className="text-pulse-bright" /> Doctor Care Loop
+              <span className="flex items-center gap-1.5 font-telemetry text-[11px] font-semibold tracking-[0.18em] text-pulse-bright uppercase">
+                <HeartPulse size={14} className="text-pulse-bright" /> Doctor Care Loop
               </span>
               <span
-                className={`font-telemetry text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase ${
+                className={`font-telemetry text-[10px] font-semibold px-2.5 py-0.5 rounded-full uppercase ${
                   rxConfirmed ? "bg-pulse/15 text-pulse-bright" : "bg-amber-clin/20 text-amber-clin"
                 }`}
               >
@@ -260,12 +260,12 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
               </span>
             </div>
             <div className="mt-2 text-sm font-semibold text-white">Dr. Anand (Cardiology - Sample)</div>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
+            <p className="mt-1 text-[12.5px] leading-relaxed text-slate-300">
               Prescriptions scanned via AI require clinician confirmation. No automatic dosage changes without sign-off.
             </p>
 
-            <div className="mt-2.5 flex items-center gap-1.5 font-telemetry text-[10px] text-slate-400">
-              <CheckCircle2 size={12} className={rxConfirmed ? "text-pulse-bright" : "text-amber-clin"} />
+            <div className="mt-2.5 flex items-center gap-1.5 font-telemetry text-[11px] text-slate-300">
+              <CheckCircle2 size={13} className={rxConfirmed ? "text-pulse-bright" : "text-amber-clin"} />
               <span>
                 {rxConfirmed
                   ? "Sample verified state · Registration #MMC-84920"
@@ -278,12 +278,12 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
             <button
               type="button"
               onClick={handleToggleDoctorReview}
-              className="flex items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.04] px-3 py-1.5 font-telemetry text-[10px] tracking-[0.1em] text-slate-200 uppercase transition-all duration-200 hover:border-bio/50 hover:bg-bio/10 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+              className="flex items-center gap-1.5 rounded-lg border border-white/12 bg-white/[0.04] px-3.5 py-2 font-telemetry text-[11px] font-semibold tracking-[0.1em] text-slate-200 uppercase transition-all duration-200 hover:border-bio/50 hover:bg-bio/10 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
             >
-              <HeartPulse size={12} />
+              <HeartPulse size={13} />
               {rxConfirmed ? "Simulate Review Request" : "Confirm Regimen"}
             </button>
-            <span className="ml-auto font-telemetry text-[9px] text-slate-500">
+            <span className="ml-auto font-telemetry text-[10.5px] text-slate-400">
               Demo Portal
             </span>
           </div>
@@ -293,38 +293,38 @@ export function CaregiverSyncCard({ className = "" }: { className?: string }) {
         <div className="flex flex-col justify-between rounded-2xl border border-white/8 bg-white/[0.02] p-4.5 hover:border-white/16 transition-all duration-300">
           <div>
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-telemetry text-[10px] tracking-[0.18em] text-bio uppercase">
-                <ShieldCheck size={13} className="text-bio" /> Patient Privacy
+              <span className="flex items-center gap-1.5 font-telemetry text-[11px] font-semibold tracking-[0.18em] text-bio uppercase">
+                <ShieldCheck size={14} className="text-bio" /> Patient Privacy
               </span>
-              <span className="font-telemetry text-[9px] font-semibold px-2 py-0.5 rounded-full bg-bio/15 text-bio uppercase">
+              <span className="font-telemetry text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-bio/15 text-bio uppercase">
                 DPDP 2023
               </span>
             </div>
             <div className="mt-2 text-sm font-semibold text-white">Encrypted &amp; DPDP Aligned</div>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
+            <p className="mt-1 text-[12.5px] leading-relaxed text-slate-300">
               You own your data. Encrypted in transit with TLS 1.3, secured with PostgreSQL RLS, and exportable on demand.
             </p>
 
-            <div className="mt-2.5 font-telemetry text-[10px] text-slate-400">
+            <div className="mt-2.5 font-telemetry text-[11px] text-slate-300">
               <span>Encrypted in transit · PostgreSQL Row-Level Security</span>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 pt-2 border-t border-white/6">
+          <div className="mt-4 flex flex-wrap items-center gap-2.5 pt-2 border-t border-white/6">
             <button
               type="button"
               onClick={handleExportVault}
-              className="flex items-center gap-1.5 rounded-lg border border-bio/30 bg-bio/10 px-2.5 py-1.5 font-telemetry text-[9.5px] tracking-[0.1em] text-bio uppercase transition-all duration-200 hover:bg-bio/20 hover:border-bio/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+              className="flex items-center gap-1.5 rounded-lg border border-bio/30 bg-bio/10 px-3 py-2 font-telemetry text-[11px] font-semibold tracking-[0.1em] text-bio uppercase transition-all duration-200 hover:bg-bio/20 hover:border-bio/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
             >
-              <Download size={11} />
+              <Download size={13} />
               {exported ? "Exported!" : "Export Vault JSON"}
             </button>
             <button
               type="button"
               onClick={() => emit(BUS.consoleOpen)}
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 font-telemetry text-[9.5px] tracking-[0.1em] text-slate-300 uppercase transition-all duration-200 hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 font-telemetry text-[11px] font-semibold tracking-[0.1em] text-slate-200 uppercase transition-all duration-200 hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
             >
-              <TerminalSquare size={11} /> Open Console
+              <TerminalSquare size={13} /> Open Console
             </button>
           </div>
         </div>

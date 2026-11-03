@@ -300,7 +300,7 @@ export function TerminalDrawer() {
             setUnread(0);
           }
         }}
-        className="glass-strong fixed right-4 bottom-4 z-[64] flex items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3.5 font-telemetry text-[10px] font-semibold tracking-[0.18em] text-slate-200 uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio md:right-6 md:bottom-6"
+        className="glass-strong fixed right-4 bottom-4 z-[64] flex min-h-[44px] items-center gap-2.5 rounded-full py-2.5 pr-4 pl-3.5 font-telemetry text-[11px] font-semibold tracking-[0.18em] text-slate-200 uppercase transition-colors hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio md:right-6 md:bottom-6"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -349,11 +349,11 @@ export function TerminalDrawer() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setPaused((p) => !p)}
-                    className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 bg-white/[0.03] px-2 font-telemetry text-[9px] uppercase text-slate-400 transition-colors hover:border-bio/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+                    className="flex h-8 items-center gap-1.5 rounded-md border border-white/8 bg-white/[0.03] px-2.5 font-telemetry text-[10px] uppercase text-slate-300 transition-colors hover:border-bio/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
                     aria-label={paused ? "Resume stream" : "Pause stream"}
                   >
                     {paused ? <Play size={11} className="text-pulse-bright" /> : <Pause size={11} />}
@@ -362,7 +362,7 @@ export function TerminalDrawer() {
                   <button
                     type="button"
                     onClick={handleExportJSON}
-                    className="flex h-7 items-center gap-1.5 rounded-md border border-white/8 bg-white/[0.03] px-2 font-telemetry text-[9px] uppercase text-slate-400 transition-colors hover:border-bio/50 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+                    className="flex h-8 items-center gap-1.5 rounded-md border border-white/8 bg-white/[0.03] px-2.5 font-telemetry text-[10px] uppercase text-slate-300 transition-colors hover:border-bio/50 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
                     title="Export session logs as JSON"
                   >
                     <Download size={11} />
@@ -371,7 +371,7 @@ export function TerminalDrawer() {
                   <button
                     type="button"
                     onClick={() => setFrames([])}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
                     aria-label="Clear frames"
                     title="Clear log"
                   >
@@ -380,7 +380,7 @@ export function TerminalDrawer() {
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/6 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
                     aria-label="Close console"
                   >
                     <X size={14} aria-hidden="true" />
@@ -391,13 +391,13 @@ export function TerminalDrawer() {
               {/* Action Simulation Toolbar & Category Filters */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/6 bg-white/[0.015] px-4 py-2 md:px-5">
                 {/* Category Pills */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   {(["ALL", "DOSES", "OCR", "CAREGIVER", "SECURITY"] as Category[]).map((cat) => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setActiveCategory(cat)}
-                      className={`rounded-full px-2.5 py-0.5 font-telemetry text-[9px] font-semibold tracking-[0.14em] uppercase transition-colors ${
+                      className={`rounded-full px-2.5 py-1 font-telemetry text-[10px] font-semibold tracking-[0.14em] uppercase transition-colors ${
                         activeCategory === cat
                           ? "bg-bio text-obsidian shadow-[0_0_10px_rgba(0,240,255,0.5)]"
                           : "text-slate-400 hover:bg-white/5 hover:text-white"
@@ -409,28 +409,28 @@ export function TerminalDrawer() {
                 </div>
 
                 {/* Simulation Action Triggers */}
-                <div className="flex items-center gap-1.5 font-telemetry text-[9px] uppercase">
-                  <span className="text-slate-500 mr-1 hidden lg:inline">Simulate Event:</span>
+                <div className="flex items-center gap-1.5 font-telemetry text-[10px] uppercase">
+                  <span className="text-slate-400 mr-1 hidden lg:inline">Simulate Event:</span>
                   <button
                     type="button"
                     onClick={simulateDose}
-                    className="flex items-center gap-1 rounded bg-bio/10 border border-bio/30 px-2 py-0.5 text-bio hover:bg-bio/20 transition-colors"
+                    className="flex items-center gap-1 rounded bg-bio/10 border border-bio/30 px-2.5 py-1 text-bio hover:bg-bio/20 transition-colors"
                   >
-                    <Activity size={10} /> + Dose
+                    <Activity size={11} /> + Dose
                   </button>
                   <button
                     type="button"
                     onClick={simulateOcr}
-                    className="flex items-center gap-1 rounded bg-pulse/10 border border-pulse/30 px-2 py-0.5 text-pulse-bright hover:bg-pulse/20 transition-colors"
+                    className="flex items-center gap-1 rounded bg-pulse/10 border border-pulse/30 px-2.5 py-1 text-pulse-bright hover:bg-pulse/20 transition-colors"
                   >
-                    <Eye size={10} /> + Scan Rx
+                    <Eye size={11} /> + Scan Rx
                   </button>
                   <button
                     type="button"
                     onClick={simulateCaregiver}
-                    className="flex items-center gap-1 rounded bg-coral/10 border border-coral/30 px-2 py-0.5 text-coral hover:bg-coral/20 transition-colors"
+                    className="flex items-center gap-1 rounded bg-coral/10 border border-coral/30 px-2.5 py-1 text-coral hover:bg-coral/20 transition-colors"
                   >
-                    <Users2 size={10} /> + Alert
+                    <Users2 size={11} /> + Alert
                   </button>
                 </div>
               </div>
@@ -444,7 +444,7 @@ export function TerminalDrawer() {
                 aria-live="off"
                 className="medsync-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3 font-telemetry text-[10.5px] leading-relaxed md:px-5"
               >
-                <div className="flex items-center gap-2 text-slate-500 pb-1 border-b border-white/4 mb-2">
+                <div className="flex items-center gap-2 text-slate-400 pb-1 border-b border-white/6 mb-2">
                   <Shield size={11} className="text-bio" />
                   <span>
                     Cipher: AES-256-GCM · DPDP Act 2023 India Compliance Active · SQLite Engine Local
@@ -453,7 +453,7 @@ export function TerminalDrawer() {
 
                 {filteredFrames.map((f) => (
                   <div key={f.id} className="flex gap-2.5 whitespace-nowrap py-0.5 hover:bg-white/[0.02]">
-                    <span className="text-slate-600 tabular-nums">{f.time}</span>
+                    <span className="text-slate-400 tabular-nums">{f.time}</span>
                     <span className={f.dir === "↑" ? "text-pulse-bright" : "text-bio"}>
                       {f.dir}
                     </span>
@@ -483,7 +483,7 @@ export function TerminalDrawer() {
                       >
                         {f.status}
                       </span>
-                      <span className="text-slate-600 tabular-nums">
+                      <span className="text-slate-400 tabular-nums">
                         {f.latency}ms
                       </span>
                     </span>

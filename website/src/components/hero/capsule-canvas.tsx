@@ -171,6 +171,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
   const gyro = useRef({
     active: false,
     tiltX: 0,
+    yawY: 0,
     tiltZ: 0,
     gravityX: 0,
     gravityY: -18,
@@ -208,24 +209,21 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       if (e.beta !== null && e.gamma !== null) {
         gyro.current.active = true;
 
-        // beta: front-to-back tilt in degrees (-180 to 180). Typical phone hold is ~45°
+        // beta: front-to-back tilt in degrees (-180 to 180). Typical phone hold is ~45°-50°
         // gamma: left-to-right tilt in degrees (-90 to 90)
+        // alpha: full 360° compass heading (0 to 360)
         const betaRad = (e.beta * Math.PI) / 180;
         const gammaRad = (e.gamma * Math.PI) / 180;
+        const alphaRad = e.alpha !== null ? (e.alpha * Math.PI) / 180 : 0;
 
         // Smooth physical gravity vector driven by phone orientation in world space
-        // Holding phone level -> pulls down (-y)
-        // Tilting left/right -> pulls along x
-        // Tilting forward/back -> pulls along z/y
         gyro.current.gravityX = Math.sin(gammaRad) * 18.0;
         gyro.current.gravityY = -Math.cos(gammaRad) * Math.sin(betaRad) * 18.0;
         gyro.current.gravityZ = -Math.cos(gammaRad) * Math.cos(betaRad) * 18.0;
 
-        // Full 360° gyroscope rotation angles (UNCLAMPED)
-        // beta: front-to-back tilt in degrees (-180° to 180°)
-        // gamma: left-to-right tilt in degrees (-90° to 90°)
-        // Normal phone holding posture is ~50°
+        // Full 360° gyroscope rotation angles across all axes
         gyro.current.tiltX = ((e.beta - 50) * Math.PI) / 180;
+        gyro.current.yawY = alphaRad;
         gyro.current.tiltZ = (e.gamma * Math.PI) / 180;
       }
     };
@@ -237,14 +235,14 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     };
   }, []);
 
-  // ── Unrestricted 360° Pointer & Touch Drag / Swipe Handlers ────
+  // ── Unrestricted 360° Pointer Drag & Touch Swipe Handlers ──────
   useEffect(() => {
     const dom = gl.domElement;
     if (!dom) return;
 
     const onPointerDown = (e: PointerEvent) => {
-      // Allow primary left-click (0), touch, pen, or right-click (2)
-      if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 2) return;
+      // Primary left-click (0) for mouse; all touches (pointerType 'touch') and pens are accepted
+      if (e.pointerType === "mouse" && e.button !== 0) return;
       isDragging.current = true;
       pointerPrev.current = { x: e.clientX, y: e.clientY };
       angularVelocity.current.set(0, 0);
@@ -286,7 +284,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
         angularVelocity.current.set(rotX, rotY);
         userDragAccel.current.set(dx * 0.14, -dy * 0.14, 0);
       } else {
-        // Free hover / swipe motion (like previously): gently stirs beads without holding
+        // Free hover motion gently stirs beads without holding
         if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
           userDragAccel.current.x = THREE.MathUtils.lerp(userDragAccel.current.x, dx * 0.06, 0.25);
           userDragAccel.current.y = THREE.MathUtils.lerp(userDragAccel.current.y, -dy * 0.06, 0.25);
@@ -303,41 +301,6 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       } catch {}
     };
 
-    // Dedicated touch events to guarantee mobile touch swipe works seamlessly
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        isDragging.current = true;
-        pointerPrev.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        angularVelocity.current.set(0, 0);
-      }
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (!isDragging.current || e.touches.length !== 1) return;
-      if (e.cancelable) e.preventDefault();
-      const dx = e.touches[0].clientX - pointerPrev.current.x;
-      const dy = e.touches[0].clientY - pointerPrev.current.y;
-      pointerPrev.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-
-      const rotY = dx * 0.0075;
-      const rotX = dy * 0.0075;
-
-      const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
-      const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rotX);
-      orientation.current.premultiply(qYaw).premultiply(qPitch);
-
-      angularVelocity.current.set(rotX, rotY);
-      userDragAccel.current.set(dx * 0.14, -dy * 0.14, 0);
-    };
-
-    const onTouchEnd = () => {
-      isDragging.current = false;
-    };
-
-    const onContextMenu = (e: MouseEvent) => {
-      e.preventDefault(); // Prevents right click menu on 3D canvas so dragging is seamless
-    };
-
     dom.style.cursor = "grab";
     dom.style.touchAction = "none";
     dom.style.userSelect = "none";
@@ -346,19 +309,13 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     dom.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
-    dom.addEventListener("touchstart", onTouchStart, { passive: false });
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    window.addEventListener("touchend", onTouchEnd);
-    dom.addEventListener("contextmenu", onContextMenu);
+    window.addEventListener("pointercancel", onPointerUp);
 
     return () => {
       dom.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
-      dom.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-      dom.removeEventListener("contextmenu", onContextMenu);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, [gl]);
 
@@ -369,10 +326,10 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
     if (g && !reduced) {
       if (!isDragging.current) {
-        // Continuous gentle autonomous self-rotation around Y axis (very slow, smooth and hypnotic, like it was previously)
+        // Very slow, smooth and hypnotic autonomous self-rotation (0.09 rad/sec)
         const qAuto = new THREE.Quaternion().setFromAxisAngle(
           new THREE.Vector3(0, 1, 0),
-          dt * 0.18
+          dt * 0.09
         );
         orientation.current.premultiply(qAuto);
 
@@ -397,7 +354,7 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       // Smoothly interpolate full 360° gyroscopic orientation
       if (gyro.current.active) {
         const targetGyro = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(gyro.current.tiltX, 0, -gyro.current.tiltZ, "YXZ")
+          new THREE.Euler(gyro.current.tiltX, gyro.current.yawY, -gyro.current.tiltZ, "YXZ")
         );
         smoothGyroQuat.current.slerp(targetGyro, Math.min(1, dt * 6.0));
       } else {

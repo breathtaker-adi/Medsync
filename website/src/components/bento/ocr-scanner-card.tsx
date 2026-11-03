@@ -48,16 +48,16 @@ export function OcrScannerCard({ className = "" }: { className?: string }) {
             type="button"
             onClick={handleScan}
             disabled={scanning}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 font-telemetry text-[9px] text-slate-300 transition-colors hover:border-bio/40 hover:text-bio"
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 font-telemetry text-[11px] text-slate-200 transition-colors hover:border-bio/50 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-bio"
             aria-label="Scan next prescription sample"
           >
-            <RefreshCw size={10} className={scanning ? "animate-spin text-bio" : ""} />
+            <RefreshCw size={11} className={scanning ? "animate-spin text-bio" : ""} />
             Rescan
           </button>
         </div>
 
         {/* Viewfinder frame */}
-        <div className="relative my-3 flex flex-col justify-between overflow-hidden rounded-xl border border-bio/20 bg-[#040811] p-3">
+        <div className="relative my-3 flex flex-col justify-between overflow-hidden rounded-xl border border-bio/20 bg-[#040811] p-3.5">
           {/* Scanning beam */}
           {scanning && (
             <motion.div
@@ -83,15 +83,15 @@ export function OcrScannerCard({ className = "" }: { className?: string }) {
               exit={{ opacity: 0, y: -4 }}
               className="flex flex-col gap-1.5"
             >
-              <div className="flex items-center justify-between font-telemetry text-[8px] tracking-[0.14em] text-slate-400 uppercase">
+              <div className="flex items-center justify-between font-telemetry text-[10.5px] font-medium tracking-[0.14em] text-slate-300 uppercase">
                 <span>DETECTED MEDICATION (SAMPLE)</span>
-                <span className="text-pulse-bright">{current.confidence}% CONFIDENCE (SAMPLE)</span>
+                <span className="text-pulse-bright font-semibold">{current.confidence}% CONFIDENCE (SAMPLE)</span>
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-sm font-bold text-white">{current.name}</span>
-                <span className="font-telemetry text-[11px] font-semibold text-bio">{current.dosage}</span>
+                <span className="font-telemetry text-[12px] font-semibold text-bio">{current.dosage}</span>
               </div>
-              <div className="rounded border border-white/6 bg-white/[0.02] px-2 py-1 font-telemetry text-[9px] text-slate-300">
+              <div className="rounded border border-white/8 bg-white/[0.03] px-2.5 py-1.5 font-telemetry text-[11px] text-slate-200">
                 Schedule: {current.timing}
               </div>
             </motion.div>
