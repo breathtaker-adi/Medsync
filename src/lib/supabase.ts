@@ -48,6 +48,15 @@ const EncryptedSecureStoreAdapter = {
     }
 
     try {
+      // Clean up any pre-existing chunks before writing to prevent dangling sub-keys
+      const oldCountStr = await SecureStore.getItemAsync(`${key}_chunks`);
+      if (oldCountStr) {
+        const oldCount = parseInt(oldCountStr, 10);
+        for (let i = 0; i < oldCount; i++) {
+          await SecureStore.deleteItemAsync(`${key}_${i}`).catch(() => {});
+        }
+      }
+
       if (value.length > CHUNK_SIZE) {
         const chunks = Math.ceil(value.length / CHUNK_SIZE);
         await SecureStore.setItemAsync(`${key}_chunks`, chunks.toString());
@@ -95,4 +104,4 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false, // Prevents window reference exceptions in React Native
   },
-});
+});

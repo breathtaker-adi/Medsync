@@ -26,6 +26,15 @@ function parseTimeToMinutes(timeString) {
   return hours * 60 + minutes;
 }
 
+function parseTimeToHourMin(timeString) {
+  const totalMinutes = parseTimeToMinutes(timeString);
+  if (totalMinutes === 9999) return { hour: 8, minute: 0 };
+  return {
+    hour: Math.floor(totalMinutes / 60),
+    minute: totalMinutes % 60,
+  };
+}
+
 function getTimeSlot(timeString) {
   const minutes = parseTimeToMinutes(timeString);
   if (minutes < 720) return 'morning';
@@ -91,6 +100,14 @@ describe('Architecture & Service Layer Test Suite', () => {
       assert.strictEqual(parseTimeToMinutes('12:00 PM'), 720);
       assert.strictEqual(parseTimeToMinutes('01:30 PM'), 810);
       assert.strictEqual(parseTimeToMinutes('11:59 PM'), 1439);
+    });
+
+    it('should parse 12-hour AM/PM into numeric hour and minute components', () => {
+      assert.deepStrictEqual(parseTimeToHourMin('08:15 AM'), { hour: 8, minute: 15 });
+      assert.deepStrictEqual(parseTimeToHourMin('01:30 PM'), { hour: 13, minute: 30 });
+      assert.deepStrictEqual(parseTimeToHourMin('12:00 AM'), { hour: 0, minute: 0 });
+      assert.deepStrictEqual(parseTimeToHourMin('12:00 PM'), { hour: 12, minute: 0 });
+      assert.deepStrictEqual(parseTimeToHourMin(null), { hour: 8, minute: 0 });
     });
 
     it('should handle missing or invalid time strings gracefully', () => {
@@ -177,6 +194,53 @@ describe('Architecture & Service Layer Test Suite', () => {
       assert.strictEqual(validatePairingCode('123'), false); // Too short
       assert.strictEqual(validatePairingCode('TOOLONGCODE99'), false); // Too long
       assert.strictEqual(validatePairingCode('AB-CD-12'), false); // Invalid chars
+    });
+
+    it('should configure repeating calendar trigger and pass scheduledTime in notification data payload', () => {
+      function createAlarmPayload(med) {
+        const { hour, minute } = parseTimeToHourMin(med.time);
+        return {
+          content: {
+            title: '🚨 MEDICATION ALERT',
+            body: `Time to take ${med.medicine_name} (${med.dosage})`,
+            categoryIdentifier: 'medication-alerts',
+            data: { medicationId: med.id, scheduledTime: med.time },
+          },
+          trigger: {
+            type: 'calendar',
+            hour,
+            minute,
+            repeats: true,
+          },
+        };
+      }
+
+      const med = { id: 42, medicine_name: 'Metformin', dosage: '500mg', time: '09:30 AM', status: 'taken' };
+      const alarm = createAlarmPayload(med);
+      assert.strictEqual(alarm.trigger.type, 'calendar');
+      assert.strictEqual(alarm.trigger.hour, 9);
+      assert.strictEqual(alarm.trigger.minute, 30);
+      assert.strictEqual(alarm.trigger.repeats, true);
+      assert.strictEqual(alarm.content.data.scheduledTime, '09:30 AM');
+      assert.strictEqual(alarm.content.data.medicationId, 42);
+    });
+
+    it('should throw fatal error when Supabase URL or Anon key is missing from environment', () => {
+      function validateEnv(env) {
+        if (!env.EXPO_PUBLIC_SUPABASE_URL || !env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+          throw new Error('[FATAL] EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY must be set.');
+        }
+        return { supabaseUrl: env.EXPO_PUBLIC_SUPABASE_URL, supabaseAnonKey: env.EXPO_PUBLIC_SUPABASE_ANON_KEY };
+      }
+
+      assert.throws(() => validateEnv({}), /\[FATAL\]/);
+      assert.throws(() => validateEnv({ EXPO_PUBLIC_SUPABASE_URL: 'https://example.supabase.co' }), /\[FATAL\]/);
+      const valid = validateEnv({
+        EXPO_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: 'sb_test_key',
+      });
+      assert.strictEqual(valid.supabaseUrl, 'https://example.supabase.co');
+      assert.strictEqual(valid.supabaseAnonKey, 'sb_test_key');
     });
   });
 });

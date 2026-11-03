@@ -18,6 +18,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 const SITE_URL = "https://breathtaker-adi.github.io/Medsync";
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -71,12 +72,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/Medsync/logo.svg?v=2", type: "image/svg+xml" },
-      { url: "/Medsync/favicon.png?v=2", type: "image/png", sizes: "32x32" },
-      { url: "/Medsync/favicon.ico?v=2", sizes: "any" },
+      { url: `${BASE_PATH}/logo.svg?v=2`, type: "image/svg+xml" },
+      { url: `${BASE_PATH}/favicon.png?v=2`, type: "image/png", sizes: "32x32" },
+      { url: `${BASE_PATH}/favicon.ico?v=2`, sizes: "any" },
     ],
-    shortcut: "/Medsync/favicon.ico?v=2",
-    apple: "/Medsync/medsync-logo.png?v=2",
+    shortcut: `${BASE_PATH}/favicon.ico?v=2`,
+    apple: `${BASE_PATH}/medsync-logo.png?v=2`,
   },
   openGraph: {
     title: "Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety",

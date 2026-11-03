@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Magnetic } from "@/components/fx/magnetic";
 import { scrollToTop } from "@/lib/scroll";
 import { ArrowUp, Download, Github, ShieldCheck, Smartphone } from "lucide-react";
@@ -177,19 +178,19 @@ export function Footer() {
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-telemetry text-[11px] tracking-[0.18em] text-slate-300 uppercase">
             <span>© {currentYear} MEDSYNC · OPEN SOURCE (MIT)</span>
             <span className="hidden text-white/20 sm:inline" aria-hidden="true">|</span>
-            <a
-              href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/privacy`}
+            <Link
+              href="/privacy/"
               className="text-slate-300 transition-colors hover:text-bio"
             >
               Privacy Policy
-            </a>
+            </Link>
             <span className="text-white/20" aria-hidden="true">·</span>
-            <a
-              href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/faq`}
+            <Link
+              href="/faq/"
               className="text-slate-300 transition-colors hover:text-bio"
             >
               FAQ
-            </a>
+            </Link>
           </div>
           <div className="flex items-center gap-6">
             <a

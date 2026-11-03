@@ -153,6 +153,16 @@ function CapsuleGlassShell() {
   );
 }
 
+// ── Reusable Static Scratch Math Objects for 0-Heap Garbage Collection ──
+const _scratchVecX = new THREE.Vector3(1, 0, 0);
+const _scratchVecY = new THREE.Vector3(0, 1, 0);
+const _scratchVecWorld = new THREE.Vector3();
+const _scratchQuat1 = new THREE.Quaternion();
+const _scratchQuat2 = new THREE.Quaternion();
+const _scratchQuatAuto = new THREE.Quaternion();
+const _scratchQuatIdentity = new THREE.Quaternion();
+const _scratchEuler = new THREE.Euler(0, 0, 0, "YXZ");
+
 // ── Dynamic Capsule Rig with Gyroscope Sensor & Position-Based Dynamics ──
 function CapsuleRig({ reduced }: { reduced: boolean }) {
   const group = useRef<THREE.Group>(null);
@@ -275,9 +285,9 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
         const rotY = dx * 0.0075;
         const rotX = dy * 0.0075;
 
-        // Unrestricted 360° spherical rotation in world space (premultiply)
-        const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
-        const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), rotX);
+        // Unrestricted 360° spherical rotation in world space (reusing static scratch quaternions)
+        const qYaw = _scratchQuat1.setFromAxisAngle(_scratchVecY, rotY);
+        const qPitch = _scratchQuat2.setFromAxisAngle(_scratchVecX, rotX);
         orientation.current.premultiply(qYaw).premultiply(qPitch);
 
         // Track angular velocity and drag acceleration for bead inertia
@@ -327,20 +337,17 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
     if (g && !reduced) {
       if (!isDragging.current) {
         // Very slow, smooth and hypnotic autonomous self-rotation (0.09 rad/sec)
-        const qAuto = new THREE.Quaternion().setFromAxisAngle(
-          new THREE.Vector3(0, 1, 0),
-          dt * 0.09
-        );
-        orientation.current.premultiply(qAuto);
+        _scratchQuatAuto.setFromAxisAngle(_scratchVecY, dt * 0.09);
+        orientation.current.premultiply(_scratchQuatAuto);
 
         // Smooth rotational inertia with exponential decay from user drag/swipe
         if (angularVelocity.current.lengthSq() > 0.000001) {
-          const qPitch = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(1, 0, 0),
+          const qPitch = _scratchQuat1.setFromAxisAngle(
+            _scratchVecX,
             angularVelocity.current.x
           );
-          const qYaw = new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0),
+          const qYaw = _scratchQuat2.setFromAxisAngle(
+            _scratchVecY,
             angularVelocity.current.y
           );
           orientation.current.premultiply(qYaw).premultiply(qPitch);
@@ -353,17 +360,16 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
 
       // Smoothly interpolate full 360° gyroscopic orientation
       if (gyro.current.active) {
-        const targetGyro = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(gyro.current.tiltX, gyro.current.yawY, -gyro.current.tiltZ, "YXZ")
-        );
-        smoothGyroQuat.current.slerp(targetGyro, Math.min(1, dt * 6.0));
+        _scratchEuler.set(gyro.current.tiltX, gyro.current.yawY, -gyro.current.tiltZ, "YXZ");
+        _scratchQuat1.setFromEuler(_scratchEuler);
+        smoothGyroQuat.current.slerp(_scratchQuat1, Math.min(1, dt * 6.0));
       } else {
-        smoothGyroQuat.current.slerp(new THREE.Quaternion(), Math.min(1, dt * 4.0));
+        smoothGyroQuat.current.slerp(_scratchQuatIdentity, Math.min(1, dt * 4.0));
       }
 
-      // Visual orientation = base orientation * smooth gyroscopic tilt
-      const visualQuat = orientation.current.clone().multiply(smoothGyroQuat.current);
-      g.quaternion.copy(visualQuat);
+      // Visual orientation = base orientation * smooth gyroscopic tilt (0 heap allocations)
+      _scratchQuat2.copy(orientation.current).multiply(smoothGyroQuat.current);
+      g.quaternion.copy(_scratchQuat2);
     }
 
     // ── Position-Based Granular Dynamics (PBD) Simulation ─────────
@@ -375,21 +381,19 @@ function CapsuleRig({ reduced }: { reduced: boolean }) {
       const baseGy = gyro.current.active ? gyro.current.gravityY : -18.0;
       const baseGz = gyro.current.active ? gyro.current.gravityZ : 0;
 
-      const worldGravity = new THREE.Vector3(
+      _scratchVecWorld.set(
         baseGx + userDragAccel.current.x * 0.7,
         baseGy + userDragAccel.current.y * 0.7,
         baseGz
       );
 
-      // Transform world gravity into capsule's local frame:
-      // When capsule inverts 180° upside-down, local gravity inverts to +y!
-      // When tilted 90°, local gravity pulls along x/z!
-      const invOrientation = g.quaternion.clone().invert();
-      const localGravity = worldGravity.applyQuaternion(invOrientation);
+      // Transform world gravity into capsule's local frame without allocating new objects:
+      _scratchQuat1.copy(g.quaternion).invert();
+      _scratchVecWorld.applyQuaternion(_scratchQuat1);
 
-      const gx = localGravity.x;
-      const gy = localGravity.y;
-      const gz = localGravity.z;
+      const gx = _scratchVecWorld.x;
+      const gy = _scratchVecWorld.y;
+      const gz = _scratchVecWorld.z;
 
       // 3 sub-steps per frame
       const subSteps = 3;

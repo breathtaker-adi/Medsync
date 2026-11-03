@@ -173,19 +173,19 @@ export function TerminalDrawer() {
     [open]
   );
 
-  // Background mock heartbeat stream
+  // Heartbeat stream: runs ONLY while the drawer is open to eliminate background CPU/re-renders
   useEffect(() => {
-    if (paused || reduced) return;
+    if (!open || paused || reduced) return;
     let timer: number;
     const schedule = () => {
       timer = window.setTimeout(() => {
         pushFrame();
         schedule();
-      }, 500 + Math.random() * 900);
+      }, 700 + Math.random() * 900);
     };
     schedule();
     return () => window.clearTimeout(timer);
-  }, [paused, reduced, pushFrame]);
+  }, [open, paused, reduced, pushFrame]);
 
   // Open drawer event
   useEffect(
@@ -232,9 +232,9 @@ export function TerminalDrawer() {
   // Export current session frames to JSON
   const handleExportJSON = () => {
     const payload = {
-      protocol: "wss://live.medsync.health/v3",
+      protocol: "simulated-telemetry://medsync.local",
       exported_at: new Date().toISOString(),
-      encryption: "AES-256-GCM",
+      encryption: "hardware_keystore_encrypted",
       total_frames: frames.length,
       frames,
     };
@@ -447,7 +447,7 @@ export function TerminalDrawer() {
                 <div className="flex items-center gap-2 text-slate-400 pb-1 border-b border-white/6 mb-2">
                   <Shield size={11} className="text-bio" />
                   <span>
-                    Cipher: AES-256-GCM · DPDP Act 2023 India Compliance Active · SQLite Engine Local
+                    Simulated Telemetry · Hardware Encrypted Keystore · DPDP Act 2023 Ready · Local SQLite Engine
                   </span>
                 </div>
 

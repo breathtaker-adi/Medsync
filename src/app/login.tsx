@@ -87,23 +87,9 @@ export default function LoginScreen() {
         } else {
           showErrorAlert(res.error, 'Login Failed');
         }
-      } else {
-        const userId = res.data?.user?.id;
-        if (userId) {
-          const profRes = await authService.fetchProfile(userId);
-          const prof = profRes.success ? profRes.data : null;
-
-          if (prof?.role === 'doctor' || prof?.role === 'caregiver') {
-            router.replace('/(tabs)/caregiver-dashboard');
-          } else if (prof?.role === 'patient') {
-            router.replace('/(tabs)/patient-dashboard');
-          } else {
-            router.replace('/role-selection');
-          }
-        } else {
-          router.replace('/role-selection');
-        }
       }
+      // On successful sign-in, the centralized _layout.tsx auth gate
+      // reacts to session + profile role and handles navigation cleanly without race conditions.
     }
     setLoading(false);
   };

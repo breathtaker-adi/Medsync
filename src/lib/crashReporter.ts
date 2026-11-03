@@ -10,16 +10,39 @@ interface ErrorContext {
   [key: string]: any;
 }
 
+interface ParsedDsn {
+  publicKey: string;
+  host: string;
+  projectId: string;
+}
+
 class CrashReporter {
   private isInitialized = false;
   private dsn: string | undefined;
+  private parsedDsn: ParsedDsn | null = null;
 
   constructor() {
     this.dsn = ENV.sentryDsn;
     if (this.dsn) {
-      this.isInitialized = true;
-      console.log('Crash reporter initialized with Sentry DSN');
+      this.parsedDsn = this.parseDsn(this.dsn);
+      if (this.parsedDsn) {
+        this.isInitialized = true;
+        if (ENV.isDev) {
+          console.log('Crash reporter initialized with Sentry DSN');
+        }
+      }
     }
+  }
+
+  private parseDsn(dsn: string): ParsedDsn | null {
+    // Format: https://<publicKey>@<host>/<projectId>
+    const match = dsn.match(/^https?:\/\/([^@]+)@([^/]+)\/(\d+)$/);
+    if (!match) return null;
+    return {
+      publicKey: match[1],
+      host: match[2],
+      projectId: match[3],
+    };
   }
 
   public captureException(error: Error | any, context?: ErrorContext) {
@@ -28,11 +51,18 @@ class CrashReporter {
       return;
     }
 
-    if (this.isInitialized && this.dsn) {
+    if (this.isInitialized && this.parsedDsn) {
       try {
-        // Send to Sentry envelope endpoint via standard fetch
-        const eventId = Math.random().toString(36).substring(2, 15);
-        const payload = {
+        const eventId = Math.random().toString(36).substring(2, 18);
+        const envelopeUrl = `https://${this.parsedDsn.host}/api/${this.parsedDsn.projectId}/envelope/`;
+        const authHeader =
+          `Sentry sentry_key=${this.parsedDsn.publicKey},` +
+          `sentry_client=medsync-crashreporter/1.0,` +
+          `sentry_version=7`;
+
+        const header = { event_id: eventId, sent_at: new Date().toISOString() };
+        const item = { type: 'event' };
+        const eventBody = {
           event_id: eventId,
           timestamp: new Date().toISOString(),
           platform: 'javascript',
@@ -49,22 +79,30 @@ class CrashReporter {
           extra: context,
         };
 
-        // Non-blocking telemetry dispatch
-        fetch(this.dsn, {
+        const body =
+          JSON.stringify(header) + '\n' +
+          JSON.stringify(item) + '\n' +
+          JSON.stringify(eventBody);
+
+        // Non-blocking telemetry dispatch via valid Sentry envelope
+        fetch(envelopeUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'text/plain;charset=UTF-8',
+            'X-Sentry-Auth': authHeader,
+          },
+          body,
         }).catch(() => {
           // Suppress network reporting errors
         });
       } catch (err) {
-        console.error('Failed to log exception to crash reporter:', err);
+        // Suppress client logging failure
       }
     }
   }
 
   public captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
-    if (__DEV__) {
+    if (ENV.isDev) {
       console.log(`[CrashReporter ${level.toUpperCase()}]`, message);
     }
   }

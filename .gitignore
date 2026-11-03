@@ -72,6 +72,7 @@ graphify-out/
 un-used files/
 security/
 docs/*Audit*.docx
+docs/*AUDIT*.md
 docs/*plan*.html
 docs/*roadmap*.html
 docs/*status*.html
@@ -86,4 +87,4 @@ brag-output-*/
 AGENTS.md
 CLAUDE.md
 skills-lock.json
-
+

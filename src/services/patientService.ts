@@ -138,7 +138,7 @@ export const patientService = {
   },
 
   /**
-   * Claim an 8-character pairing code using secure RPC or direct fallback
+   * Claim an 8-character pairing code using secure RPC
    */
   async claimPairingCode(
     caregiverId: string,
@@ -147,47 +147,20 @@ export const patientService = {
     const formattedCode = pairingCode.trim().toUpperCase();
 
     try {
-      // 1. Secure RPC claim
+      // Secure RPC claim (validates caller role and code validity atomically)
       const { data: rpcData, error: rpcError } = await supabase.rpc('claim_pairing_code', {
         p_code: formattedCode,
       });
 
-      if (!rpcError && rpcData?.success) {
+      if (rpcError) {
+        return err(new Error(getErrorMessage(rpcError)));
+      }
+
+      if (rpcData?.success) {
         return ok({ patientId: rpcData.patient_id });
       }
 
-      // 2. Fallback direct update
-      const { data, error } = await supabase
-        .from('patient_caregivers')
-        .select('patient_id, caregiver_id, created_at')
-        .eq('pairing_code', formattedCode)
-        .single();
-
-      if (error || !data) {
-        return err(new Error('Invalid pairing code or patient not found.'));
-      }
-
-      if (data.created_at) {
-        const isExpired = Date.now() - new Date(data.created_at).getTime() > 15 * 60 * 1000;
-        if (isExpired) {
-          return err(new Error('This pairing code has expired (15-minute validity). Please request a new code.'));
-        }
-      }
-
-      if (data.caregiver_id) {
-        return err(new Error('This patient is already linked to a caregiver or doctor.'));
-      }
-
-      const { error: updateError } = await supabase
-        .from('patient_caregivers')
-        .update({ caregiver_id: caregiverId, status: 'active' })
-        .eq('pairing_code', formattedCode);
-
-      if (updateError) {
-        return err(new Error(getErrorMessage(updateError)));
-      }
-
-      return ok({ patientId: data.patient_id });
+      return err(new Error(rpcData?.message || 'Invalid or expired pairing code.'));
     } catch (caught: any) {
       handleAppError(caught, { action: 'claimPairingCode' });
       return err(new Error(getErrorMessage(caught)));
@@ -199,29 +172,13 @@ export const patientService = {
    */
   async revokeCaregiverLink(linkId: number): Promise<Result<void>> {
     try {
-      // 1. Attempt atomic disconnect RPC first
+      // Attempt atomic disconnect RPC
       const { error: rpcError } = await supabase.rpc('disconnect_doctor', {
         p_link_id: linkId,
       });
 
-      if (!rpcError) {
-        return ok(undefined);
-      }
-
-      // 2. Direct fallback: update status to 'revoked'
-      const { error: updateError } = await supabase
-        .from('patient_caregivers')
-        .update({ status: 'revoked' })
-        .eq('id', linkId);
-
-      // 3. Attempt physical delete if permitted by RLS
-      await supabase
-        .from('patient_caregivers')
-        .delete()
-        .eq('id', linkId);
-
-      if (updateError) {
-        return err(new Error(getErrorMessage(updateError)));
+      if (rpcError) {
+        return err(new Error(getErrorMessage(rpcError)));
       }
 
       return ok(undefined);
@@ -236,42 +193,17 @@ export const patientService = {
    */
   async generatePairingCode(patientId: string): Promise<Result<string>> {
     try {
-      // 1. Attempt secure server-side RPC code creation
+      // Attempt secure server-side RPC code creation
       const { data: rpcData, error: rpcError } = await supabase.rpc('create_pairing_code');
-      if (!rpcError && rpcData?.pairing_code) {
+      if (rpcError) {
+        return err(new Error(getErrorMessage(rpcError)));
+      }
+
+      if (rpcData?.pairing_code) {
         return ok(rpcData.pairing_code);
       }
 
-      // 2. Client-side fallback if RPC is not deployed yet
-      const { data: existing } = await supabase
-        .from('patient_caregivers')
-        .select('pairing_code, created_at, caregiver_id')
-        .eq('patient_id', patientId)
-        .is('caregiver_id', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existing?.pairing_code && existing?.created_at) {
-        const isExpired = Date.now() - new Date(existing.created_at).getTime() > 15 * 60 * 1000;
-        if (!isExpired) {
-          return ok(existing.pairing_code);
-        }
-      }
-
-      const newCode = generateRandomPairingCode();
-
-      const { error } = await supabase.from('patient_caregivers').insert({
-        patient_id: patientId,
-        pairing_code: newCode,
-        status: 'pending',
-      });
-
-      if (error) {
-        return err(new Error(getErrorMessage(error)));
-      }
-
-      return ok(newCode);
+      return err(new Error('Failed to generate pairing code.'));
     } catch (caught: any) {
       handleAppError(caught, { action: 'generatePairingCode' });
       return err(new Error(getErrorMessage(caught)));

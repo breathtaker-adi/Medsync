@@ -13,9 +13,8 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
-  // Matches the behaviour the site was built & verified with:
-  // no StrictMode double-invoke (GSAP timelines + preloader rely on it).
-  reactStrictMode: false,
+  // StrictMode enabled for clean component lifecycle and leak detection
+  reactStrictMode: true,
   experimental: {
     optimizePackageImports: ["lucide-react", "motion", "three", "gsap"],
   },

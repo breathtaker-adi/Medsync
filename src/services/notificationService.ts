@@ -4,7 +4,7 @@ import * as Speech from 'expo-speech';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Medication } from '../types/medication';
-import { getNextDateForTime } from '../utils/timeUtils';
+import { getNextDateForTime, parseTimeToHourMin } from '../utils/timeUtils';
 
 export const notificationService = {
   /**
@@ -106,11 +106,25 @@ export const notificationService = {
   },
 
   /**
-   * Schedule automated alarms for all pending medications today
+   * Schedule automated recurring daily alarms for all active medications
    */
   async scheduleAllAlarms(meds: Medication[]): Promise<void> {
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      // Cancel previous auto-alarms so roster updates don't produce duplicate alerts
+      try {
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        for (const notification of scheduled) {
+          if (
+            notification.content?.categoryIdentifier === 'medication-alerts' ||
+            notification.content?.data?.medicationId
+          ) {
+            await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+          }
+        }
+      } catch {
+        // Fallback to global clear if getAllScheduledNotifications is restricted
+        await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+      }
 
       if (Platform.OS === 'android') {
         try {
@@ -125,10 +139,34 @@ export const notificationService = {
       }
 
       for (const med of meds) {
-        if (med.status !== 'taken' && med.status !== 'skipped' && med.time) {
-          const triggerDate = getNextDateForTime(med.time);
+        // Do not unschedule daily alarms when a dose is taken today; only skip paused medications
+        if (!med.time || med.status === 'paused') {
+          continue;
+        }
 
+        const { hour, minute } = parseTimeToHourMin(med.time);
+
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `🚨 MEDICATION ALERT`,
+              body: `Time to take ${med.medicine_name} (${med.dosage})`,
+              sound: true,
+              priority: Notifications.AndroidNotificationPriority.HIGH,
+              categoryIdentifier: 'medication-alerts',
+              data: { medicationId: med.id, scheduledTime: med.time },
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+              hour,
+              minute,
+              repeats: true,
+              channelId: 'medication-alarms-auto',
+            },
+          });
+        } catch {
           try {
+            // Fallback without channelId for Expo Go runtime
             await Notifications.scheduleNotificationAsync({
               content: {
                 title: `🚨 MEDICATION ALERT`,
@@ -136,33 +174,17 @@ export const notificationService = {
                 sound: true,
                 priority: Notifications.AndroidNotificationPriority.HIGH,
                 categoryIdentifier: 'medication-alerts',
-                data: { medicationId: med.id },
+                data: { medicationId: med.id, scheduledTime: med.time },
               },
               trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.DATE,
-                date: triggerDate,
-                channelId: 'medication-alarms-auto',
+                type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+                hour,
+                minute,
+                repeats: true,
               },
             });
-          } catch {
-            try {
-              // Fallback without channelId for Expo Go runtime
-              await Notifications.scheduleNotificationAsync({
-                content: {
-                  title: `🚨 MEDICATION ALERT`,
-                  body: `Time to take ${med.medicine_name} (${med.dosage})`,
-                  sound: true,
-                  priority: Notifications.AndroidNotificationPriority.HIGH,
-                  data: { medicationId: med.id },
-                },
-                trigger: {
-                  type: Notifications.SchedulableTriggerInputTypes.DATE,
-                  date: triggerDate,
-                },
-              });
-            } catch (fallbackErr) {
-              // Silently ignore if Expo Go rejects scheduling
-            }
+          } catch (fallbackErr) {
+            // Silently ignore if Expo Go rejects scheduling
           }
         }
       }

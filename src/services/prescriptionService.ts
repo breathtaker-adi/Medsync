@@ -22,7 +22,8 @@ export interface ApproveReviewParams {
 export interface UploadPrescriptionParams {
   userId: string;
   patientName: string;
-  base64Image: string;
+  imageUri?: string;
+  base64Image?: string;
   targetDoctorId?: string | null;
   medicineName?: string;
   dosage?: string;
@@ -331,6 +332,7 @@ export const prescriptionService = {
   async uploadAndSubmitPrescription({
     userId,
     patientName,
+    imageUri,
     base64Image,
     targetDoctorId,
     medicineName,
@@ -339,23 +341,47 @@ export const prescriptionService = {
     patientNotes,
   }: UploadPrescriptionParams): Promise<Result<{ reviewId?: number; extractedData: any; ocrStatus?: 'ok' | 'failed'; ocrMessage?: string | null }>> {
     try {
-      const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '');
-      let uploadBase64 = cleanBase64;
+      let uploadBase64 = '';
 
-      try {
-        const dataUri = base64Image.startsWith('data:')
-          ? base64Image
-          : `data:image/jpeg;base64,${cleanBase64}`;
-        const compressed = await ImageManipulator.manipulateAsync(
-          dataUri,
-          [{ resize: { width: 1280 } }],
-          { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-        );
-        if (compressed.base64) {
-          uploadBase64 = compressed.base64;
+      // Direct native file URI compression avoids loading 15MB base64 into JS heap
+      if (imageUri) {
+        try {
+          const compressed = await ImageManipulator.manipulateAsync(
+            imageUri,
+            [{ resize: { width: 1280 } }],
+            { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+          );
+          if (compressed.base64) {
+            uploadBase64 = compressed.base64;
+          }
+        } catch (compErr) {
+          console.warn('[prescriptionService] Native file URI compression failed:', compErr);
         }
-      } catch (compErr) {
-        console.warn('[prescriptionService] Client-side image compression fallback to original:', compErr);
+      }
+
+      // Backward-compatible fallback for base64 inputs
+      if (!uploadBase64 && base64Image) {
+        const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, '');
+        uploadBase64 = cleanBase64;
+        try {
+          const dataUri = base64Image.startsWith('data:')
+            ? base64Image
+            : `data:image/jpeg;base64,${cleanBase64}`;
+          const compressed = await ImageManipulator.manipulateAsync(
+            dataUri,
+            [{ resize: { width: 1280 } }],
+            { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+          );
+          if (compressed.base64) {
+            uploadBase64 = compressed.base64;
+          }
+        } catch (compErr) {
+          console.warn('[prescriptionService] Base64 fallback compression failed:', compErr);
+        }
+      }
+
+      if (!uploadBase64) {
+        return err(new Error('No valid image data provided for upload.'));
       }
 
       const filePath = `${userId}/${Date.now()}_prescription.jpg`;

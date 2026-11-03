@@ -65,3 +65,18 @@ export function getTimeSlot(timeString: string): TimeSlot {
   if (minutes < 1260) return 'evening'; // 5:00 PM - 9:00 PM
   return 'night'; // 9:00 PM onwards
 }
+
+
+/**
+ * Parses a 12-hour or 24-hour time string into numeric 24-hour hour and minute components
+ */
+export function parseTimeToHourMin(timeString?: string | null): { hour: number; minute: number } {
+  const totalMinutes = parseTimeToMinutes(timeString);
+  if (totalMinutes === 9999) {
+    return { hour: 8, minute: 0 };
+  }
+  return {
+    hour: Math.floor(totalMinutes / 60),
+    minute: totalMinutes % 60,
+  };
+}

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Calculator, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
 import { HologramCard, CardHeader } from "./hologram-card";
 
 const BASE_HOUR = 8; // "now" is 08:00
@@ -140,25 +139,30 @@ export function DosageCard({ className = "" }: { className?: string }) {
           </div>
         </div>
 
-        {/* slider */}
-        <div className="medsync-range px-1 pt-1">
-          <Slider
-            value={[interval]}
-            onValueChange={(v) => setIntervalH(v[0])}
+        {/* native accessible range slider */}
+        <div className="px-1 pt-1">
+          <input
+            type="range"
             min={4}
             max={24}
-            step={1}
+            step={4}
+            value={interval}
+            onChange={(e) => setIntervalH(Number(e.target.value))}
             aria-label="Dose interval in hours"
+            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
           />
           <div className="mt-1.5 flex justify-between font-telemetry text-[8px] tracking-[0.16em] text-slate-500">
             <span>4H</span>
+            <span>8H</span>
             <span>12H</span>
+            <span>16H</span>
+            <span>20H</span>
             <span>24H</span>
           </div>
         </div>
 
-        {/* readouts + verdict */}
-        <div className="flex flex-col gap-2.5 pt-1">
+        {/* readouts + verdict + safety notice */}
+        <div className="flex flex-col gap-2 pt-1">
           <div className="flex flex-wrap gap-x-5 gap-y-1 font-telemetry text-[9.5px] tracking-[0.12em]">
             {doses.slice(0, 2).map((d) => (
               <span key={d.i} className="flex items-center gap-1.5 text-slate-400">
@@ -188,6 +192,10 @@ export function DosageCard({ className = "" }: { className?: string }) {
               </div>
             </motion.div>
           </AnimatePresence>
+
+          <p className="text-[9px] font-telemetry text-slate-500 italic">
+            Illustration only — not dosing advice. Follow your doctor&apos;s prescription.
+          </p>
         </div>
       </div>
     </HologramCard>

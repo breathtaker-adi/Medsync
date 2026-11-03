@@ -40,6 +40,8 @@ export function Cursor() {
   const stretchY = useSpring(1, { stiffness: 260, damping: 20 });
   const rotate = useSpring(0, { stiffness: 200, damping: 24 });
   const last = useRef({ x: 0, y: 0, t: 0 });
+  const isMoving = useRef(true);
+  const idleFrames = useRef(0);
 
   useEffect(() => {
     if (!enabled) return;
@@ -56,6 +58,8 @@ export function Cursor() {
       x.set(e.clientX);
       y.set(e.clientY);
       setVisible(true);
+      isMoving.current = true;
+      idleFrames.current = 0;
     };
     const onLeave = () => setVisible(false);
     const onOver = (e: MouseEvent) => {
@@ -95,14 +99,32 @@ export function Cursor() {
 
   useAnimationFrame((t) => {
     if (!enabled) return;
-    const dx = x.get() - last.current.x;
-    const dy = y.get() - last.current.y;
+    if (!isMoving.current) return;
+
+    const currentX = x.get();
+    const currentY = y.get();
+    const dx = currentX - last.current.x;
+    const dy = currentY - last.current.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 0.1) {
+      idleFrames.current++;
+      if (idleFrames.current > 10) {
+        stretchX.set(1);
+        stretchY.set(1);
+        isMoving.current = false;
+        return;
+      }
+    } else {
+      idleFrames.current = 0;
+    }
+
     const dt = Math.max(t - last.current.t, 1);
-    last.current.x = x.get();
-    last.current.y = y.get();
+    last.current.x = currentX;
+    last.current.y = currentY;
     last.current.t = t;
-    const v = Math.min(Math.hypot(dx, dy) / dt, 3.2); // px per ms, clamped
-    if (Math.hypot(dx, dy) > 1.5) {
+    const v = Math.min(dist / dt, 3.2); // px per ms, clamped
+    if (dist > 1.5) {
       ang.set((Math.atan2(dy, dx) * 180) / Math.PI);
     }
     const s = Math.min(v / 3.2, 1);

@@ -1,5 +1,5 @@
 // src/hooks/useCaregiverRoster.ts
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { medicationService } from '../services/medicationService';
 import { notificationService } from '../services/notificationService';
@@ -12,12 +12,15 @@ import { showErrorAlert } from '../utils/errorHandler';
 
 export function useCaregiverRoster(caregiverId?: string | null) {
   const [patients, setPatients] = useState<PatientItem[]>([]);
+  const [linkedPatientIds, setLinkedPatientIds] = useState<string[]>([]);
   const [reviews, setReviews] = useState<PendingReview[]>([]);
   const [missedAlerts, setMissedAlerts] = useState<MissedAlertItem[]>([]);
   const [personalMeds, setPersonalMeds] = useState<Medication[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [linking, setLinking] = useState<boolean>(false);
+
+  const checkMissedDosesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchRosterData = useCallback(async () => {
     if (!caregiverId) {
@@ -32,7 +35,11 @@ export function useCaregiverRoster(caregiverId?: string | null) {
       medicationService.fetchMedications(caregiverId),
     ]);
 
-    if (patientsRes.success) setPatients(patientsRes.data || []);
+    if (patientsRes.success && patientsRes.data) {
+      setPatients(patientsRes.data);
+      const ids = patientsRes.data.map((p) => p.patient_id).filter(Boolean);
+      setLinkedPatientIds(ids);
+    }
     if (reviewsRes.success) setReviews(reviewsRes.data || []);
     if (alertsRes.success) setMissedAlerts(alertsRes.data || []);
 
@@ -53,11 +60,15 @@ export function useCaregiverRoster(caregiverId?: string | null) {
 
   const takePersonalDose = async (med: Medication): Promise<boolean> => {
     if (!caregiverId) return false;
+    if (!med.time) {
+      showErrorAlert('This medication does not have a scheduled dose time.', 'Dose Log Error');
+      return false;
+    }
     const res = await medicationService.recordDoseAction({
       medication: med,
       patientId: caregiverId,
       status: 'taken',
-      scheduledTime: med.time || '08:00',
+      scheduledTime: med.time,
     });
     if (res.success) {
       await fetchRosterData();
@@ -100,12 +111,17 @@ export function useCaregiverRoster(caregiverId?: string | null) {
     return true;
   };
 
+  // Initial load
+  useEffect(() => {
+    if (caregiverId) {
+      fetchRosterData();
+    }
+  }, [caregiverId, fetchRosterData]);
+
+  // Realtime subscription scoped to caregiver and linked patients
   useEffect(() => {
     if (!caregiverId) return;
 
-    fetchRosterData();
-
-    // Subscribe to real-time reviews & patient links with unique channel identifier
     const channelName = `caregiver_roster_${caregiverId}_${Date.now()}`;
     let channel: any = null;
 
@@ -128,15 +144,6 @@ export function useCaregiverRoster(caregiverId?: string | null) {
         )
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'medication_logs' },
-          () => {
-            patientService.checkMissedDoses(caregiverId).then((res: any) => {
-              if (res.success) setMissedAlerts(res.data || []);
-            });
-          }
-        )
-        .on(
-          'postgres_changes',
           { event: '*', schema: 'public', table: 'medications', filter: `patient_id=eq.${caregiverId}` },
           () => {
             medicationService.fetchMedications(caregiverId).then((res) => {
@@ -146,20 +153,48 @@ export function useCaregiverRoster(caregiverId?: string | null) {
               }
             });
           }
-        )
-        .subscribe();
+        );
+
+      // Scoped subscription: only listen to medication_logs for linked patients
+      const linkedCsv = linkedPatientIds.join(',');
+      if (linkedCsv) {
+        channel.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'medication_logs',
+            filter: `patient_id=in.(${linkedCsv})`,
+          },
+          () => {
+            if (checkMissedDosesDebounceRef.current) {
+              clearTimeout(checkMissedDosesDebounceRef.current);
+            }
+            checkMissedDosesDebounceRef.current = setTimeout(() => {
+              patientService.checkMissedDoses(caregiverId).then((res: any) => {
+                if (res.success) setMissedAlerts(res.data || []);
+              });
+            }, 1500);
+          }
+        );
+      }
+
+      channel.subscribe();
     } catch (err) {
       console.warn('[useCaregiverRoster] Realtime channel subscription failed:', err);
     }
 
     return () => {
+      if (checkMissedDosesDebounceRef.current) {
+        clearTimeout(checkMissedDosesDebounceRef.current);
+      }
       if (channel) {
         try {
           supabase.removeChannel(channel);
         } catch {}
       }
     };
-  }, [caregiverId, fetchRosterData]);
+  }, [caregiverId, linkedPatientIds.join(','), fetchRosterData]);
 
   return {
     patients,

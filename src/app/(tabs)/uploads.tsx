@@ -38,7 +38,6 @@ export default function UploadsScreen() {
   const { session, profile } = useAuth();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'pending' | 'approved'>('idle');
 
@@ -87,7 +86,6 @@ export default function UploadsScreen() {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.85,
-        base64: true,
       });
     } else {
       result = await ImagePicker.launchImageLibraryAsync({
@@ -95,14 +93,12 @@ export default function UploadsScreen() {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.85,
-        base64: true,
       });
     }
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const asset = result.assets[0];
       setImageUri(asset.uri);
-      setBase64Image(asset.base64 || null);
       setUploadStatus('idle');
     }
   };
@@ -117,7 +113,7 @@ export default function UploadsScreen() {
     const res = await prescriptionService.uploadAndSubmitPrescription({
       userId,
       patientName,
-      base64Image: base64Image!,
+      imageUri: imageUri!,
       targetDoctorId: finalDoctorId || null,
       medicineName: medicineName.trim() || undefined,
       dosage: dosage.trim() || undefined,
@@ -195,7 +191,7 @@ export default function UploadsScreen() {
   };
 
   const handleUploadAndScan = async () => {
-    if (!base64Image) {
+    if (!imageUri) {
       Alert.alert('No Image', 'Please capture or select a prescription photo first.');
       return;
     }
@@ -291,7 +287,6 @@ export default function UploadsScreen() {
                 style={styles.retakeButton}
                 onPress={() => {
                   setImageUri(null);
-                  setBase64Image(null);
                 }}
                 accessibilityLabel="Remove photo"
               >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "motion/react";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 import { Magnetic } from "@/components/fx/magnetic";
@@ -18,6 +18,9 @@ const LINKS = [
 export function Nav() {
   const [hidden, setHidden] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (y) => {
@@ -25,6 +28,54 @@ export function Nav() {
     if (menuOpen) return;
     setHidden(y > prev && y > 140);
   });
+
+  // Body scroll lock, Escape key, and focus trap for mobile menu
+  useEffect(() => {
+    if (!menuOpen) {
+      if (wasOpenRef.current) {
+        triggerButtonRef.current?.focus();
+        wasOpenRef.current = false;
+      }
+      return;
+    }
+
+    wasOpenRef.current = true;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    // Focus the first actionable element in the menu
+    const focusable = menuRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.[0]?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenuOpen(false);
+        return;
+      }
+
+      if (e.key === "Tab" && focusable && focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   const go = (target: string) => {
     setMenuOpen(false);
@@ -126,11 +177,13 @@ export function Nav() {
               </a>
             </Magnetic>
             <button
+              ref={triggerButtonRef}
               type="button"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-slate-300 md:hidden focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bio"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
+              aria-controls="mobile-menu-dialog"
             >
               {menuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
             </button>
@@ -142,6 +195,11 @@ export function Nav() {
       <AnimatePresence>
         {menuOpen && (
           <motion.div
+            ref={menuRef}
+            id="mobile-menu-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mobile Navigation Menu"
             className="fixed inset-0 z-[59] flex flex-col justify-center bg-obsidian/95 px-8 backdrop-blur-2xl md:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

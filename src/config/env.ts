@@ -11,29 +11,23 @@ export interface AppConfig {
   isDev: boolean;
 }
 
-// Fallback constants for local dev/preview builds
-const DEFAULT_SUPABASE_URL = 'https://kvbjmkadnavvajwxcepj.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_M_bF5TvIBj5AdhKLYPmh3w_uOQn-RQL';
-
 function validateEnv(): AppConfig {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-  const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    const errorMsg = '[Security Alert] EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY must be configured in environment variables.';
-    if (!__DEV__) {
-      throw new Error(errorMsg);
-    } else {
-      console.warn(errorMsg);
-    }
+    throw new Error(
+      '[FATAL] EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY must be set. ' +
+      'Copy .env.example to .env and configure valid credentials.'
+    );
   }
 
   return {
     supabaseUrl,
     supabaseAnonKey,
-    easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID || '08976e05-387f-4b74-a4bb-f2a1fdc5540b',
+    easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-    isDev: __DEV__,
+    isDev: typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production',
   };
 }
 

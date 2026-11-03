@@ -63,6 +63,8 @@ export function Film() {
     return () => cancelAnimationFrame(raf);
   }, [playing]);
 
+  const isDraggingRef = useRef(false);
+
   const seek = useCallback((clientX: number) => {
     const bar = barRef.current;
     const v = videoRef.current;
@@ -73,15 +75,25 @@ export function Film() {
     setProgress(pct);
   }, []);
 
-  const onBarPointerDown = (e: React.PointerEvent) => {
+  const onBarPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
     seek(e.clientX);
-    const move = (ev: PointerEvent) => seek(ev.clientX);
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+  };
+
+  const onBarPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    seek(e.clientX);
+  };
+
+  const onBarPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
   };
 
   const fullscreen = () => {
@@ -218,6 +230,9 @@ export function Film() {
               ref={barRef}
               className="group/bar relative h-6 cursor-pointer touch-none"
               onPointerDown={onBarPointerDown}
+              onPointerMove={onBarPointerMove}
+              onPointerUp={onBarPointerUp}
+              onPointerCancel={onBarPointerUp}
               role="slider"
               aria-label="Seek film"
               aria-valuemin={0}

@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   description:
     "Learn how MedSync protects patient privacy, secures cloud health data, and aligns with India's Digital Personal Data Protection (DPDP) Act 2023.",
   alternates: {
-    canonical: "https://breathtaker-adi.github.io/Medsync/privacy",
+    canonical: "https://breathtaker-adi.github.io/Medsync/privacy/",
   },
   openGraph: {
     title: "Privacy Policy | Medsync — Privacy Architecture & Data Charter",
     description:
       "Learn how MedSync protects patient privacy, secures cloud health data, and aligns with India's Digital Personal Data Protection (DPDP) Act 2023.",
-    url: "https://breathtaker-adi.github.io/Medsync/privacy",
+    url: "https://breathtaker-adi.github.io/Medsync/privacy/",
   },
 };
 

@@ -3,7 +3,7 @@ import { Session } from '@supabase/supabase-js';
 import * as Device from 'expo-device';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { ENV } from '../config/env';
 import { supabase } from '../lib/supabase';
@@ -97,19 +97,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loadingProfileRef = useRef<boolean>(false);
+
   const loadProfile = async (userId: string) => {
-    const res = await authService.fetchProfile(userId);
-    if (res.success && res.data) {
-      setProfile(res.data);
-      registerForPushNotifications(res.data.id);
-    } else {
-      setProfile(null);
+    if (loadingProfileRef.current) return;
+    loadingProfileRef.current = true;
+    try {
+      const res = await authService.fetchProfile(userId);
+      if (res.success && res.data) {
+        setProfile(res.data);
+        registerForPushNotifications(res.data.id);
+      } else {
+        setProfile(null);
+      }
+    } finally {
+      loadingProfileRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const refreshProfile = async () => {
     if (session?.user?.id) {
+      setLoading(true);
       await loadProfile(session.user.id);
     }
   };
@@ -123,15 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user?.id) {
-        loadProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
+    // onAuthStateChange fires with INITIAL_SESSION immediately on subscribe
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {

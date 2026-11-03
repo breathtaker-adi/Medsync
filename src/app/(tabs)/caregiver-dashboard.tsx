@@ -193,12 +193,6 @@ export default function CaregiverDashboard() {
   // Audio briefing speaking state
   const [isSpeakingBrief, setIsSpeakingBrief] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch])
-  );
-
   const handleLinkPatient = async () => {
     const formattedCode = pairingInput.trim().toUpperCase();
 

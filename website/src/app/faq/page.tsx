@@ -8,13 +8,13 @@ export const metadata: Metadata = {
   description:
     "Common questions about MedSync: DPDP Act 2023 compliance, offline vault, AI prescription verification, and caregiver safety loops.",
   alternates: {
-    canonical: "https://breathtaker-adi.github.io/Medsync/faq",
+    canonical: "https://breathtaker-adi.github.io/Medsync/faq/",
   },
   openGraph: {
     title: "Frequently Asked Questions | Medsync",
     description:
       "Common questions about MedSync: DPDP Act 2023 compliance, offline vault, AI prescription verification, and caregiver safety loops.",
-    url: "https://breathtaker-adi.github.io/Medsync/faq",
+    url: "https://breathtaker-adi.github.io/Medsync/faq/",
   },
 };
 

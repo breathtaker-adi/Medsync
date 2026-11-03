@@ -91,11 +91,23 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
           } = await supabase.auth.getSession();
           if (!currentSession?.user?.id) return;
 
+          const data = (response.notification.request.content.data || {}) as Record<string, any>;
+          let scheduledTime: string = typeof data.scheduledTime === 'string' ? data.scheduledTime : '';
+          if (!scheduledTime) {
+            // Backward-compat: look up scheduled time from medications table
+            const { data: med } = await supabase
+              .from('medications')
+              .select('time')
+              .eq('id', Number(medId))
+              .maybeSingle();
+            scheduledTime = med?.time || '08:00';
+          }
+
           // Record dose intake atomically with inventory update via service
           await medicationService.recordDoseWithInventory({
             medicationId: Number(medId),
             patientId: currentSession.user.id,
-            scheduledTime: '00:00',
+            scheduledTime,
           });
 
           // Dismiss notification banner
@@ -107,6 +119,7 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
         else if (actionId === 'SNOOZE') {
           const snoozeDate = new Date();
           snoozeDate.setMinutes(snoozeDate.getMinutes() + 20);
+          const originalScheduledTime = response.notification.request.content.data?.scheduledTime;
 
           await Notifications.scheduleNotificationAsync({
             content: {
@@ -115,7 +128,7 @@ function RootLayoutNav({ fontsLoaded }: { fontsLoaded: boolean }) {
               sound: true,
               priority: Notifications.AndroidNotificationPriority.HIGH,
               categoryIdentifier: 'medication-alerts',
-              data: { medicationId: medId },
+              data: { medicationId: medId, scheduledTime: originalScheduledTime },
             },
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.DATE,
