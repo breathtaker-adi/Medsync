@@ -92,15 +92,18 @@ export default function TabsLayout() {
           title: 'Today’s Doses',
           tabBarLabel: 'Today',
           href: isCaregiverOrDoctor ? null : '/(tabs)/patient-dashboard',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
-              <Ionicons
-                name={focused ? 'calendar' : 'calendar-outline'}
-                size={22}
-                color={focused ? Theme.colors.primary : color}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            const iconColor = focused ? Theme.colors.primary : (typeof color === 'string' ? color : Theme.colors.outline);
+            return (
+              <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
+                <Ionicons
+                  name={focused ? 'calendar' : 'calendar-outline'}
+                  size={22}
+                  color={iconColor}
+                />
+              </View>
+            );
+          },
         }}
       />
 
@@ -111,15 +114,18 @@ export default function TabsLayout() {
           title: 'Patients',
           tabBarLabel: 'Patients',
           href: isCaregiverOrDoctor ? '/(tabs)/caregiver-dashboard' : null,
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
-              <Ionicons
-                name={focused ? 'people' : 'people-outline'}
-                size={22}
-                color={focused ? Theme.colors.primary : color}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            const iconColor = focused ? Theme.colors.primary : (typeof color === 'string' ? color : Theme.colors.outline);
+            return (
+              <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
+                <Ionicons
+                  name={focused ? 'people' : 'people-outline'}
+                  size={22}
+                  color={iconColor}
+                />
+              </View>
+            );
+          },
         }}
       />
 
@@ -130,15 +136,18 @@ export default function TabsLayout() {
           title: 'Scan Slip',
           tabBarLabel: 'Scan Slip',
           href: '/(tabs)/uploads',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
-              <Ionicons
-                name={focused ? 'camera' : 'camera-outline'}
-                size={22}
-                color={focused ? Theme.colors.primary : color}
-              />
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            const iconColor = focused ? Theme.colors.primary : (typeof color === 'string' ? color : Theme.colors.outline);
+            return (
+              <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
+                <Ionicons
+                  name={focused ? 'camera' : 'camera-outline'}
+                  size={22}
+                  color={iconColor}
+                />
+              </View>
+            );
+          },
         }}
       />
 
