@@ -237,7 +237,7 @@ export default function ReviewDetailsScreen() {
           fallbackRoute="/(tabs)/caregiver-dashboard"
         />
         <View style={styles.center}>
-          <Ionicons name="document-text-outline" size={56} color="#94A3B8" />
+          <Ionicons name="document-text-outline" size={56} color="#64748B" />
           <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 16, color: '#0F172A', marginTop: 12 }}>
             Prescription Review Not Found
           </Text>
@@ -377,7 +377,7 @@ export default function ReviewDetailsScreen() {
             </TouchableOpacity>
           ) : (
             <View style={styles.imagePlaceholderBox}>
-              <Ionicons name="document-text-outline" size={44} color="#94A3B8" />
+              <Ionicons name="document-text-outline" size={44} color="#64748B" />
               <Text style={styles.imagePlaceholderTitle}>Prescription Slip Attached</Text>
               <Text style={styles.imagePlaceholderText}>
                 {review?.image_url

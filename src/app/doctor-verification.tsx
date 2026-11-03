@@ -678,7 +678,7 @@ export default function DoctorVerificationScreen() {
                     <TextInput
                       style={styles.textInput}
                       placeholder="e.g. Dr. Aditya, MBBS, MD"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={fullName}
                       onChangeText={setFullName}
                       autoCapitalize="words"
@@ -704,7 +704,7 @@ export default function DoctorVerificationScreen() {
                     <TextInput
                       style={styles.textInput}
                       placeholder="e.g. NMC/2024/94821 or State Council Reg"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={licenseNumber}
                       onChangeText={setLicenseNumber}
                       autoCapitalize="characters"
@@ -784,7 +784,7 @@ export default function DoctorVerificationScreen() {
                       <TextInput
                         style={styles.textInput}
                         placeholder="Type your clinical specialty"
-                        placeholderTextColor="#94A3B8"
+                        placeholderTextColor="#64748B"
                         value={customSpecialty}
                         onChangeText={setCustomSpecialty}
                       />
@@ -865,7 +865,7 @@ export default function DoctorVerificationScreen() {
                           ? 'Search e.g. Apollo, Mayo, AIIMS, Fortis...'
                           : 'Search clinic on map or type name...'
                       }
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={searchQuery}
                       onChangeText={handleSearchPlaces}
                     />
@@ -873,7 +873,7 @@ export default function DoctorVerificationScreen() {
                       <ActivityIndicator size="small" color="#0D9488" style={{ marginRight: 6 }} />
                     ) : searchQuery.length > 0 ? (
                       <TouchableOpacity onPress={() => handleSearchPlaces('')} style={{ marginRight: 6 }}>
-                        <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                        <Ionicons name="close-circle" size={18} color="#64748B" />
                       </TouchableOpacity>
                     ) : null}
 
@@ -915,7 +915,7 @@ export default function DoctorVerificationScreen() {
                               {place.display_name}
                             </Text>
                           </View>
-                          <Ionicons name="checkmark-circle-outline" size={16} color="#94A3B8" />
+                          <Ionicons name="checkmark-circle-outline" size={16} color="#64748B" />
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -936,7 +936,7 @@ export default function DoctorVerificationScreen() {
                           ? 'e.g. Apollo Hospital, New Delhi'
                           : 'e.g. Dr. Aditya Endocrine & Diabetes Clinic'
                       }
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={clinicAffiliation}
                       onChangeText={setClinicAffiliation}
                     />
@@ -1133,7 +1133,7 @@ export default function DoctorVerificationScreen() {
                         ? 'e.g. Apollo Hospital, AIIMS, Mayo Clinic'
                         : 'e.g. Dr. Sharma Family Health Clinic'
                     }
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={pinpointName}
                     onChangeText={setPinpointName}
                   />
@@ -1147,7 +1147,7 @@ export default function DoctorVerificationScreen() {
                   <TextInput
                     style={styles.textInput}
                     placeholder="e.g. 12th Main Road, Near Metro Station"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={pinpointStreet}
                     onChangeText={setPinpointStreet}
                   />
@@ -1161,7 +1161,7 @@ export default function DoctorVerificationScreen() {
                     <TextInput
                       style={styles.textInput}
                       placeholder="e.g. New Delhi"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={pinpointCity}
                       onChangeText={setPinpointCity}
                     />
@@ -1174,7 +1174,7 @@ export default function DoctorVerificationScreen() {
                     <TextInput
                       style={styles.textInput}
                       placeholder="e.g. Delhi"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={pinpointState}
                       onChangeText={setPinpointState}
                     />
@@ -1786,7 +1786,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#94A3B8',
+    borderColor: '#64748B',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',

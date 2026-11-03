@@ -110,7 +110,7 @@ export const SeniorButton: React.FC<SeniorButtonProps> = ({
     }
   };
 
-  const height = size === 'large' ? 50 : Theme.spacing.touchTargetSenior;
+  const height = size === 'large' ? 54 : Theme.spacing.touchTargetSenior;
 
   return (
     <Animated.View style={[animatedStyle, { width: '100%' }]}>
@@ -185,10 +185,10 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   textNormal: {
-    fontSize: 14.5,
+    fontSize: 15,
   },
   textLarge: {
-    fontSize: 16,
+    fontSize: 16.5,
   },
   disabled: {
     opacity: 0.5,

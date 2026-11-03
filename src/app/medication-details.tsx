@@ -206,7 +206,7 @@ export default function MedicationDetailsScreen() {
       <SafeAreaView style={styles.container}>
         <ScreenHeader title="Medication Details" fallbackRoute="/(tabs)/patient-dashboard" />
         <View style={styles.center}>
-          <Ionicons name="medical-outline" size={54} color="#94A3B8" />
+          <Ionicons name="medical-outline" size={54} color="#64748B" />
           <Text style={styles.emptyTitle}>Medication Not Found</Text>
           <TouchableOpacity
             style={styles.returnBtn}
@@ -509,7 +509,7 @@ export default function MedicationDetailsScreen() {
             <TextInput
               style={[styles.timeInput, timeError ? styles.timeInputError : undefined]}
               placeholder="08:00 AM"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#64748B"
               value={editedTime}
               maxLength={8}
               onChangeText={(text) => {
@@ -583,7 +583,7 @@ export default function MedicationDetailsScreen() {
             <TextInput
               style={styles.timeInput}
               placeholder="30"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#64748B"
               value={restockCount}
               keyboardType="numeric"
               onChangeText={(text) => setRestockCount(text.replace(/[^0-9]/g, ''))}

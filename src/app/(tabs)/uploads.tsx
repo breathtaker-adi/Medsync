@@ -377,7 +377,7 @@ export default function UploadsScreen() {
               <TextInput
                 style={styles.textInput}
                 placeholder="e.g., Metformin 500mg, Amoxicillin"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#64748B"
                 value={medicineName}
                 onChangeText={setMedicineName}
               />
@@ -389,7 +389,7 @@ export default function UploadsScreen() {
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g., 1 tablet twice daily"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   value={dosage}
                   onChangeText={setDosage}
                 />
@@ -399,7 +399,7 @@ export default function UploadsScreen() {
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g., 7 days, 30 days"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   value={duration}
                   onChangeText={setDuration}
                 />
@@ -411,7 +411,7 @@ export default function UploadsScreen() {
               <TextInput
                 style={[styles.textInput, styles.textArea]}
                 placeholder="e.g., Take after food with water. Prescribed for fever."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#64748B"
                 value={patientNotes}
                 onChangeText={setPatientNotes}
                 multiline
@@ -467,7 +467,7 @@ export default function UploadsScreen() {
                   <Ionicons
                     name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                     size={22}
-                    color={isSelected ? Theme.colors.primary : "#94A3B8"}
+                    color={isSelected ? Theme.colors.primary : "#64748B"}
                   />
                 </TouchableOpacity>
               );
@@ -500,7 +500,7 @@ export default function UploadsScreen() {
               <Ionicons
                 name={selectedDoctorId === null ? "checkmark-circle" : "ellipse-outline"}
                 size={22}
-                color={selectedDoctorId === null ? Theme.colors.primary : "#94A3B8"}
+                color={selectedDoctorId === null ? Theme.colors.primary : "#64748B"}
               />
             </TouchableOpacity>
           </View>
@@ -572,7 +572,7 @@ export default function UploadsScreen() {
                       {doc.specialty} {doc.clinic ? `• ${doc.clinic}` : ''}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                  <Ionicons name="chevron-forward" size={18} color="#64748B" />
                 </TouchableOpacity>
               ))}
 
@@ -592,7 +592,7 @@ export default function UploadsScreen() {
                   <Text style={styles.modalDocName}>Practice Clinical Queue</Text>
                   <Text style={styles.modalDocMeta}>Any available physician</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                <Ionicons name="chevron-forward" size={18} color="#64748B" />
               </TouchableOpacity>
             </ScrollView>
 
@@ -669,9 +669,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6F4F4',
     borderWidth: 1,
     borderColor: '#99F6E4',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 42,
+    borderRadius: 21,
   },
   historyBtnText: {
     fontFamily: 'PublicSans-Bold',

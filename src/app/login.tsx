@@ -316,15 +316,20 @@ const styles = StyleSheet.create({
     color: Theme.colors.onSurface,
   },
   eyeButton: {
-    padding: 4,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: -4,
   },
   forgotPasswordContainer: {
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    marginTop: 6,
-    marginBottom: 16,
+    minHeight: 44,
+    marginTop: 4,
+    marginBottom: 14,
   },
   forgotPasswordText: {
     width: '100%',
@@ -342,9 +347,9 @@ const styles = StyleSheet.create({
   consentText: {
     width: '100%',
     fontFamily: 'PublicSans-Regular',
-    fontSize: 11.5,
+    fontSize: 12,
     color: Theme.colors.onSurfaceVariant,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   consentLink: {
     fontFamily: 'PublicSans-Bold',
@@ -353,10 +358,11 @@ const styles = StyleSheet.create({
   },
   signUpToggle: {
     width: '100%',
-    marginTop: 20,
+    marginTop: 18,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+    minHeight: 44,
   },
   toggleText: {
     width: '100%',

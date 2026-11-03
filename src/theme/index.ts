@@ -12,6 +12,7 @@ export const Theme = {
     onSurfaceVariant: '#334155',
     outline: '#64748B',
     outlineVariant: '#CBD5E1',
+    placeholder: '#64748B', // WCAG AA compliant placeholder (4.5:1 on light surface)
     onSecondaryContainer: '#261a00',
 
     primary: '#00595C',
@@ -81,8 +82,8 @@ export const Theme = {
   },
 
   spacing: {
-    touchTargetMin: 42,
-    touchTargetSenior: 46, // Ergonomic mobile button height
+    touchTargetMin: 44, // Apple HIG standard 44pt touch target minimum
+    touchTargetSenior: 48, // Senior-accessible ergonomic mobile button height
     pageMargin: 14,
     gutterCard: 12,
     stackGap: 10,

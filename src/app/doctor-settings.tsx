@@ -357,15 +357,19 @@ export default function DoctorSettingsScreen() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 5,
                     backgroundColor: '#CCFBF1',
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
-                    borderRadius: 6,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    minHeight: 32,
+                    borderRadius: 8,
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit Clinical Details"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="create-outline" size={12} color="#0D766E" />
-                  <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 11.5, color: '#0D766E' }}>
+                  <Ionicons name="create-outline" size={13} color="#0D766E" />
+                  <Text style={{ fontFamily: 'PublicSans-Bold', fontSize: 12, color: '#0D766E' }}>
                     Edit Clinical Details
                   </Text>
                 </TouchableOpacity>

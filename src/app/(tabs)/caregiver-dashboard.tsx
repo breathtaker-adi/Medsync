@@ -888,15 +888,31 @@ export default function CaregiverDashboard() {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
             style={[
               styles.modalContent,
               isAccessibilityMode && styles.highContrastCard,
             ]}
           >
-            <View style={styles.modalIconCircle}>
-              <Ionicons name="person-add" size={28} color={Theme.colors.primary} />
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalIconCircle}>
+                <Ionicons name="person-add" size={24} color={Theme.colors.primary} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.modalCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Close link patient modal"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
             </View>
 
             <Text style={[styles.modalTitle, isAccessibilityMode && styles.largeText]}>
@@ -912,7 +928,7 @@ export default function CaregiverDashboard() {
                 isAccessibilityMode && styles.largeCodeInput,
               ]}
               placeholder="e.g. A4B9C2"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#64748B"
               value={pairingInput}
               onChangeText={setPairingInput}
               autoCapitalize="characters"
@@ -938,8 +954,8 @@ export default function CaregiverDashboard() {
                 size="normal"
               />
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -981,21 +997,21 @@ const styles = StyleSheet.create({
   },
   avatarButton: {
     position: 'relative',
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
   },
   headerAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#E2E8F0',
     borderWidth: 1.5,
     borderColor: '#0D9488',
   },
   headerAvatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1007,9 +1023,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -1,
     right: -1,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#0D9488',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1050,9 +1066,9 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   settingsIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1496,13 +1512,18 @@ const styles = StyleSheet.create({
   linkHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    minHeight: 36,
+    borderRadius: 8,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
   },
   linkHeaderBtnText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 12,
+    fontSize: 12.5,
     color: Theme.colors.primary,
   },
   searchBarContainer: {
@@ -1531,9 +1552,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    minHeight: 34,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -1550,8 +1572,8 @@ const styles = StyleSheet.create({
     borderColor: '#D97706',
   },
   filterChipText: {
-    fontFamily: 'PublicSans-Medium',
-    fontSize: 11,
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 11.5,
     color: '#64748B',
   },
   filterChipTextActive: {
@@ -1653,12 +1675,13 @@ const styles = StyleSheet.create({
   contactChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: '#F0F9FF',
     borderWidth: 1,
     borderColor: '#BAE6FD',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minHeight: 32,
     borderRadius: 8,
   },
   emergencyContactChip: {
@@ -1666,8 +1689,8 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
   },
   contactChipText: {
-    fontFamily: 'PublicSans-Medium',
-    fontSize: 11,
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
     color: '#0369A1',
   },
   patientNoContactRow: {
@@ -1727,6 +1750,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Theme.shadows.cardElevated,
   },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 8,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalIconCircle: {
     width: 46,
     height: 46,
@@ -1734,7 +1772,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#CCFBF1',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
   },
   modalTitle: {
     fontFamily: 'PublicSans-ExtraBold',

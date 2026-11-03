@@ -282,7 +282,7 @@ export default function EditProfileScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder={isDoctorOrCaregiver ? 'e.g. Dr. Rajesh Sharma' : 'e.g. Ramesh Sharma'}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   value={fullName}
                   onChangeText={setFullName}
                 />
@@ -296,7 +296,7 @@ export default function EditProfileScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="name@example.com"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -318,7 +318,7 @@ export default function EditProfileScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="+91 98765 43210"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor="#64748B"
                   keyboardType="phone-pad"
                   value={phone}
                   onChangeText={setPhone}
@@ -340,7 +340,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. Internal Medicine & Geriatrics"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={specialty}
                     onChangeText={setSpecialty}
                   />
@@ -374,7 +374,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. Apollo Hospital / City Heart Care Clinic"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={clinicAffiliation}
                     onChangeText={setClinicAffiliation}
                   />
@@ -389,7 +389,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. MCI-2018-94821"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     autoCapitalize="characters"
                     value={licenseNumber}
                     onChangeText={setLicenseNumber}
@@ -405,7 +405,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. Delhi Medical Council / NMC"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={medicalCouncil}
                     onChangeText={setMedicalCouncil}
                   />
@@ -420,7 +420,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. 12 years"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={yearsExperience}
                     onChangeText={setYearsExperience}
                   />
@@ -463,7 +463,7 @@ export default function EditProfileScreen() {
                     <TextInput
                       style={styles.input}
                       placeholder="Specify rare blood type (e.g. Bombay group, Rh-null) or leave blank"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor="#64748B"
                       value={customBloodGroup}
                       onChangeText={setCustomBloodGroup}
                     />
@@ -484,7 +484,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
                     placeholder="e.g. Penicillin, Sulfa drugs, Aspirin sensitivity, Diabetes Type 2"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     multiline
                     value={allergies}
                     onChangeText={setAllergies}
@@ -500,7 +500,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. 68"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     keyboardType="number-pad"
                     maxLength={3}
                     value={age}
@@ -517,7 +517,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. Sunita Sharma (Daughter / Caregiver)"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     value={emergencyContactName}
                     onChangeText={setEmergencyContactName}
                   />
@@ -532,7 +532,7 @@ export default function EditProfileScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="+91 98111 22334"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor="#64748B"
                     keyboardType="phone-pad"
                     value={emergencyContactPhone}
                     onChangeText={setEmergencyContactPhone}

@@ -1031,15 +1031,31 @@ export default function PatientDashboard() {
         visible={addModalVisible}
         onRequestClose={() => setAddModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setAddModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
             style={[
               styles.modalContent,
               isAccessibilityMode && styles.highContrastMedCard,
             ]}
           >
-            <View style={styles.modalHeaderIcon}>
-              <Ionicons name="medkit" size={28} color={Theme.colors.primary} />
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalHeaderIcon}>
+                <Ionicons name="medkit" size={26} color={Theme.colors.primary} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setAddModalVisible(false)}
+                style={styles.modalCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Close add medication form"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
             </View>
 
             <Text style={[styles.modalTitle, isAccessibilityMode && styles.largeText]}>
@@ -1196,8 +1212,8 @@ export default function PatientDashboard() {
                 size="normal"
               />
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Undo Toast Notification */}
@@ -1256,21 +1272,21 @@ const styles = StyleSheet.create({
   },
   avatarButton: {
     position: 'relative',
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
   },
   headerAvatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#E2E8F0',
     borderWidth: 1.5,
     borderColor: '#0D9488',
   },
   headerAvatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1280,16 +1296,16 @@ const styles = StyleSheet.create({
   },
   headerAvatarInitial: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 16,
+    fontSize: 17,
     color: '#FFFFFF',
   },
   headerCameraBadge: {
     position: 'absolute',
     bottom: -1,
     right: -1,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#0D9488',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1297,9 +1313,9 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   settingsIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1581,7 +1597,11 @@ const styles = StyleSheet.create({
     padding: 3,
   },
   cardMoreBtn: {
-    padding: 3,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   // Card Body
   cardBodyRow: {
@@ -1685,9 +1705,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cameraProofBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#F0FDFA',
     borderWidth: 1,
     borderColor: '#99F6E4',
@@ -1695,23 +1715,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   largeCameraBtn: {
-    width: 44,
-    height: 44,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
   },
   snoozeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    height: 38,
-    borderRadius: 10,
+    gap: 4,
+    paddingHorizontal: 10,
+    height: 44,
+    minWidth: 54,
+    borderRadius: 12,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
     justifyContent: 'center',
   },
   largeSnoozeBtn: {
-    height: 44,
+    height: 50,
     paddingHorizontal: 12,
   },
   snoozeBtnLabel: {
@@ -1825,6 +1847,13 @@ const styles = StyleSheet.create({
     padding: 18,
     ...Theme.shadows.cardElevated,
   },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 8,
+  },
   modalHeaderIcon: {
     width: 42,
     height: 42,
@@ -1832,8 +1861,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#CCFBF1',
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'center',
-    marginBottom: 10,
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
     fontFamily: 'PublicSans-ExtraBold',

@@ -67,9 +67,9 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: Theme.colors.outline,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          height: Platform.OS === 'ios' ? 76 : 58,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 6,
-          paddingTop: 6,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
           borderTopWidth: 1,
           borderTopColor: '#E2E8F0',
           shadowColor: '#0F172A',
@@ -80,8 +80,8 @@ export default function TabsLayout() {
         },
         tabBarLabelStyle: {
           fontFamily: 'PublicSans-Bold',
-          fontSize: 11,
-          marginTop: 1,
+          fontSize: 11.5,
+          marginTop: 2,
         },
       }}
     >
@@ -123,13 +123,13 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 3. Prescription Upload / Scan (Visible for Patient) */}
+      {/* 3. Prescription Upload / Scan (Available to all roles - patients, caregivers, clinicians) */}
       <Tabs.Screen
         name="uploads"
         options={{
           title: 'Scan Slip',
           tabBarLabel: 'Scan Slip',
-          href: isCaregiverOrDoctor ? null : '/(tabs)/uploads',
+          href: '/(tabs)/uploads',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
               <Ionicons

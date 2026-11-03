@@ -81,13 +81,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: Platform.OS === 'android' ? 6 : 4,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 6 : 6,
+    paddingBottom: 10,
     backgroundColor: Theme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.outlineVariant,
-    minHeight: 50,
+    minHeight: 54,
   },
   leftContainer: {
     flexDirection: 'row',
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   backButton: {
-    marginRight: 10,
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,

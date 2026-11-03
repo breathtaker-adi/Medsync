@@ -90,7 +90,10 @@ export default function PatientDirectory() {
           {search.length > 0 && (
             <TouchableOpacity
               onPress={() => setSearch('')}
+              style={styles.searchClearBtn}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search input"
             >
               <Ionicons
                 name="close-circle"
@@ -250,24 +253,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    marginHorizontal: 20,
-    marginVertical: 14,
+    marginHorizontal: 16,
+    marginVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: Theme.colors.outlineVariant,
-    minHeight: 44,
+    minHeight: Theme.spacing.touchTargetSenior,
     ...Theme.elevation.level1,
   },
   searchIcon: {
     marginRight: 8,
   },
+  searchClearBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchInput: {
     flex: 1,
     fontFamily: 'PublicSans-Medium',
-    fontSize: 13.5,
+    fontSize: 14.5,
     color: Theme.colors.onSurface,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   listContent: {
     padding: 14,
@@ -278,18 +287,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.colors.surfaceContainerLowest,
-    padding: 12,
+    padding: 14,
     borderRadius: 14,
-    marginBottom: 8,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: Theme.colors.outlineVariant,
-    gap: 10,
+    gap: 12,
     ...Theme.elevation.level1,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -305,9 +314,9 @@ const styles = StyleSheet.create({
   },
   patientName: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 14.5,
+    fontSize: 15,
     color: Theme.colors.onSurface,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -316,13 +325,13 @@ const styles = StyleSheet.create({
   },
   patientBadge: {
     backgroundColor: '#E8F5F5',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   patientBadgeText: {
     fontFamily: 'PublicSans-Medium',
-    fontSize: 11,
+    fontSize: 11.5,
     color: Theme.colors.primary,
   },
   bloodBadge: {
@@ -330,45 +339,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     backgroundColor: '#FFEBEE',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   bloodBadgeText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#D32F2F',
   },
   directoryContactRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
+    gap: 8,
+    marginTop: 8,
   },
   directoryContactPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: '#F0F9FF',
     borderWidth: 1,
     borderColor: '#BAE6FD',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minHeight: 32,
+    borderRadius: 8,
   },
   directoryEmergencyPill: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
   },
   directoryContactText: {
-    fontFamily: 'PublicSans-Medium',
-    fontSize: 10,
+    fontFamily: 'PublicSans-Bold',
+    fontSize: 12,
     color: '#0284C7',
   },
   chevronPlate: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Theme.colors.surfaceContainerLow,
     justifyContent: 'center',
     alignItems: 'center',

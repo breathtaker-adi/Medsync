@@ -241,14 +241,14 @@ export default function PendingReviewsScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search by patient or medicine name..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#64748B"
             value={searchQuery}
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+              <Ionicons name="close-circle" size={18} color="#64748B" />
             </TouchableOpacity>
           )}
         </View>
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   timeAgoText: {
     fontFamily: 'PublicSans-Medium',
     fontSize: 11,
-    color: '#94A3B8',
+    color: '#64748B',
     marginTop: 2,
   },
   cardFooter: {

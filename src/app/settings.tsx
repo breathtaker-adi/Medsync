@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
   },
   doctorBadgeText: {
     fontFamily: 'PublicSans-Bold',
-    fontSize: 9.5,
+    fontSize: 11,
     color: '#15803D',
   },
   profileInfo: {
@@ -1165,6 +1165,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginTop: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minHeight: 32,
   },
   changePhotoText: {
     fontFamily: 'PublicSans-Bold',

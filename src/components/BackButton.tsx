@@ -49,7 +49,7 @@ export function BackButton({
   };
 
   const isLarge = size === 'large';
-  const iconSize = isLarge ? 22 : 18;
+  const iconSize = isLarge ? 24 : 20;
 
   const getVariantStyle = () => {
     switch (variant) {
@@ -88,14 +88,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   normal: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-  },
-  large: {
     width: 42,
     height: 42,
+    minWidth: Theme.spacing.touchTargetMin,
+    minHeight: Theme.spacing.touchTargetMin,
     borderRadius: 12,
+  },
+  large: {
+    width: 48,
+    height: 48,
+    minWidth: 48,
+    minHeight: 48,
+    borderRadius: 14,
   },
   standard: {
     backgroundColor: '#F1F5F9',
