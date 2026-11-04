@@ -162,10 +162,10 @@ const jsonLd = {
       "applicationCategory": "HealthApplication",
       "applicationSubCategory": "Medication Adherence & Prescription Scanner",
       "operatingSystem": "Android 8.0 and higher",
-      "softwareVersion": "1.2.0",
+      "softwareVersion": "1.2.1",
       "fileSize": "108MB",
       "downloadUrl":
-        "https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk",
+        "https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.1/MedSync-v1.2.1.apk",
       "requirements": "Android 8.0+; Camera for prescription scanner",
       "screenshot": "https://breathtaker-adi.github.io/Medsync/film-poster.jpg",
       "aggregateRating": {

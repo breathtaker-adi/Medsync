@@ -2,7 +2,7 @@
   "expo": {
     "name": "MedSync",
     "slug": "medsync",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "scheme": "medsync",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
