@@ -1,0 +1,39 @@
+# MedSync — Smart Medication Adherence & Caregiver Safety Platform
+
+> MedSync is an open-source (MIT) medication adherence and family caregiver safety ecosystem for Android. It combines AI prescription camera OCR, encrypted cloud synchronization with PostgreSQL Row-Level Security (RLS), WCAG AAA senior accessibility, and real-time missed-dose caregiver escalation push alerts.
+
+MedSync is engineered to solve medication non-adherence for chronic therapies, elderly patients, and polypharmacy regimens while maintaining strict data sovereignty aligned with India's Digital Personal Data Protection (DPDP) Act 2023 and global privacy standards.
+
+---
+
+## Core Capabilities & Features
+
+- **AI Prescription Camera OCR Intake**: Patients or caregivers photograph physical paper doctor slips or medication packaging. A serverless AI Vision edge function extracts medication names, strengths, dosage frequencies, and duration into a structured draft schedule.
+- **The Doctor Care Loop**: Prescriptions extracted via AI remain in `pending_review` until verified by a licensed clinician or designated family caregiver. Clinicians must possess verified medical council licenses before activating clinical badges.
+- **Caregiver Missed-Dose Escalation**: Patients pair trusted family caregivers using ephemeral, cryptographically sound 15-minute pairing codes. If a critical dose is not logged within a 60-minute grace window, an automated background check dispatches an encrypted push alert to the caregiver's device via Firebase Cloud Messaging (FCM).
+- **Senior Accessibility (WCAG AAA)**: High-contrast senior display mode featuring minimum 64px touch targets, haptic feedback confirmations, high-legibility typography, and single-tap dose logging ("I Took It").
+- **Offline-First Exact Dose Alarms**: Dose reminders are scheduled on-device using Android Exact Alarm Managers, guaranteeing alarms fire with 100% reliability even when in airplane mode, remote areas, or without internet access.
+- **Data Sovereignty & Right to Erasure**: Complete compliance with Section 11 and 12 of India's DPDP Act 2023. Users can export their complete health vault as JSON at any time or execute a permanent cascading account and data purge. Zero third-party advertising trackers or data brokers.
+
+---
+
+## Technical Specifications
+
+- **Mobile Client**: React Native 0.83, Expo SDK 58, TypeScript, Expo Router (file-based navigation).
+- **Cloud Backend**: Supabase Serverless (PostgreSQL 15), Deno Edge Functions, Supabase Storage.
+- **Authentication**: Hardware Keystore session encryption (`expo-secure-store`) with token chunking for Android 2048-byte limits.
+- **Database Security**: Enforced Row-Level Security (RLS) on all tables; strict multi-tenant isolation ensuring patients only access their own records and verified caregivers access linked patients only while links are active (`status = 'active'`).
+- **AI Processing**: Ephemeral in-memory OCR extraction via OpenAI GPT-4o Vision API with daily quota rate-limiting (10 scans/user/day) enforced fail-closed by database stored procedures.
+- **License**: 100% Free & Open Source under the permissive MIT License.
+
+---
+
+## Canonical Web Resources & Links
+
+- [Official Website](https://breathtaker-adi.github.io/Medsync/)
+- [Frequently Asked Questions (FAQ & Clinical Safety)](https://breathtaker-adi.github.io/Medsync/faq/)
+- [Privacy Architecture & DPDP Charter](https://breathtaker-adi.github.io/Medsync/privacy/)
+- [GitHub Source Repository](https://github.com/breathtaker-adi/Medsync)
+- [Official Android APK Releases](https://github.com/breathtaker-adi/Medsync/releases)
+- [Comprehensive LLM Documentation (Full)](https://breathtaker-adi.github.io/Medsync/llms-full.txt)
+

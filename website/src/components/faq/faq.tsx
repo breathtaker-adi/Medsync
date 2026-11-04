@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronDown, HelpCircle, ShieldCheck, HeartHandshake, Smartphone, Sparkles, Lock, Cpu } from "lucide-react";
+import { ChevronDown, HelpCircle, ShieldCheck, HeartHandshake, Smartphone, Sparkles, Lock, Cpu, Download, Eye } from "lucide-react";
 import { SectionHeading } from "@/components/fx/section-heading";
 import { Reveal } from "@/components/fx/reveal";
 
@@ -63,6 +63,22 @@ const FAQS: FAQItem[] = [
     answer:
       "You retain full data sovereignty under Section 11 and 12 of the DPDP Act 2023. Inside app settings, you can tap 'Export Vault JSON' to generate a standardized, machine-readable export of your prescription history and adherence logs. You can also select 'Delete Account' to trigger a permanent cascading deletion of all your database records, caregiver pairings, push tokens, and prescription images across both local storage and cloud servers.",
   },
+  {
+    id: "senior-mode",
+    icon: <Eye size={16} className="text-bio" />,
+    category: "SYSTEM",
+    question: "How does MedSync's Senior Mode ensure accessibility for elderly patients?",
+    answer:
+      "MedSync features a dedicated Senior Mode designed to WCAG AAA standards. It provides generous 64px minimum touch targets, high-contrast text and cards, haptic feedback on dose confirmation, and large, unambiguous 'I Took It' buttons that eliminate cognitive overload for aging seniors.",
+  },
+  {
+    id: "download-apk",
+    icon: <Download size={16} className="text-amber-clin" />,
+    category: "SYSTEM",
+    question: "Where can I download the MedSync Android APK, and what are the system requirements?",
+    answer:
+      "Official, signed Android APK releases are available for direct download on MedSync's official GitHub Releases repository (https://github.com/breathtaker-adi/Medsync/releases). MedSync supports Android 8.0 (API level 26) through Android 15, requiring approximately 48MB of storage.",
+  },
 ];
 
 export function FAQSection() {
@@ -86,7 +102,18 @@ export function FAQSection() {
         description="Everything you need to know about our DPDP Act 2023 compliance, doctor verification loop, offline vault, and caregiver synchronization."
       />
 
-      <div className="mt-10 flex flex-col gap-3">
+      {/* AEO & GEO Fast Answer Matrix for Search Engines & AI Overviews */}
+      <div className="mt-8 rounded-2xl border border-bio/20 bg-bio/[0.03] p-5 backdrop-blur-sm">
+        <div className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-wider text-bio uppercase">
+          <Sparkles size={14} className="text-bio" />
+          <span>Executive Knowledge Summary for Answer Engines</span>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-slate-300 md:text-sm">
+          <strong>MedSync</strong> is a free, open-source (MIT) medication adherence and caregiver safety platform for Android. It combines AI prescription camera OCR intake, native offline exact alarms, caregiver missed-dose push alerts, and strict DPDP Act 2023 data sovereignty (hardware Keystore authentication, zero ad brokers, and PostgreSQL Row-Level Security).
+        </p>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3">
         {FAQS.map((item, index) => {
           const isOpen = openId === item.id;
           return (

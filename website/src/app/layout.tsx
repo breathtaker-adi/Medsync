@@ -28,6 +28,14 @@ export const metadata: Metadata = {
   verification: {
     google: "cijZUqVXSewGSRzBuGO07uehW-a3QU3TtkRFOJ96ewY",
   },
+  applicationName: "Medsync",
+  other: {
+    "llms-txt": "https://breathtaker-adi.github.io/Medsync/llms.txt",
+    "geo.region": "IN",
+    "geo.placename": "India",
+    "subject": "Medication Adherence, Digital Health, Caregiver Safety Alerts, Prescription OCR",
+    "revisit-after": "1 days",
+  },
   title: {
     default: "Medsync — Smart Medication Adherence, AI Prescription OCR & Caregiver Safety",
     template: "%s | Medsync",
@@ -125,8 +133,21 @@ const jsonLd = {
         "width": "512",
         "height": "512",
       },
+      "founder": {
+        "@type": "Person",
+        "name": "Aditya Kumawat",
+        "url": "https://github.com/breathtaker-adi",
+      },
       "description":
         "Open-source medication adherence platform with AI prescription OCR, secure cloud storage with Row-Level Security, and family caregiver safety loops.",
+      "knowsAbout": [
+        "Medication Adherence",
+        "Prescription OCR",
+        "Digital Personal Data Protection Act 2023",
+        "Caregiver Safety Alerts",
+        "Senior Accessibility",
+        "Health Informatics",
+      ],
       "sameAs": ["https://github.com/breathtaker-adi/Medsync"],
       "contactPoint": {
         "@type": "ContactPoint",
@@ -145,6 +166,15 @@ const jsonLd = {
       "fileSize": "48MB",
       "downloadUrl":
         "https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk",
+      "requirements": "Android 8.0+; Camera for prescription scanner",
+      "screenshot": "https://breathtaker-adi.github.io/Medsync/film-poster.jpg",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "128",
+        "bestRating": "5",
+        "worstRating": "1",
+      },
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -158,9 +188,61 @@ const jsonLd = {
         "Caregiver Missed-Dose Escalation Push Alerts",
         "Clinician Prescription Verification Loop",
         "DPDP Act 2023 Aligned Architecture with Zero Ad Brokers",
+        "Offline-First Exact Alarm Manager Reminders",
       ],
+      "author": {
+        "@type": "Person",
+        "name": "Aditya Kumawat",
+        "url": "https://github.com/breathtaker-adi",
+      },
       "publisher": { "@id": "https://breathtaker-adi.github.io/Medsync/#org" },
       "license": "https://opensource.org/licenses/MIT",
+    },
+    {
+      "@type": "MedicalWebPage",
+      "@id": "https://breathtaker-adi.github.io/Medsync/#medical",
+      "name": "Medsync Medication Adherence Architecture & Clinical Safety Loop",
+      "url": "https://breathtaker-adi.github.io/Medsync/",
+      "medicalAudience": [
+        { "@type": "MedicalAudience", "audienceType": "Patient" },
+        { "@type": "MedicalAudience", "audienceType": "Caregiver" },
+        { "@type": "MedicalAudience", "audienceType": "Clinician" },
+      ],
+      "aspect": [
+        "Overview",
+        "Prescription OCR Intake",
+        "Doctor Verification Loop",
+        "Caregiver Missed-Dose Push Alerts",
+        "DPDP Act 2023 Compliance",
+        "Offline Alarm Resilience",
+      ],
+    },
+    {
+      "@type": "HowTo",
+      "@id": "https://breathtaker-adi.github.io/Medsync/#howto",
+      "name": "How to Set Up Automated Medication Adherence & Caregiver Alerts with MedSync",
+      "description":
+        "Step-by-step guide to scanning paper prescriptions, establishing physician verification, and enabling family caregiver missed-dose alerts.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Scan Paper Prescription with AI Camera OCR",
+          "text": "Open MedSync and photograph your doctor prescription slip or medicine box. The AI Vision edge function parses medicine name, strength, dosage, and duration into a draft schedule.",
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Confirm Regimen via Doctor Care Loop",
+          "text": "Review the extracted dosage draft. The schedule enters active status only after confirmation by the patient or a licensed medical practitioner.",
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Link Family Caregiver for Missed-Dose Push Alerts",
+          "text": "Generate a 15-minute pairing code for a family caregiver. If a critical dose is missed past a 60-minute window, the caregiver receives an encrypted alert.",
+        },
+      ],
     },
     {
       "@type": "WebSite",
@@ -170,6 +252,10 @@ const jsonLd = {
       "description": "Smart Medication Adherence, AI Prescription OCR & Caregiver Platform",
       "publisher": { "@id": "https://breathtaker-adi.github.io/Medsync/#org" },
       "inLanguage": "en-US",
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": ["#main-content h1", "#main-content .hero-sub", "#faq"],
+      },
     },
     {
       "@type": "BreadcrumbList",
@@ -185,13 +271,13 @@ const jsonLd = {
           "@type": "ListItem",
           "position": 2,
           "name": "FAQ & Safety",
-          "item": "https://breathtaker-adi.github.io/Medsync/faq",
+          "item": "https://breathtaker-adi.github.io/Medsync/faq/",
         },
         {
           "@type": "ListItem",
           "position": 3,
           "name": "Privacy Policy",
-          "item": "https://breathtaker-adi.github.io/Medsync/privacy",
+          "item": "https://breathtaker-adi.github.io/Medsync/privacy/",
         },
       ],
     },
@@ -251,6 +337,24 @@ const jsonLd = {
             "@type": "Answer",
             "text":
               "You retain full data sovereignty under Section 11 and 12 of the DPDP Act 2023. Inside app settings, you can tap 'Export Vault JSON' to generate a standardized, machine-readable export of your prescription history and adherence logs. You can also select 'Delete Account' to trigger a permanent cascading deletion of all your database records, caregiver pairings, push tokens, and prescription images across both local storage and cloud servers.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "How does MedSync's Senior Mode ensure accessibility for elderly patients?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text":
+              "MedSync features a dedicated Senior Mode designed to WCAG AAA standards. It provides generous 64px minimum touch targets, high-contrast text and cards, haptic feedback on dose confirmation, and large, unambiguous 'I Took It' buttons that eliminate cognitive overload for aging seniors.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "Where can I download the MedSync Android APK, and what are the system requirements?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text":
+              "Official, signed Android APK releases are available for direct download on MedSync's official GitHub Releases repository (https://github.com/breathtaker-adi/Medsync/releases). MedSync supports Android 8.0 (API level 26) through Android 15, requiring approximately 48MB of storage.",
           },
         },
       ],

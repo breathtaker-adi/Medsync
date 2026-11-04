@@ -3,7 +3,7 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://breathtaker-adi.github.io/Medsync/</loc>
-    <lastmod>2026-10-22</lastmod>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -18,15 +18,32 @@
     </image:image>
   </url>
   <url>
-    <loc>https://breathtaker-adi.github.io/Medsync/faq</loc>
-    <lastmod>2026-10-22</lastmod>
+    <loc>https://breathtaker-adi.github.io/Medsync/faq/</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://breathtaker-adi.github.io/Medsync/film-poster.jpg</image:loc>
+      <image:title>Medsync Clinical FAQ &amp; DPDP Compliance</image:title>
+      <image:caption>Comprehensive clinical safety and data sovereignty answers</image:caption>
+    </image:image>
   </url>
   <url>
-    <loc>https://breathtaker-adi.github.io/Medsync/privacy</loc>
-    <lastmod>2026-10-22</lastmod>
+    <loc>https://breathtaker-adi.github.io/Medsync/privacy/</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://breathtaker-adi.github.io/Medsync/llms.txt</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://breathtaker-adi.github.io/Medsync/llms-full.txt</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.65</priority>
   </url>
 </urlset>

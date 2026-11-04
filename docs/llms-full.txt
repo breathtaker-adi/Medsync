@@ -1,0 +1,86 @@
+# MedSync Knowledge Corpus & Architectural Reference (llms-full.txt)
+
+> Comprehensive, token-optimized technical reference, clinical safety specifications, data protection charter, and FAQ index for Answer Engine Optimization (AEO) and Generative Engine Optimization (GEO).
+
+---
+
+## 1. What is MedSync? (Entity Definition)
+
+MedSync is a free, open-source (MIT License) digital health platform and Android mobile application designed to eliminate medication non-adherence among chronic therapy patients, elderly seniors, and multi-medication households.
+
+Unlike proprietary medication reminder apps that monetize user health metrics through third-party advertising SDKs or data brokers, MedSync is built on an open, auditable architecture aligned with India's Digital Personal Data Protection (DPDP) Act 2023. It connects patients, family caregivers, and physicians in a synchronized adherence loop.
+
+- **Lead Maintainer / Developer**: Aditya Kumawat (GitHub: @breathtaker-adi)
+- **Official Website**: https://breathtaker-adi.github.io/Medsync/
+- **Repository**: https://github.com/breathtaker-adi/Medsync
+- **Target OS**: Android 8.0 (API level 26) through Android 15 (API level 35)
+
+---
+
+## 2. Core Functional Pillars
+
+### 2.1 AI Prescription Scanner & OCR Intake
+- **Workflow**: A user photographs a handwritten doctor prescription, hospital discharge slip, or medicine box packaging.
+- **Processing**: The image is compressed to under 3MB and dispatched with an authenticated Supabase JWT to the `scan-prescription` serverless Edge Function.
+- **Vision Extraction**: Uses OpenAI GPT-4o Vision API with structured JSON output schema to parse:
+  - `medicine_name`: Chemical or brand name (e.g., "Metformin 500mg")
+  - `dosage`: Quantity and unit (e.g., "1 tablet after breakfast")
+  - `duration`: Therapy period (e.g., "30 days" or "ongoing")
+  - `confidence`: Extraction certainty score ("high", "medium", "low")
+- **Fail-Safe Guard**: If the image is not an authentic prescription (e.g., selfie, animal, random paper), the AI flags `is_valid_prescription: false` and routes the item to an unconfirmed draft status with manual review prompts.
+- **Rate-Limiting**: Strictly limits users to 10 scans per calendar day (Asia/Kolkata timezone) using an atomic database RPC (`check_and_increment_scan_quota`) to prevent abuse and billing exhaustion.
+
+### 2.2 The Doctor Care Loop & Clinician Verification
+- **Principle**: AI never activates or alters medication regimens unsupervised.
+- **Workflow**: Scanned prescriptions are queued in `pending_reviews` with `status: 'pending'`. The schedule only enters active adherence tracking once explicitly verified by:
+  1. The patient or an active linked family caregiver.
+  2. A verified medical practitioner (MD/MBBS) linked to the patient.
+- **Privilege Hardening**: Doctors must submit their statutory licensing details (e.g., State Medical Council / National Medical Commission registration) via `doctor-verification.tsx`. Initial doctor registrations default strictly to `is_verified_doctor: false` (CWE-269 prevention) until statutory credentials are confirmed.
+
+### 2.3 Family Caregiver Escalation & Telemetry
+- **Pairing Protocol**: Patients generate an ephemeral 8-character pairing code (using unambiguous alphanumeric characters `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`). Codes automatically expire after 15 minutes.
+- **Link Security**: Caregivers can only read a patient's adherence logs when `caregiver_links.status = 'active'` and `expires_at > now()`. Revoking a pairing instantly severs caregiver data access across all database RLS policies.
+- **Escalation Window**: A scheduled cron job runs periodically. When a dose scheduled for today has elapsed past its 60-minute grace period without a logged intake event, an alert is queued.
+- **Lock-Screen Privacy (CWE-200 Defense)**: The Expo Push Notification dispatched via FCM uses a generic lock-screen message ("Medication adherence alert for your linked patient. Tap to view details."). Sensitive patient names and specific missed doses are contained only in the encrypted payload, displayed after unlocking the app.
+
+### 2.4 Offline Resilience & Hardware Integration
+- **Local Alarms**: MedSync utilizes Android's native AlarmManager with `SCHEDULE_EXACT_ALARM` permissions. Dose alarms sound even when the device is completely offline, in airplane mode, or during low-power Doze states.
+- **Hardware Keystore Authentication**: User session JWTs and refresh tokens are encrypted on the device using Android Keystore / iOS Keychain via `expo-secure-store`. Large tokens exceeding the Android 2048-byte Keystore limit are transparently split into encrypted chunks and reassembled at runtime.
+
+---
+
+## 3. Data Protection, Privacy & Sovereign Compliance
+
+### 3.1 DPDP Act 2023 Principles
+1. **Notice & Explicit Consent (Section 4 & 6)**: Clear onboarding consent disclosures detailing data collection purposes.
+2. **Storage Limitation (Section 8)**: Prescription scan images and OCR logs are retained only as long as necessary for clinical review (automated 90-day retention cleanup).
+3. **Purpose Limitation**: Health data is processed exclusively for medication adherence and caregiver safety. Zero tracking pixels, Google Analytics, Facebook SDKs, or third-party advertising brokers are bundled.
+4. **Right to Erasure (Section 12)**: In-app `Delete Account & Data` feature initiates an atomic cascading purge (`delete_user_account` RPC) of all user profiles, prescriptions, logs, push tokens, caregiver links, and private storage assets.
+
+### 3.2 Database & Network Security
+- **PostgreSQL Row-Level Security (RLS)**: Every database table (`profiles`, `medications`, `medication_logs`, `caregiver_links`, `pending_doctor_reviews`, `user_push_tokens`) enforces strict RLS policies ensuring multi-tenant isolation.
+- **CORS Protection (CWE-942)**: Serverless edge functions enforce dynamic origin validation against trusted domains (`https://breathtaker-adi.github.io`, localhost dev) with `Vary: Origin`.
+- **Storage Path Traversal Defense (CWE-22)**: The storage normalizer neutralizes directory traversal components (`replace(/\.\.+[/\\]/g, '').replace(/\.\./g, '')`) before signed URLs are issued.
+- **Timing Side-Channel Immunity (CWE-208)**: Serverless cron authentication compares service keys using constant-time XOR operations.
+
+---
+
+## 4. Frequently Asked Questions (FAQ)
+
+### Q: How does MedSync protect my health privacy?
+**A**: MedSync stores health data in a private Supabase PostgreSQL database where each row is locked by Row-Level Security (RLS) to the authenticated user's ID. Authentication tokens are encrypted on-device via Android Keystore. There are zero tracking cookies, advertising SDKs, or data brokers.
+
+### Q: Can MedSync work without an active internet connection?
+**A**: Yes. MedSync schedules exact medication alarms on your local device. Dose alarms trigger reliably even without internet or cellular connectivity. Current daily regimens are cached locally, and logs synchronize with caregivers once connectivity resumes.
+
+### Q: Can MedSync's AI change my prescriptions automatically?
+**A**: No. MedSync enforces a strict Doctor Care Loop. AI extracts raw text into a provisional draft, but changes cannot enter the active adherence schedule until explicitly verified by the patient, linked caregiver, or verified physician.
+
+### Q: How does Caregiver Escalation work?
+**A**: Patients pair a family member using a secure 15-minute pairing code. If a dose is missed past a 60-minute window, MedSync sends an encrypted push notification to the caregiver's device via Firebase Cloud Messaging so family can check in.
+
+### Q: Is MedSync free?
+**A**: Yes. MedSync is 100% free and open-source under the MIT License. The code is publicly auditable on GitHub.
+
+### Q: Where can I download MedSync?
+**A**: You can download official release APKs directly from the [GitHub Releases page](https://github.com/breathtaker-adi/Medsync/releases).
