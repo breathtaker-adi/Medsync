@@ -266,16 +266,24 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <head>
-        <link rel="icon" type="image/svg+xml" href="/Medsync/logo.svg?v=2" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/Medsync/favicon.png?v=2" />
-        <link rel="icon" href="/Medsync/favicon.ico?v=2" sizes="any" />
-        <link rel="shortcut icon" href="/Medsync/favicon.ico?v=2" />
-        <link rel="apple-touch-icon" href="/Medsync/medsync-logo.png?v=2" />
+        {/* Content-Security-Policy: Restricts resource origins and blocks unauthorized script execution (Finding #17 / CWE-693) */}
+        <meta
+          http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self'; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none';"
+        />
+        {/* Favicons: dynamic BASE_PATH resolution for localhost, preview branches, and custom domains (Finding #1) */}
+        <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/logo.svg?v=2`} />
+        <link rel="icon" type="image/png" sizes="32x32" href={`${BASE_PATH}/favicon.png?v=2`} />
+        <link rel="icon" href={`${BASE_PATH}/favicon.ico?v=2`} sizes="any" />
+        <link rel="shortcut icon" href={`${BASE_PATH}/favicon.ico?v=2`} />
+        <link rel="apple-touch-icon" href={`${BASE_PATH}/medsync-logo.png?v=2`} />
+        {/* SAFETY: jsonLd is a hardcoded constant in this file. Do NOT interpolate user-controlled inputs here (Finding #19 / CWE-79). */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <noscript>
+          {/* SAFETY: Hardcoded static CSS for no-JS environments. No user-controlled input (Finding #19 / CWE-79). */}
           <style
             dangerouslySetInnerHTML={{
               __html: `

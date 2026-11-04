@@ -51,7 +51,7 @@ This document specifies the exact answers required for the Google Play Store Dat
 
 ## 3. Privacy Policy Link & Data Deletion Mechanism
 
-* **Privacy Policy URL:** `https://your-domain.com/privacy-policy` (or in-app route `/privacy-policy`)
+* **Privacy Policy URL:** `https://breathtaker-adi.github.io/Medsync/privacy/`
 * **Deletion URL / In-App Deletion:**
   - In-app: `SettingsScreen` > `Delete Account & Data`
   - Deletes all records in `medication_logs`, `medications`, `patient_caregivers`, and `profiles`, followed by session revocation.

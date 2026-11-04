@@ -64,7 +64,7 @@ export const authService = {
             role,
             blood_group: bloodGroup || null,
             allergies: allergies || null,
-            is_verified_doctor: role === 'doctor',
+            is_verified_doctor: false,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'id' }
@@ -170,7 +170,7 @@ export const authService = {
           id: userId,
           role,
           full_name: fullName || (role === 'caregiver' ? 'Caregiver' : 'User'),
-          is_verified_doctor: role === 'doctor',
+          is_verified_doctor: false,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'id' }

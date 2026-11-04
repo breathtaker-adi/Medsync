@@ -1,15 +1,29 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = [
+  'https://breathtaker-adi.github.io',
+  'https://medsync.app',
+  'http://localhost:3000',
+  'http://localhost:8081',
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin');
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+}
 
 // Max payload size ~3MB image (~4.2MB base64)
 const MAX_BASE64_LENGTH = 4.2 * 1024 * 1024;
 const MAX_DAILY_SCANS = 10;
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -91,7 +105,7 @@ Deno.serve(async (req: Request) => {
         );
       }
     } else {
-      // Fallback: Admin client check with strict fail-closed enforcement
+      // Fallback: Admin client check using atomic RPC to prevent concurrency race conditions (Finding #16 / CWE-362)
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (!serviceRoleKey) {
         console.error('Server configuration error: SUPABASE_SERVICE_ROLE_KEY missing');
@@ -105,23 +119,20 @@ Deno.serve(async (req: Request) => {
       }
 
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
-      const { data: usageRecord, error: usageErr } = await adminClient
-        .from('scan_usage')
-        .select('scan_count')
-        .eq('user_id', user.id)
-        .eq('scan_date', todayKolkata)
-        .maybeSingle();
+      const { data: adminQuotaResult, error: adminQuotaError } = await adminClient.rpc(
+        'check_and_increment_scan_quota',
+        { p_user_id: user.id, p_max_daily: MAX_DAILY_SCANS }
+      );
 
-      if (usageErr) {
-        console.error('Scan quota lookup failure:', usageErr);
+      if (adminQuotaError || !adminQuotaResult) {
+        console.error('Scan quota atomic fallback failure:', adminQuotaError || quotaError);
         return new Response(JSON.stringify({ error: 'Unable to verify daily scan quota.' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const currentScans = usageRecord?.scan_count ?? 0;
-      if (currentScans >= MAX_DAILY_SCANS) {
+      if (!adminQuotaResult.allowed) {
         return new Response(
           JSON.stringify({
             error: `Daily prescription scan quota reached (${MAX_DAILY_SCANS} scans per day). Please try again tomorrow or contact support.`,
@@ -131,24 +142,6 @@ Deno.serve(async (req: Request) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
-      }
-
-      const { error: upsertErr } = await adminClient.from('scan_usage').upsert(
-        {
-          user_id: user.id,
-          scan_date: todayKolkata,
-          scan_count: currentScans + 1,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,scan_date' }
-      );
-
-      if (upsertErr) {
-        console.error('Scan quota write failure:', upsertErr);
-        return new Response(JSON.stringify({ error: 'Unable to update daily scan quota.' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
       }
     }
 

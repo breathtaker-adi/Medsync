@@ -21,7 +21,7 @@ This living ledger cross-references every public architectural, clinical, and da
 | Processor | Purpose & Processing Scope | Location & Sovereign Safeguard | Source Code Reference |
 | :--- | :--- | :--- | :--- |
 | **Supabase Inc.** | Hosted PostgreSQL database, Row-Level Security, user authentication, and secure prescription image bucket. | Cloud Database (Dedicated AWS/GCP region) | `supabase/migrations/`<br>`src/lib/supabase.ts` |
-| **Google LLC (Gemini AI Vision API)** | Multi-modal OCR extraction of medication name, strength, dosage form, and scheduling cadence from scanned prescription photos. | United States / Global Cloud Infrastructure; zero retention under enterprise API terms; ephemeral in-memory processing only | `supabase/functions/scan-prescription/` |
+| **OpenAI LLC (GPT-4o Vision API)** | Multi-modal OCR extraction of medication name, strength, dosage form, and scheduling cadence from scanned prescription photos. | United States / Global Cloud Infrastructure; ephemeral in-memory processing subject to OpenAI Enterprise API terms and DPDP Purpose Limitation | `supabase/functions/scan-prescription/` |
 | **Google Firebase (FCM)** | Remote push notifications for missed-dose caregiver alerts and critical adherence reminders. | Global FCM Push Relay (`google-services.json`) | `app.json`<br>`src/lib/notifications.ts` |
 | **Expo (650 Industries)** | Application build pipeline and over-the-air native update distribution. | EAS Build Service (United States) | `eas.json`<br>`app.config.js` |
 

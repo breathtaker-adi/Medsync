@@ -1,11 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = [
+  'https://breathtaker-adi.github.io',
+  'https://medsync.app',
+  'http://localhost:3000',
+  'http://localhost:8081',
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin');
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+}
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -147,7 +161,8 @@ Deno.serve(async (req: Request) => {
                 to: pushToken,
                 sound: 'default',
                 title: '⚠️ MedSync Missed Dose Alert',
-                body: `${patientName} has missed ${count} medication doses. Tap to view adherence.`,
+                // Privacy & PHI Protection (Finding #14, CWE-200): Generic lock-screen body. Details delivered securely via in-app data payload.
+                body: 'Medication adherence alert for your linked patient. Tap to view details.',
                 data: { patientId, count, screen: 'caregiver-dashboard' },
               }),
             });

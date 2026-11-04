@@ -476,7 +476,8 @@ describe('Security & Integrity Test Suite', () => {
         .split('?')[0];
 
       clean = clean.replace(/^\/?prescriptions\//, '');
-      clean = clean.replace(/^\/+/, '');
+      clean = clean.replace(/\.\.+[/\\]/g, '').replace(/\.\./g, '');
+      clean = clean.replace(/^[\/\\]+/, '');
       return clean.trim() || null;
     }
 
@@ -490,6 +491,25 @@ describe('Security & Integrity Test Suite', () => {
       const input = '/user-123/1729267123_prescription.jpg';
       const normalized = normalizePrescriptionStoragePath(input);
       assert.strictEqual(normalized, 'user-123/1729267123_prescription.jpg');
+    });
+
+    it('should strip directory traversal sequences (CWE-22 path traversal defense)', () => {
+      assert.strictEqual(
+        normalizePrescriptionStoragePath('../../etc/passwd'),
+        'etc/passwd'
+      );
+      assert.strictEqual(
+        normalizePrescriptionStoragePath('user-123/../../other-user/secret.jpg'),
+        'user-123/other-user/secret.jpg'
+      );
+      assert.strictEqual(
+        normalizePrescriptionStoragePath('prescriptions/..\\..\\sensitive.pdf'),
+        'sensitive.pdf'
+      );
+      assert.strictEqual(
+        normalizePrescriptionStoragePath('../..'),
+        null
+      );
     });
 
     it('should strip full Supabase signed or public URL prefixes and query params', () => {
@@ -1099,6 +1119,100 @@ describe('Security & Integrity Test Suite', () => {
       assert.throws(() => validateRestockCount(15.5), /Invalid restock quantity/);
       assert.throws(() => validateRestockCount(100000), /Invalid restock quantity/);
       assert.throws(() => validateRestockCount(NaN), /Invalid restock quantity/);
+    });
+  });
+
+  describe('Doctor Auto-Verification Privilege Escalation Prevention (CWE-269 / CWE-862)', () => {
+    it('should guarantee is_verified_doctor defaults to false in authService on doctor registration and role updates', () => {
+      const authServiceSrc = fs.readFileSync(path.join(__dirname, '../src/services/authService.ts'), 'utf8');
+      // Assert the source does NOT automatically grant is_verified_doctor to self-selected doctors
+      assert.strictEqual(
+        authServiceSrc.includes("is_verified_doctor: role === 'doctor'"),
+        false,
+        'authService must not set is_verified_doctor: role === "doctor"'
+      );
+      // Assert signUp and setRole profile initialization sets is_verified_doctor: false
+      assert.ok(
+        authServiceSrc.includes('is_verified_doctor: false'),
+        'authService must explicitly set is_verified_doctor: false'
+      );
+    });
+  });
+
+  describe('Website & Edge Function Security Hardening (Audit Findings #1, #13, #14, #16, #17, #20)', () => {
+    it('should ensure check-missed-doses does NOT leak patient name or dose count in push body (Finding #14 / CWE-200)', () => {
+      const missedDosesSrc = fs.readFileSync(path.join(__dirname, '../supabase/functions/check-missed-doses/index.ts'), 'utf8');
+      assert.strictEqual(
+        missedDosesSrc.includes('${patientName} has missed'),
+        false,
+        'Push notification body must not interpolate patient name onto lock screens'
+      );
+      assert.ok(
+        missedDosesSrc.includes("body: 'Medication adherence alert for your linked patient. Tap to view details.'"),
+        'Push notification must use privacy-preserving generic body'
+      );
+    });
+
+    it('should ensure edge functions use dynamic origin validation and reject wildcard CORS (Finding #13 / CWE-942)', () => {
+      const missedDosesSrc = fs.readFileSync(path.join(__dirname, '../supabase/functions/check-missed-doses/index.ts'), 'utf8');
+      const scanPrescriptionSrc = fs.readFileSync(path.join(__dirname, '../supabase/functions/scan-prescription/index.ts'), 'utf8');
+
+      assert.strictEqual(
+        missedDosesSrc.includes("'Access-Control-Allow-Origin': '*'"),
+        false,
+        'check-missed-doses must not hardcode wildcard Access-Control-Allow-Origin: *'
+      );
+      assert.strictEqual(
+        scanPrescriptionSrc.includes("'Access-Control-Allow-Origin': '*'"),
+        false,
+        'scan-prescription must not hardcode wildcard Access-Control-Allow-Origin: *'
+      );
+
+      assert.ok(missedDosesSrc.includes("'Vary': 'Origin'"));
+      assert.ok(scanPrescriptionSrc.includes("'Vary': 'Origin'"));
+    });
+
+    it('should ensure scan-prescription quota fallback uses atomic RPC check_and_increment_scan_quota (Finding #16 / CWE-362)', () => {
+      const scanPrescriptionSrc = fs.readFileSync(path.join(__dirname, '../supabase/functions/scan-prescription/index.ts'), 'utf8');
+      assert.ok(
+        scanPrescriptionSrc.includes("check_and_increment_scan_quota"),
+        'Scan quota fallback must use atomic check_and_increment_scan_quota RPC'
+      );
+      assert.strictEqual(
+        scanPrescriptionSrc.includes("scan_count: currentScans + 1"),
+        false,
+        'Scan quota fallback must not use non-atomic read-then-upsert'
+      );
+    });
+
+    it('should ensure website layout configures Content-Security-Policy and dynamic icon BASE_PATH (Findings #1, #17)', () => {
+      const layoutSrc = fs.readFileSync(path.join(__dirname, '../website/src/app/layout.tsx'), 'utf8');
+      assert.ok(
+        layoutSrc.includes('http-equiv="Content-Security-Policy"'),
+        'Website layout must define a Content-Security-Policy meta tag'
+      );
+      assert.strictEqual(
+        layoutSrc.includes('href="/Medsync/logo.svg?v=2"'),
+        false,
+        'Website layout must not hardcode /Medsync/ in icon link tags'
+      );
+      assert.ok(
+        layoutSrc.includes('BASE_PATH') && layoutSrc.includes('logo.svg?v=2'),
+        'Website layout must use dynamic BASE_PATH for icon links'
+      );
+    });
+
+    it('should ensure PLAY_CONSOLE_DATA_SAFETY.md specifies valid live privacy policy URL (Finding #20)', () => {
+      const safetyDoc = fs.readFileSync(path.join(__dirname, '../docs/PLAY_CONSOLE_DATA_SAFETY.md'), 'utf8');
+      assert.strictEqual(
+        safetyDoc.includes('https://your-domain.com/privacy-policy'),
+        false,
+        'Play Store Data Safety doc must not contain placeholder domain'
+      );
+      assert.ok(
+        safetyDoc.includes('https://breathtaker-adi.github.io/Medsync/privacy/'),
+        'Play Store Data Safety doc must specify the active privacy URL'
+      );
     });
   });
 });

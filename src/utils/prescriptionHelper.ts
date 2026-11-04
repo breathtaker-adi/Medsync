@@ -34,8 +34,10 @@ export function normalizePrescriptionStoragePath(imageUrl: string | null | undef
 
   // Strip leading bucket name if redundant (e.g. "prescriptions/...")
   clean = clean.replace(/^\/?prescriptions\//, '');
-  // Strip any leading slashes
-  clean = clean.replace(/^\/+/, '');
+  // Neutralize directory traversal sequences (e.g. "../", "..\", or standalone "..")
+  clean = clean.replace(/\.\.+[/\\]/g, '').replace(/\.\./g, '');
+  // Strip any leading slashes or backslashes
+  clean = clean.replace(/^[/\\]+/, '');
 
   return clean.trim() || null;
 }
