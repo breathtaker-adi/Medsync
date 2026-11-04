@@ -84,3 +84,4 @@ Unlike proprietary medication reminder apps that monetize user health metrics th
 
 ### Q: Where can I download MedSync?
 **A**: You can download official release APKs directly from the [GitHub Releases page](https://github.com/breathtaker-adi/Medsync/releases).
+

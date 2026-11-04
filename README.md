@@ -272,7 +272,7 @@ flowchart TD
 
 | Layer | Technology | Version | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Framework** | [React Native](https://reactnative.dev) | `0.86.3` | Universal native cross-platform core |
+| **Framework** | [React Native](https://reactnative.dev) | `0.88.1` | Universal native cross-platform core |
 | **App Runtime** | [Expo SDK](https://expo.dev) | `58.0.0` | Modern managed native runtime & build pipeline |
 | **Navigation** | [Expo Router](https://docs.expo.dev/router/introduction/) | `58.0.29` | File-based typed routing & deep linking |
 | **Database & Auth** | [Supabase](https://supabase.com) | `v2.112.4` | PostgreSQL with Row Level Security & Auth |
@@ -314,10 +314,12 @@ MedSync adheres to defense-in-depth engineering principles and aligns with India
 > [!IMPORTANT]
 > **Enforced Row Level Security (RLS)**: Tables in the PostgreSQL database enforce isolated RLS policies verified by automated integration tests. Patients query their own records, caregivers only inspect dependents with active pairings (`status = 'active'`), and verified doctors review regimens assigned to their clinical care queue.
 
-- **Automated Privilege Safeguards**: Database triggers (`protect_profile_fields`) run with `SECURITY DEFINER` privileges to prevent clients from directly escalating user roles or self-granting `is_verified_doctor` status.
+- **Server-Side Immutable Role Lock**: Hardened with `role_chosen` profile locking and the `choose_role` atomic `SECURITY DEFINER` RPC. `protect_profile_fields` database trigger prevents client updates to `id`, `role`, `is_verified_doctor`, or `email`.
+- **Doctor Verification Audit Table**: Clinical verification submissions are audited in an isolated `doctor_verifications` table with dedicated RLS policies and NMC licensing metadata.
+- **Fail-Closed Path Traversal Refusal**: Prescription storage paths enforce CWE-22 fail-closed rejection returning `null` on directory traversal sequences (`..`), backed by Supabase storage regex policies.
 - **Hardware-Backed Cryptographic Storage**: Sensitive session tokens and authentication state are stored inside device hardware keystores via `expo-secure-store`.
-- **Secret Separation**: API keys and backend service tokens are injected via EAS secrets and serverless environment variables. `google-services.json` and `.env` are excluded from version control.
-- **Sanitized Telemetry**: Medical telemetry and adherence reports sanitize patient identity hashes to prevent sensitive clinical leakage.
+- **Secret Separation & Zero-Leak Version Control**: API keys and backend service tokens are injected via EAS secrets and serverless environment variables. `google-services.json` and `.env` are strictly excluded from version control.
+- **Sanitized Telemetry & DPDP Sub-Processors**: Medical telemetry and adherence reports sanitize patient identity hashes. All sub-processors (OpenAI GPT-4o Vision, Nominatim geocoding) are formally documented under DPDP Act 2023 purpose limitation standards.
 
 For vulnerability disclosure procedures and our response target, please review our **[Security Policy (SECURITY.md)](SECURITY.md)**.
 

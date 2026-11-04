@@ -197,6 +197,18 @@ export default function PrivacyPolicyPage() {
                     <td className="p-3">United States / Global Cloud Infrastructure</td>
                   </tr>
                   <tr>
+                    <td className="p-3 font-semibold text-white">OpenAI, LLC (GPT-4o Vision API)</td>
+                    <td className="p-3">Prescription Optical Character Recognition (OCR)</td>
+                    <td className="p-3">Ephemeral image payload for pharmaceutical parameter extraction; subject to enterprise API data terms; never used to train public models</td>
+                    <td className="p-3">United States</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 font-semibold text-white">OpenStreetMap Foundation (Nominatim API)</td>
+                    <td className="p-3">Clinical Facility &amp; Practice Address Geocoding</td>
+                    <td className="p-3">Practice address text queries during clinician verification; ephemeral transit logs only; zero patient PHI</td>
+                    <td className="p-3">United Kingdom / European Union</td>
+                  </tr>
+                  <tr>
                     <td className="p-3 font-semibold text-white">Google Firebase (FCM)</td>
                     <td className="p-3">Push Notification Gateway</td>
                     <td className="p-3">Device push tokens, dose alert titles</td>

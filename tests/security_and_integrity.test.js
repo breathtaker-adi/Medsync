@@ -476,7 +476,9 @@ describe('Security & Integrity Test Suite', () => {
         .split('?')[0];
 
       clean = clean.replace(/^\/?prescriptions\//, '');
-      clean = clean.replace(/\.\.+[/\\]/g, '').replace(/\.\./g, '');
+      if (/(^|[\/\\])\.\.([\/\\]|$)/.test(clean) || /\.\.[\/\\]|[\/\\]\.\./.test(clean)) {
+        return null;
+      }
       clean = clean.replace(/^[\/\\]+/, '');
       return clean.trim() || null;
     }
@@ -493,22 +495,26 @@ describe('Security & Integrity Test Suite', () => {
       assert.strictEqual(normalized, 'user-123/1729267123_prescription.jpg');
     });
 
-    it('should strip directory traversal sequences (CWE-22 path traversal defense)', () => {
+    it('should reject and refuse directory traversal sequences (CWE-22 fail-closed defense)', () => {
       assert.strictEqual(
         normalizePrescriptionStoragePath('../../etc/passwd'),
-        'etc/passwd'
+        null,
+        'Must refuse paths starting with ../'
       );
       assert.strictEqual(
         normalizePrescriptionStoragePath('user-123/../../other-user/secret.jpg'),
-        'user-123/other-user/secret.jpg'
+        null,
+        'Must refuse paths containing /../../'
       );
       assert.strictEqual(
         normalizePrescriptionStoragePath('prescriptions/..\\..\\sensitive.pdf'),
-        'sensitive.pdf'
+        null,
+        'Must refuse paths containing Windows traversal tokens'
       );
       assert.strictEqual(
         normalizePrescriptionStoragePath('../..'),
-        null
+        null,
+        'Must refuse standalone traversal tokens'
       );
     });
 

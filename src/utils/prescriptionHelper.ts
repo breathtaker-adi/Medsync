@@ -34,8 +34,13 @@ export function normalizePrescriptionStoragePath(imageUrl: string | null | undef
 
   // Strip leading bucket name if redundant (e.g. "prescriptions/...")
   clean = clean.replace(/^\/?prescriptions\//, '');
-  // Neutralize directory traversal sequences (e.g. "../", "..\", or standalone "..")
-  clean = clean.replace(/\.\.+[/\\]/g, '').replace(/\.\./g, '');
+
+  // Refuse hostile directory traversal sequences (CWE-22 fail-closed rejection)
+  if (/(^|[/\\])\.\.([/\\]|$)/.test(clean) || /\.\.[/\\]|[/\\]\.\./.test(clean)) {
+    console.warn('[prescriptionHelper] Refusing suspicious path with directory traversal tokens:', clean);
+    return null;
+  }
+
   // Strip any leading slashes or backslashes
   clean = clean.replace(/^[/\\]+/, '');
 

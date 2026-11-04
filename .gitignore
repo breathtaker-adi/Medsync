@@ -7,6 +7,8 @@ node_modules/
 .expo/
 dist/
 web-build/
+.next/
+website/out/
 expo-env.d.ts
 
 # Native & Signing Keys

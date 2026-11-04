@@ -56,12 +56,12 @@ export const authService = {
       }
 
       if (data.session && data.user) {
-        // Initialize profile if active session was established
+        // Initialize profile adhering to strict INSERT policy (role defaults to patient)
         const { error: profileError } = await supabase.from('profiles').upsert(
           {
             id: data.user.id,
             full_name: fullName.trim(),
-            role,
+            role: 'patient',
             blood_group: bloodGroup || null,
             allergies: allergies || null,
             is_verified_doctor: false,
@@ -72,6 +72,14 @@ export const authService = {
 
         if (profileError) {
           console.warn('[authService] Profile init warning:', profileError);
+        }
+
+        // If client chose caregiver or doctor, invoke server-side atomic choose_role RPC
+        if (role && role !== 'patient') {
+          const { error: roleError } = await supabase.rpc('choose_role', { p_role: role });
+          if (roleError) {
+            console.warn('[authService] choose_role RPC warning:', roleError);
+          }
         }
       }
 
@@ -165,20 +173,32 @@ export const authService = {
     fullName?: string
   ): Promise<Result<void>> {
     try {
-      const { error: profileError } = await supabase.from('profiles').upsert(
-        {
-          id: userId,
-          role,
-          full_name: fullName || (role === 'caregiver' ? 'Caregiver' : 'User'),
-          is_verified_doctor: false,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      );
+      // 1. Invoke server-side atomic choose_role RPC to enforce immutable role & non-verified doctor status
+      const { error: rpcError } = await supabase.rpc('choose_role', { p_role: role });
 
-      if (profileError) {
-        handleAppError(profileError, { action: 'setRole' });
-        return err(new Error(getErrorMessage(profileError)));
+      if (rpcError) {
+        // If RPC is unavailable or already chosen, fallback to profile upsert if not locked
+        const { error: profileError } = await supabase.from('profiles').upsert(
+          {
+            id: userId,
+            role,
+            full_name: fullName || (role === 'caregiver' ? 'Caregiver' : 'User'),
+            is_verified_doctor: false,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+
+        if (profileError && !rpcError.message?.includes('already chosen') && !rpcError.message?.includes('already finalized')) {
+          handleAppError(profileError || rpcError, { action: 'setRole' });
+          return err(new Error(getErrorMessage(profileError || rpcError)));
+        }
+      } else if (fullName) {
+        // Update name safely
+        await supabase.from('profiles').update({
+          full_name: fullName,
+          updated_at: new Date().toISOString(),
+        }).eq('id', userId);
       }
 
       await supabase.auth.updateUser({

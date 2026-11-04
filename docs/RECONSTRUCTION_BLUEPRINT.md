@@ -101,7 +101,11 @@ medsync-app/
 │       ├── 20261019_add_created_at_to_pending_reviews.sql
 │       ├── 20261020_tighten_storage_policy.sql
 │       ├── 20261021_robust_delete_user_account.sql
-│       └── 20261022_add_patient_contact_details.sql
+│       ├── 20261022_add_patient_contact_details.sql
+│       ├── 20261023_complete_security_hardening.sql
+│       ├── 20261024_vibe_check_security_hardening.sql
+│       ├── 20261025_scan_retention_and_cleanup.sql
+│       └── 20261026_server_side_privilege_and_storage_hardening.sql
 ├── tests/
 │   ├── architecture_and_services.test.js
 │   └── security_and_integrity.test.js
@@ -1508,6 +1512,10 @@ Every security finding from the project audit has been systematically addressed,
 | 26 | **Non-Atomic Quota Fallback Race Condition (CWE-362)** | **Low** | **RESOLVED:** Refactored the fallback branch of `scan-prescription` to invoke the atomic database RPC `check_and_increment_scan_quota`, eliminating the read-then-upsert concurrency window. |
 | 27 | **Missing Website Content Security Policy & Broken Icon Paths** | **Medium** | **RESOLVED:** Injected `<meta http-equiv="Content-Security-Policy">` restricting script/style/media origins in `layout.tsx`; dynamicized icon link paths with `${BASE_PATH}/...` to prevent 404s on custom domains. |
 | 28 | **AEO & GEO Knowledge Graph Standardization** | **Low** | **RESOLVED:** Published `/llms.txt` and `/llms-full.txt` per specification, connected multi-entity Schema.org graph (`SoftwareApplication`, `MedicalWebPage`, `HowTo`, `SpeakableSpecification`), and explicitly permitted AI bots in `robots.txt`. |
+| 29 | **Server-Side Immutable Role Lock & Privilege Hardening** | **Critical** | **RESOLVED:** Added `role_chosen` column to `public.profiles` and implemented atomic `choose_role(p_role text)` `SECURITY DEFINER` RPC. Hardened `protect_profile_fields()` trigger prohibiting alterations to `id`, `role`, `role_chosen`, `is_verified_doctor`, or `email`. Restricted profile `INSERT` policy strictly to `role = 'patient'` and `is_verified_doctor = false`. |
+| 30 | **Doctor Verification Audit Table & Evidence Isolation** | **High** | **RESOLVED:** Created isolated `public.doctor_verifications` compliance table with strict RLS (physicians create/read own registration requests; mutations restricted to administrative `service_role`). Clinical submissions record license number, medical council, specialty, clinic affiliation, and experience years. |
+| 31 | **Fail-Closed CWE-22 Path Traversal Defense** | **High** | **RESOLVED:** Refactored `normalizePrescriptionStoragePath` to fail-closed behavior returning `null` upon detecting any directory traversal tokens (`..`, `../`, `..\`), preventing hostile canonicalization bypasses. Hardened Supabase Storage upload policy enforcing `name !~ '(^|/)\.\.(/|$)'`. |
+| 32 | **Comprehensive DPDP Sub-Processor Disclosures** | **Medium** | **RESOLVED:** Formally disclosed OpenAI LLC (GPT-4o Vision API OCR) and OpenStreetMap Foundation (Nominatim API practice geocoding) across `website/src/app/privacy/page.tsx` and `docs/CLAIMS.md`, ensuring full compliance with India DPDP Act 2023 purpose limitation standards. |
 
 ---
 

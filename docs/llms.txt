@@ -36,3 +36,4 @@ MedSync is engineered to solve medication non-adherence for chronic therapies, e
 - [GitHub Source Repository](https://github.com/breathtaker-adi/Medsync)
 - [Official Android APK Releases](https://github.com/breathtaker-adi/Medsync/releases)
 - [Comprehensive LLM Documentation (Full)](https://breathtaker-adi.github.io/Medsync/llms-full.txt)
+

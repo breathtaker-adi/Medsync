@@ -24,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SeniorButton } from '../components/SeniorButton';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { authService } from '../services/authService';
 import { Theme } from '../theme';
 
@@ -397,6 +398,18 @@ export default function DoctorVerificationScreen() {
       });
 
       if (!res.success) throw res.error;
+
+      // Server-side audit row: record doctor verification request in doctor_verifications
+      await supabase.from('doctor_verifications').upsert({
+        user_id: session.user.id,
+        registration_number: licenseNumber.trim(),
+        council: medicalCouncil.trim(),
+        specialty: resolvedSpecialty,
+        clinic_affiliation: clinicAffiliation.trim(),
+        years_of_experience: yearsExperience,
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
 
       await refreshProfile();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
