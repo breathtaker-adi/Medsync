@@ -137,3 +137,4 @@ FOR INSERT TO authenticated WITH CHECK (
     AND (storage.foldername(name))[1] = auth.uid()::text
     AND name !~ '(^|/)\.\.(/|$)'
 );
+
