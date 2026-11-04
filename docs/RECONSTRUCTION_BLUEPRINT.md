@@ -26,15 +26,16 @@
 
 | Layer | Technology | Version | Purpose |
 |---|---|---|---|
-| **Runtime & Framework** | React Native / Expo | Expo SDK 57 (`~57.0.30`), React `19.2.3`, React Native `0.86.3` | Cross-platform native mobile application (Android & iOS). |
-| **Routing & Navigation** | Expo Router | `~57.0.28` | File-system-based typed routing with Stack and Bottom Tabs navigators. |
+| **Runtime & Framework** | React Native / Expo | Expo SDK 58 (`^58.0.0`), React `19.3.0`, React Native `0.88.1` | Cross-platform native mobile application (Android & iOS). |
+| **Routing & Navigation** | Expo Router | `~58.0.29` | File-system-based typed routing with Stack and Bottom Tabs navigators. |
 | **Backend as a Service** | Supabase | `@supabase/supabase-js` `^2.112.4` | Managed PostgreSQL database, GoTrue Auth, Storage, and Realtime engine. |
 | **Serverless Compute** | Supabase Edge Functions (Deno) | Deno runtime (`https://esm.sh/@supabase/supabase-js@2`) | Isolated edge microservices for OCR scanning and missed dose evaluation. |
 | **AI / Computer Vision** | OpenAI Vision API | `gpt-4o` | Structured JSON extraction of pharmaceutical name, dosage, and duration from handwritten/printed prescription slips. |
+| **Web Experience & AEO/GEO** | Next.js 16 (App Router) | Next.js `16.4.2`, Three.js `0.186.1`, Tailwind CSS v4, Motion | Accessible marketing showcase, static HTML export (`docs/`), and `/llms.txt` knowledge graph. |
 | **Hardware & Native APIs** | Expo Native Subsystems | Audio, Haptics, SecureStore, Camera, IntentLauncher, Print, Sharing, Speech, Notifications | Native device capabilities (TTS speech synthesis, exact alarm scheduling, PDF generation). |
-| **Local Storage** | AsyncStorage & SecureStore | `@react-native-async-storage/async-storage` `2.2.0`, `expo-secure-store` `~57.0.4` | Persistent preferences (AsyncStorage) and chunked session tokens (SecureStore). |
+| **Local Storage** | AsyncStorage & SecureStore | `@react-native-async-storage/async-storage` `2.2.0`, `expo-secure-store` `~58.0.2` | Persistent preferences (AsyncStorage) and chunked session tokens (SecureStore). |
 | **Styling & Design System** | Vanilla React Native StyleSheet | React Native `StyleSheet` with curated Material 3 / Public Sans tokens | Zero-dependency styling avoiding CSS-in-JS overhead; high-contrast accessibility themes. |
-| **Testing** | Node.js Test Runner | Node.js native `node:test`, `node:assert/strict` | High-speed unit, invariant, and security regression testing without third-party frameworks. |
+| **Testing** | Node.js Test Runner | Node.js native `node:test`, `node:assert/strict` | 77 passing unit, invariant, and security regression tests without third-party frameworks. |
 
 ---
 
@@ -1469,7 +1470,7 @@ ALTER TABLE public.scan_usage ENABLE ROW LEVEL SECURITY;
 5. **Caregiver & Doctor Roster Oversight:** Active caregiver dashboard, 15-minute pairing code generation and claiming, missed-dose alert pills, and supervisor alert override toggles.
 6. **Patient Contact & Emergency Details Access:** Phone, email, and SOS emergency contacts stored in `public.profiles` and exposed on patient cards in caregiver dashboard, directory, and patient chart with direct tap-to-call.
 7. **DPDP Act 2023 & HIPAA Data Deletion:** Full account and personal health data erasure RPC purging storage photos, database logs, and auth records.
-8. **Automated Testing Suite:** 56/56 passing tests across architecture contracts, time utilities, error handling, RLS invariants, storage paths, doctor access, ownership locks, and midnight rollover math.
+8. **Automated Testing Suite:** 77/77 passing tests across architecture contracts, time utilities, error handling, RLS invariants, storage paths, doctor access, ownership locks, midnight rollover math, lock-screen PHI protection, and CORS policies.
 
 ---
 
@@ -1500,6 +1501,13 @@ Every security finding from the project audit has been systematically addressed,
 | 19 | **Untargeted Review Privacy Leak to Unverified Caregivers** | **High** | **RESOLVED:** Restricted unassigned `pending_reviews` read access strictly to verified medical doctors (`is_verified_doctor = true`), preventing self-declared caregivers from browsing unlinked patient slips. |
 | 20 | **Fail-Open OCR Rate Limit Bypass in Edge Functions** | **High** | **RESOLVED:** Hardened `scan-prescription` with fail-closed atomic RPC `check_and_increment_scan_quota(user_id, 10)`; halts with HTTP 503 if credentials or quota updates fail. Added timing-safe comparison and generic 500 error reporting in `check-missed-doses`. |
 | 21 | **PostgREST Filter Injection & Negative Restock Counts** | **Medium** | **RESOLVED:** Enforced strict UUID regex validation before interpolating IDs into PostgREST `.or()` clauses; validated `restockMedication` with positive integer check `1..5000`. |
+| 22 | **Doctor Auto-Verification Privilege Escalation (CWE-269 / CWE-862)** | **Critical** | **RESOLVED:** `authService.signUp` and `setRole` explicitly default `is_verified_doctor: false` for all user registrations. Clinical badges require administrative review and licensing confirmation. |
+| 23 | **Storage Path Traversal Neutralization (CWE-22)** | **Medium** | **RESOLVED:** `normalizePrescriptionStoragePath` cleans directory traversal sequences (`replace(/\.\.+[/\\]/g, '').replace(/\.\./g, '')`) and strips leading slashes before issuing signed storage URLs. |
+| 24 | **Lock-Screen PHI Exposure in Push Alerts (CWE-200 / DPDP)** | **Medium** | **RESOLVED:** Redacted patient names and raw missed counts from the lock-screen push notification body in `check-missed-doses`. Full clinical context is delivered securely via encrypted in-app payload. |
+| 25 | **Wildcard CORS Headers on Edge Microservices (CWE-942)** | **Medium** | **RESOLVED:** Replaced static `'Access-Control-Allow-Origin': '*'` with dynamic origin validation against trusted domains (`https://breathtaker-adi.github.io`, localhost) with `Vary: Origin`. |
+| 26 | **Non-Atomic Quota Fallback Race Condition (CWE-362)** | **Low** | **RESOLVED:** Refactored the fallback branch of `scan-prescription` to invoke the atomic database RPC `check_and_increment_scan_quota`, eliminating the read-then-upsert concurrency window. |
+| 27 | **Missing Website Content Security Policy & Broken Icon Paths** | **Medium** | **RESOLVED:** Injected `<meta http-equiv="Content-Security-Policy">` restricting script/style/media origins in `layout.tsx`; dynamicized icon link paths with `${BASE_PATH}/...` to prevent 404s on custom domains. |
+| 28 | **AEO & GEO Knowledge Graph Standardization** | **Low** | **RESOLVED:** Published `/llms.txt` and `/llms-full.txt` per specification, connected multi-entity Schema.org graph (`SoftwareApplication`, `MedicalWebPage`, `HowTo`, `SpeakableSpecification`), and explicitly permitted AI bots in `robots.txt`. |
 
 ---
 

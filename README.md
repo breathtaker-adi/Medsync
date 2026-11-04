@@ -19,10 +19,10 @@
     <img src="https://github.com/breathtaker-adi/Medsync/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
   </a>
   <a href="https://expo.dev">
-    <img src="https://img.shields.io/badge/Expo-v57.0-000020.svg?logo=expo&logoColor=white" alt="Expo SDK 57" />
+    <img src="https://img.shields.io/badge/Expo-v58.0-000020.svg?logo=expo&logoColor=white" alt="Expo SDK 58" />
   </a>
   <a href="https://reactnative.dev">
-    <img src="https://img.shields.io/badge/React_Native-v0.86-61DAFB.svg?logo=react&logoColor=black" alt="React Native 0.86" />
+    <img src="https://img.shields.io/badge/React_Native-v0.88-61DAFB.svg?logo=react&logoColor=black" alt="React Native 0.88" />
   </a>
   <a href="https://supabase.com">
     <img src="https://img.shields.io/badge/Supabase-v2.112-3ECF8E.svg?logo=supabase&logoColor=white" alt="Supabase Backend" />
@@ -34,7 +34,7 @@
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" />
   </a>
   <a href="#-automated-testing--code-quality">
-    <img src="https://img.shields.io/badge/Tests-67%20Passing-brightgreen.svg?logo=jest&logoColor=white" alt="67 Passing Tests" />
+    <img src="https://img.shields.io/badge/Tests-77%20Passing-brightgreen.svg?logo=jest&logoColor=white" alt="77 Passing Tests" />
   </a>
   <a href="https://github.com/breathtaker-adi/Medsync/pulls">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg" alt="PRs Welcome" />
@@ -47,6 +47,7 @@
 
 <p align="center">
   <a href="https://breathtaker-adi.github.io/Medsync/"><strong>🌐 Live Website</strong></a> &nbsp;•&nbsp;
+  <a href="https://breathtaker-adi.github.io/Medsync/llms.txt"><strong>🤖 LLM Knowledge Graph</strong></a> &nbsp;•&nbsp;
   <a href="https://github.com/breathtaker-adi/Medsync/releases"><strong>📲 Download APK</strong></a> &nbsp;•&nbsp;
   <a href="SECURITY.md"><strong>🔒 Security Policy</strong></a> &nbsp;•&nbsp;
   <a href="#-getting-started"><strong>🚀 Quickstart</strong></a> &nbsp;•&nbsp;
@@ -125,7 +126,7 @@
 
 ## 🌟 Overview
 
-**MedSync** is an open-source mobile health (mHealth) application engineered with **React Native (Expo SDK 57)** and **Supabase (PostgreSQL 15 + Edge Functions)**. Designed to address medication non-adherence (an estimated $100B–$300B annual burden in healthcare systems; *NEHI / CDC*), MedSync unifies three critical healthcare pillars into a synchronized real-time ecosystem:
+**MedSync** is an open-source mobile health (mHealth) application engineered with **React Native (Expo SDK 58)** and **Supabase (PostgreSQL 15 + Edge Functions)**. Designed to address medication non-adherence (an estimated $100B–$300B annual burden in healthcare systems; *NEHI / CDC*), MedSync unifies three critical healthcare pillars into a synchronized real-time ecosystem:
 
 1. **Patients / Seniors**: Simplified, high-contrast, voice-guided medication reminders with zero friction.
 2. **Family Caregivers**: Remote adherence telemetry, streak metrics, and real-time missed-dose emergency alerts.
@@ -158,7 +159,7 @@ Experience MedSync natively on your physical Android phone without building from
 
 | Version | Status | Target OS | Direct Binary Link | Highlights |
 | :--- | :---: | :---: | :---: | :--- |
-| **v1.2.0** *(Latest)* | 🟢 Production | Android 8.0 - 15 | [📥 **MedSync-v1.2.0.apk**](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk) | Full AI Vision OCR Scanner, Senior UI, Caregiver Telemetry, 67 passing security tests |
+| **v1.2.0** *(Latest)* | 🟢 Production | Android 8.0 - 15 | [📥 **MedSync-v1.2.0.apk**](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk) | Full AI Vision OCR Scanner, Senior UI, Caregiver Telemetry, 77 passing security tests |
 | **v1.1** | ⚪ Stable | Android 8.0+ | [📥 MedSync-v1.1.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.1/MedSync-v1.1.apk) | Manual medication entry, contact directory, daily streaks |
 | **v1.0** | ⚪ Pre-Release | Android 8.0+ | [📥 MedSync-v1.0.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.0/MedSync-v1.0.apk) | Baseline adherence scheduler & background alarms |
 
@@ -225,7 +226,7 @@ MedSync utilizes a reactive, offline-first client architecture powered by Supaba
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Mobile Client (React Native / Expo 57)"]
+    subgraph Client ["Mobile Client (React Native / Expo 58)"]
         UI["High-Contrast Senior UI"]
         Speech["TTS Engine (expo-speech)"]
         Haptics["Tactile Feedback (expo-haptics)"]
@@ -272,14 +273,14 @@ flowchart TD
 | Layer | Technology | Version | Purpose |
 | :--- | :--- | :--- | :--- |
 | **Framework** | [React Native](https://reactnative.dev) | `0.86.3` | Universal native cross-platform core |
-| **App Runtime** | [Expo SDK](https://expo.dev) | `57.0.30` | Modern managed native runtime & build pipeline |
-| **Navigation** | [Expo Router](https://docs.expo.dev/router/introduction/) | `57.0.28` | File-based typed routing & deep linking |
+| **App Runtime** | [Expo SDK](https://expo.dev) | `58.0.0` | Modern managed native runtime & build pipeline |
+| **Navigation** | [Expo Router](https://docs.expo.dev/router/introduction/) | `58.0.29` | File-based typed routing & deep linking |
 | **Database & Auth** | [Supabase](https://supabase.com) | `v2.112.4` | PostgreSQL with Row Level Security & Auth |
 | **Edge Compute** | [Deno / Supabase Functions](https://supabase.com/docs/guides/functions) | `Latest` | Serverless AI OCR & Missed-Dose cron triggers |
 | **Language** | [TypeScript](https://www.typescriptlang.org) | `6.0.3` | End-to-end static typing & strict null checks |
 | **State & Storage**| [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) & [SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/) | `2.2.0` | Secure hardware-backed keychain & offline cache |
-| **Voice & Accessibility** | [Expo Speech](https://docs.expo.dev/versions/latest/sdk/speech/) & [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/) | `57.0.3` | Accessible spoken audio directions & tactile confirmation |
-| **Reports** | [Expo Print](https://docs.expo.dev/versions/latest/sdk/print/) | `57.0.2` | Native PDF generation & Android Print Spooler |
+| **Voice & Accessibility** | [Expo Speech](https://docs.expo.dev/versions/latest/sdk/speech/) & [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/) | `58.0.3` | Accessible spoken audio directions & tactile confirmation |
+| **Reports** | [Expo Print](https://docs.expo.dev/versions/latest/sdk/print/) | `58.0.8` | Native PDF generation & Android Print Spooler |
 | **CI/CD** | [GitHub Actions](https://github.com/features/actions) & [EAS Build](https://expo.dev/eas) | `v4` | Automated typechecking, security testing, cloud builds |
 
 ---
@@ -418,7 +419,7 @@ npx expo start --web
 MedSync uses a two-tiered testing approach separating fast client/domain checks from live multi-user database tests:
 
 ```bash
-# Tier 1: Run client unit, domain, and static security invariant checks (67 tests)
+# Tier 1: Run client unit, domain, and static security invariant checks (77 tests)
 npm test
 
 # Tier 2: Run live multi-user PostgreSQL RLS integration tests via pgTAP
@@ -469,7 +470,7 @@ eas submit --platform android
 medsync-app/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml               # Automated CI (Typecheck + 67 Security Tests)
+│       └── ci.yml               # Automated CI (Typecheck + 77 Security Tests)
 ├── assets/
 │   ├── images/                  # High-res logos, brand assets, app icons
 │   └── fonts/                   # Accessible custom typography
@@ -490,7 +491,7 @@ medsync-app/
 │   │   ├── scan-prescription/   # AI Vision OCR extraction engine
 │   │   └── check-missed-doses/  # Scheduled adherence checker cron
 │   └── migrations/              # RLS policies, schemas, and defense triggers
-├── tests/                       # 67 Automated unit, security, and RLS tests
+├── tests/                       # 77 Automated unit, security, and RLS tests
 ├── app.config.js                # Dynamic Expo configuration & EAS secret loader
 ├── eas.json                     # EAS Build profiles (preview, production)
 └── package.json                 # Dependency manifest
