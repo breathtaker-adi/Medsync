@@ -56,7 +56,7 @@ function DownloadBlock() {
                 Changelog
               </a>
               <a
-                href="https://expo.dev/artifacts/eas/VvBcywcJW12es0A5PTLvOAv0JH75L4-rAkCPF8iTKdc.apk"
+                href="https://expo.dev/artifacts/eas/s_5kIM8eZd8OM-W0-QDhXhoymGVg1992rjkUAq7JxwQ.apk"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 font-telemetry text-[10px] tracking-[0.12em] text-slate-300 uppercase transition-colors hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
