@@ -112,9 +112,11 @@ export function Nav() {
           >
             <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-bio/40 bg-[#061016] shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-transform duration-300 group-hover:scale-105">
               <img
-                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
-                alt="Medsync icon"
-                className="h-full w-full object-contain p-0.5"
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/medsync-logo.png`}
+                alt="Medsync logo"
+                className="h-full w-full object-cover scale-[1.08]"
+                width={28}
+                height={28}
               />
             </div>
             <span className="text-[17px] font-bold tracking-[-0.02em] text-white">

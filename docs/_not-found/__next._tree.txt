@@ -1,4 +1,4 @@
-:HL["/Medsync/_next/static/css/a7f7c41e7d8ccf6c.css","style"]
+:HL["/Medsync/_next/static/css/acf1ba62fb68f1b2.css","style"]
 2:[["children",{"s":"__PAGE__","h":160}]]
 1:[["children",{"s":"_not-found","h":64,"c":"$Q2"}]]
-0:{"b":"xqar0Qj1iH3KOTfKS7TqD","t":{"t":{"s":"","h":16,"c":"$Q1"}}}
+0:{"b":"gtSFY7rQfCc01TSDYyzDd","t":{"t":{"s":"","h":16,"c":"$Q1"}}}

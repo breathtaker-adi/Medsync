@@ -81,6 +81,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: `${BASE_PATH}/logo.svg?v=2`, type: "image/svg+xml" },
+      { url: `${BASE_PATH}/medsync-logo.png?v=2`, type: "image/png" },
       { url: `${BASE_PATH}/favicon.png?v=2`, type: "image/png", sizes: "32x32" },
       { url: `${BASE_PATH}/favicon.ico?v=2`, sizes: "any" },
     ],
@@ -377,6 +378,7 @@ export default function RootLayout({
         />
         {/* Favicons: dynamic BASE_PATH resolution for localhost, preview branches, and custom domains (Finding #1) */}
         <link rel="icon" type="image/svg+xml" href={`${BASE_PATH}/logo.svg?v=2`} />
+        <link rel="icon" type="image/png" href={`${BASE_PATH}/medsync-logo.png?v=2`} />
         <link rel="icon" type="image/png" sizes="32x32" href={`${BASE_PATH}/favicon.png?v=2`} />
         <link rel="icon" href={`${BASE_PATH}/favicon.ico?v=2`} sizes="any" />
         <link rel="shortcut icon" href={`${BASE_PATH}/favicon.ico?v=2`} />
