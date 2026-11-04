@@ -77,7 +77,7 @@ const FAQS: FAQItem[] = [
     category: "SYSTEM",
     question: "Where can I download the MedSync Android APK, and what are the system requirements?",
     answer:
-      "Official, signed Android APK releases are available for direct download on MedSync's official GitHub Releases repository (https://github.com/breathtaker-adi/Medsync/releases). MedSync supports Android 8.0 (API level 26) through Android 15, requiring approximately 48MB of storage.",
+      "Official, signed Android APK releases are available for direct download on MedSync's official GitHub Releases repository (https://github.com/breathtaker-adi/Medsync/releases). MedSync supports Android 8.0 (API level 26) through Android 15, requiring approximately 108MB of storage.",
   },
 ];
 

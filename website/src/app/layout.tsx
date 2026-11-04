@@ -163,7 +163,7 @@ const jsonLd = {
       "applicationSubCategory": "Medication Adherence & Prescription Scanner",
       "operatingSystem": "Android 8.0 and higher",
       "softwareVersion": "1.2.0",
-      "fileSize": "48MB",
+      "fileSize": "108MB",
       "downloadUrl":
         "https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk",
       "requirements": "Android 8.0+; Camera for prescription scanner",
@@ -354,7 +354,7 @@ const jsonLd = {
           "acceptedAnswer": {
             "@type": "Answer",
             "text":
-              "Official, signed Android APK releases are available for direct download on MedSync's official GitHub Releases repository (https://github.com/breathtaker-adi/Medsync/releases). MedSync supports Android 8.0 (API level 26) through Android 15, requiring approximately 48MB of storage.",
+              "Official, signed Android APK releases are available for direct download on MedSync's official GitHub Releases repository (https://github.com/breathtaker-adi/Medsync/releases). MedSync supports Android 8.0 (API level 26) through Android 15, requiring approximately 108MB of storage.",
           },
         },
       ],

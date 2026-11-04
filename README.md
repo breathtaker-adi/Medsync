@@ -157,15 +157,15 @@ MedSync solves this with:
 
 Experience MedSync natively on your physical Android phone without building from source. Verified standalone `.apk` binaries are published directly under [GitHub Releases](https://github.com/breathtaker-adi/Medsync/releases):
 
-| Version | Status | Target OS | Direct Binary Link | Highlights |
+| Version | Status | Target OS | Direct Binary Link | Build Details & Highlights |
 | :--- | :---: | :---: | :---: | :--- |
-| **v1.2.0** *(Latest)* | 🟢 Production | Android 8.0 - 15 | [📥 **MedSync-v1.2.0.apk**](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk) | Full AI Vision OCR Scanner, Senior UI, Caregiver Telemetry, 77 passing security tests |
+| **v1.2.0** *(Latest)* | 🟢 Production | Android 8.0 - 15 | [📥 **MedSync-v1.2.0.apk**](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk)<br/><sub>*(or [Expo EAS Mirror](https://expo.dev/artifacts/eas/VvBcywcJW12es0A5PTLvOAv0JH75L4-rAkCPF8iTKdc.apk))*</sub> | Expo SDK 58 • React Native 0.88.1<br/>EAS Build `8fa22465` • 77 Passing Tests<br/>`SHA-256: 55c6c13b35b4ea2a1024533c67e9b00dbc99e0f71576f2f307f66b841a159c81` |
 | **v1.1** | ⚪ Stable | Android 8.0+ | [📥 MedSync-v1.1.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.1/MedSync-v1.1.apk) | Manual medication entry, contact directory, daily streaks |
 | **v1.0** | ⚪ Pre-Release | Android 8.0+ | [📥 MedSync-v1.0.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.0/MedSync-v1.0.apk) | Baseline adherence scheduler & background alarms |
 
 > [!TIP]
 > **Direct Installation Steps**:
-> 1. Download **[MedSync-v1.2.0.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk)** directly to your Android device.
+> 1. Download **[MedSync-v1.2.0.apk](https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk)** directly to your Android device (or from the [Expo EAS Cloud Artifact](https://expo.dev/artifacts/eas/VvBcywcJW12es0A5PTLvOAv0JH75L4-rAkCPF8iTKdc.apk)).
 > 2. Open the downloaded `.apk` file from your device notifications or file manager.
 > 3. If prompted by Android, toggle **"Allow from this source"** to permit the sideload.
 > 4. Launch MedSync to explore the high-contrast dashboard, spoken voice guidance, and prescription scanner.

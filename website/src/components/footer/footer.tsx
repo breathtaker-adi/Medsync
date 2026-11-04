@@ -27,12 +27,12 @@ function DownloadBlock() {
             <div className="mt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2 font-telemetry text-[11px] text-slate-300">
               <span className="rounded bg-bio/15 text-bio font-semibold px-2 py-0.5">v1.2.0 (Latest)</span>
               <span className="rounded bg-white/5 px-2 py-0.5">Android 8.0 - 15</span>
-              <span className="rounded bg-white/5 px-2 py-0.5">~100 MB</span>
+              <span className="rounded bg-white/5 px-2 py-0.5">~108 MB</span>
               <span className="rounded bg-white/5 px-2 py-0.5">Open Source MIT</span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 w-full sm:w-auto shrink-0">
+          <div className="flex flex-col gap-2.5 w-full sm:w-auto shrink-0">
             <Magnetic strength={0.25}>
               <a
                 href="https://github.com/breathtaker-adi/Medsync/releases/download/v1.2.0/MedSync-v1.2.0.apk"
@@ -45,15 +45,26 @@ function DownloadBlock() {
                 Download APK (v1.2.0)
               </a>
             </Magnetic>
-            <a
-              href="https://github.com/breathtaker-adi/Medsync/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 font-telemetry text-[11px] tracking-[0.14em] text-slate-200 uppercase transition-colors hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
-            >
-              <Github size={13} />
-              Releases &amp; Changelog
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://github.com/breathtaker-adi/Medsync/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 font-telemetry text-[10px] tracking-[0.12em] text-slate-200 uppercase transition-colors hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+              >
+                <Github size={12} />
+                Changelog
+              </a>
+              <a
+                href="https://expo.dev/artifacts/eas/VvBcywcJW12es0A5PTLvOAv0JH75L4-rAkCPF8iTKdc.apk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 font-telemetry text-[10px] tracking-[0.12em] text-slate-300 uppercase transition-colors hover:border-bio/40 hover:text-bio focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bio"
+                title="Direct Expo EAS Cloud Artifact Mirror"
+              >
+                EAS Mirror
+              </a>
+            </div>
           </div>
         </div>
 
