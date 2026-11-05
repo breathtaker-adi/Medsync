@@ -1095,3 +1095,4 @@ An AI agent or engineer rebuilding MedSync from an empty directory must follow t
 ## Publication Certification
 
 This document is certified complete, un-abbreviated, and reproducible under **MedSync Release `v1.2.1`**. All schemas, code contracts, architectural diagrams, and configurations reflect the live, tested codebase.
+
