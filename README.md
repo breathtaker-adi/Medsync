@@ -288,7 +288,7 @@ flowchart TD
 
 ## 🌐 Web Experience
 
-MedSync includes a standalone, award-winning web showcase located in [`website/`](website/):
+MedSync includes a standalone, web showcase located in [`website/`](website/):
 
 - **Live URL**: [https://breathtaker-adi.github.io/Medsync/](https://breathtaker-adi.github.io/Medsync/)
 - **Built With**: Next.js 16 (App Router), React 19, Tailwind CSS v4, Lenis smooth scrolling, Three.js / React Three Fiber, GSAP ScrollTrigger, and Lucide icons.
